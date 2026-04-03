@@ -57,7 +57,7 @@ const STEPS = [
 const ACCOUNT_TYPES = ['checking', 'savings', 'cash', 'credit', 'investment', 'other'];
 const BUDGET_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Utilities', 'Rent', 'Other'];
 
-export default function Onboarding() {
+export default function Onboarding({ onComplete }) {
   const [step, setStep] = useState(0);
   const [account, setAccount] = useState({ name: '', type: 'checking', balance: '' });
   const [budget, setBudget] = useState({ name: '', category: 'Food', limit: '', period: 'monthly' });
@@ -72,8 +72,7 @@ export default function Onboarding() {
 
   const handleNext = async () => {
     if (isLast) {
-      localStorage.setItem('velora_onboarded', 'true');
-      navigate('/');
+      onComplete?.();
       return;
     }
     if (current.form === 'account' && account.name && account.balance !== '') {

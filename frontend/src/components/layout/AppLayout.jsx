@@ -22,7 +22,7 @@ export default function AppLayout() {
   const toggleTheme = () => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   const location = useLocation();
   const { fetchAccounts } = useAccountStore();
-  const showOnboarding = useOnboarding();
+  const [showOnboarding, completeOnboarding] = useOnboarding();
   useEffect(() => { fetchAccounts(); }, []);
 
   return (
@@ -54,7 +54,7 @@ export default function AppLayout() {
         </main>
         <QuickAdd />
         <GlobalSearch />
-        {showOnboarding && <Onboarding />}
+        {showOnboarding && <Onboarding onComplete={completeOnboarding} />}
       </div>
     </div>
   );

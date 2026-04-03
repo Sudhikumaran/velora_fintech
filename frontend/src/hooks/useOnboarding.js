@@ -11,5 +11,10 @@ export function useOnboarding() {
     }
   }, [user]);
 
-  return show;
+  const complete = () => {
+    localStorage.setItem('velora_onboarded', 'true');
+    setShow(false);
+  };
+
+  return [show, complete];
 }
