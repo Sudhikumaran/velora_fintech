@@ -75,6 +75,20 @@ app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Velora API is running.', timestamp: new Date() });
 });
 
+app.get('/api/debug-paths', (req, res) => {
+  const p1 = path.resolve(process.cwd(), 'frontend', 'dist');
+  const p2 = path.resolve(__dirname, '../../frontend/dist');
+  const p3 = path.resolve(__dirname, '../../../frontend/dist');
+  const tryRead = (p) => { try { return fs.readdirSync(p).slice(0, 5); } catch { return 'NOT FOUND'; } };
+  res.json({
+    cwd: process.cwd(),
+    dirname: __dirname,
+    p1, p1exists: fs.existsSync(p1), p1files: tryRead(p1),
+    p2, p2exists: fs.existsSync(p2), p2files: tryRead(p2),
+    p3, p3exists: fs.existsSync(p3), p3files: tryRead(p3),
+  });
+});
+
 // Serve React build in production
 if (isProd) {
   const candidatePaths = [
