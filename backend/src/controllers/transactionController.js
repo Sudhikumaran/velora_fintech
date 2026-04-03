@@ -55,7 +55,8 @@ export const getTransactions = async (req, res, next) => {
 
 export const createTransaction = async (req, res, next) => {
   try {
-    const { account, toAccount, type, amount, category, subcategory, description, date, tags, notes, isRecurring, receiptUrl } = req.body;
+    const { account, type, amount, category, subcategory, description, date, tags, notes, isRecurring, receiptUrl } = req.body;
+    const toAccount = req.body.toAccount || null;
 
     if (!account || !type || !amount || !category) {
       return errorResponse(res, 'Account, type, amount and category are required.', 400);
@@ -117,7 +118,8 @@ export const updateTransaction = async (req, res, next) => {
       await oldAccount.save();
     }
 
-    const { account, toAccount, type, amount, category, subcategory, description, date, tags, notes, receiptUrl } = req.body;
+    const { account, type, amount, category, subcategory, description, date, tags, notes, receiptUrl } = req.body;
+    const toAccount = req.body.toAccount || null;
     Object.assign(existing, { account, toAccount, type, amount, category, subcategory, description, date, tags, notes, receiptUrl });
     await existing.save();
 
