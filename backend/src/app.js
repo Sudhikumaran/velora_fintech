@@ -76,7 +76,7 @@ app.get('/api/health', (req, res) => {
 
 // Serve React build in production
 if (isProd) {
-  const distPath = path.resolve(process.cwd(), '..', 'frontend', 'dist');
+  const distPath = path.resolve(process.cwd(), 'frontend', 'dist');
   console.log('Serving frontend from:', distPath);
   app.use(express.static(distPath));
   app.get(/(.*)/, (req, res) => {
