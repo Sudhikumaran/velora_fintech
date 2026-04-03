@@ -34,6 +34,8 @@ const ChartTip = ({ active, payload, label, currency = 'USD' }) => {
 export default function Dashboard() {
   const { user } = useAuthStore();
   const { dashboard, monthlyTrend, spendingByCategory, netWorth, fetchDashboard, fetchMonthlyTrend, fetchSpendingByCategory, fetchNetWorth } = useAnalyticsStore();
+  const currSymbol = user?.currency === 'INR' ? '₹' : user?.currency === 'EUR' ? '€' : user?.currency === 'GBP' ? '£' : '$';
+  const fmtK = (v) => `${currSymbol}${(v / 1000).toFixed(0)}k`;
 
   useEffect(() => {
     fetchDashboard();
@@ -122,7 +124,7 @@ export default function Dashboard() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
+              <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
               <Tooltip content={<ChartTip currency={user?.currency} />} />
               <Area type="monotone" dataKey="income"  name="Income"   stroke="#22c55e" fill="url(#gIncome)"  strokeWidth={2.5} dot={false} />
               <Area type="monotone" dataKey="expense" name="Expenses" stroke="#ef4444" fill="url(#gExpense)" strokeWidth={2.5} dot={false} />

@@ -33,6 +33,8 @@ export default function Analytics() {
   const { user } = useAuthStore();
   const [period, setPeriod] = useState('month');
   const [months, setMonths] = useState('6');
+  const currSymbol = user?.currency === 'INR' ? '₹' : user?.currency === 'EUR' ? '€' : user?.currency === 'GBP' ? '£' : '$';
+  const fmtK = (v) => `${currSymbol}${(v / 1000).toFixed(0)}k`;
 
   useEffect(() => {
     fetchSpendingByCategory({ period });
@@ -130,7 +132,7 @@ export default function Analytics() {
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={spendingByCategory.slice(0, 8)} layout="vertical" margin={{ left: 80, right: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} className="opacity-30" />
-                <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                        <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={fmtK} />
                 <YAxis type="category" dataKey="_id" tick={{ fontSize: 11 }} width={75} />
                 <Tooltip content={<ChartTooltip currency={user?.currency} />} />
                 <Bar dataKey="total" name="Amount" radius={[0, 6, 6, 0]}>
@@ -164,7 +166,7 @@ export default function Analytics() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={fmtK} />
               <Tooltip content={<ChartTooltip currency={user?.currency} />} />
               <Legend />
               <Area type="monotone" dataKey="income" name="Income" stroke="#22c55e" fill="url(#incomeGrad2)" strokeWidth={2} />
@@ -184,7 +186,7 @@ export default function Analytics() {
             <BarChart data={cashFlow} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis dataKey="monthName" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={fmtK} />
               <Tooltip content={<ChartTooltip currency={user?.currency} />} />
               <Legend />
               <Bar dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]} />
