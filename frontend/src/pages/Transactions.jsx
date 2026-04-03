@@ -24,7 +24,25 @@ const defaultForm = {
 };
 
 function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
-  const categories = TRANSACTION_CATEGORIES[form.type === 'transfer' ? 'expense' : form.type] || [];
+  const baseCategories = TRANSACTION_CATEGORIES[form.type === 'transfer' ? 'expense' : form.type] || [];
+  const storageKey = `velora_custom_categories_${form.type === 'transfer' ? 'expense' : form.type}`;
+  const [customCategories, setCustomCategories] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch { return []; }
+  });
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
+  const categories = [...baseCategories, ...customCategories];
+
+  const handleAddCategory = () => {
+    const trimmed = newCategory.trim();
+    if (!trimmed || categories.includes(trimmed)) return;
+    const updated = [...customCategories, trimmed];
+    setCustomCategories(updated);
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+    setForm({ ...form, category: trimmed });
+    setNewCategory('');
+    setShowNewCategory(false);
+  };
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -79,12 +97,39 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
         ) : (
           <div>
             <label className="label">Category</label>
-            <select className="input-field" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
+            <select
+              className="input-field"
+              value={showNewCategory ? '__new__' : form.category}
+              onChange={(e) => {
+                if (e.target.value === '__new__') { setShowNewCategory(true); }
+                else { setShowNewCategory(false); setForm({ ...form, category: e.target.value }); }
+              }}
+              required={!showNewCategory}
+            >
               <option value="">Select category</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
+              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+              <option value="__new__">+ Create new category</option>
             </select>
+            {showNewCategory && (
+              <div className="flex gap-2 mt-2">
+                <input
+                  className="input-field flex-1"
+                  placeholder="New category name..."
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
+                  autoFocus
+                />
+                <button type="button" onClick={handleAddCategory}
+                  className="px-3 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700">
+                  Add
+                </button>
+                <button type="button" onClick={() => { setShowNewCategory(false); setNewCategory(''); }}
+                  className="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         )}
         <div className="col-span-2">
