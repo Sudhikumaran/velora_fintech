@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit3, Trash2, TrendingDown, TrendingUp, PlusCircle, Clock } from 'lucide-react';
+import { Plus, Edit3, Trash2, TrendingDown, TrendingUp, PlusCircle, Clock, CalendarClock, CheckCircle2 } from 'lucide-react';
 import { useDebtStore } from '../store/financeStore';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency, formatDate } from '../utils/formatters';
@@ -11,8 +11,19 @@ import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
-const defaultForm = { type: 'borrowed', amount: '', person: '', description: '', dueDate: '', interestRate: '' };
+const defaultForm = {
+  type: 'borrowed', amount: '', person: '', description: '', dueDate: '', interestRate: '',
+  isEMI: false, emiAmount: '', emiDay: '', emiStartDate: new Date().toISOString().split('T')[0], tenure: '',
+};
 const repaymentDefault = { amount: '', date: new Date().toISOString().split('T')[0], note: '' };
+
+// Helper: get next EMI due date
+function getNextEMIDate(emiDay, emiStartDate, paidCount) {
+  if (!emiDay || !emiStartDate) return null;
+  const start = new Date(emiStartDate);
+  const due = new Date(start.getFullYear(), start.getMonth() + paidCount, emiDay);
+  return due;
+}
 
 function DebtForm({ form, setForm, onSubmit, isEdit }) {
   return (
@@ -27,38 +38,87 @@ function DebtForm({ form, setForm, onSubmit, isEdit }) {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="label">Amount</label>
+          <label className="label">Total Amount</label>
           <input type="number" step="0.01" min="0.01" className="input-field" placeholder="0.00" value={form.amount}
             onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
         </div>
         <div>
           <label className="label">Person / Organization</label>
-          <input className="input-field" placeholder="Name" value={form.person}
+          <input className="input-field" placeholder="e.g. SBI Bank" value={form.person}
             onChange={(e) => setForm({ ...form, person: e.target.value })} required />
         </div>
         <div className="col-span-2">
           <label className="label">Description</label>
-          <input className="input-field" placeholder="What is this for?" value={form.description}
+          <input className="input-field" placeholder="e.g. Education Loan" value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        </div>
-        <div>
-          <label className="label">Due Date (optional)</label>
-          <input type="date" className="input-field" value={form.dueDate}
-            onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
         </div>
         <div>
           <label className="label">Interest Rate % (optional)</label>
           <input type="number" step="0.1" min="0" className="input-field" placeholder="0" value={form.interestRate}
             onChange={(e) => setForm({ ...form, interestRate: e.target.value })} />
         </div>
+        <div>
+          <label className="label">Due Date (optional)</label>
+          <input type="date" className="input-field" value={form.dueDate}
+            onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+        </div>
       </div>
+
+      {/* EMI Toggle */}
+      <button type="button"
+        onClick={() => setForm({ ...form, isEMI: !form.isEMI })}
+        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${form.isEMI ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}`}>
+        <div className="flex items-center gap-2">
+          <CalendarClock size={16} className={form.isEMI ? 'text-indigo-600' : 'text-gray-400'} />
+          <span className={`text-sm font-semibold ${form.isEMI ? 'text-indigo-700 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400'}`}>
+            This is an EMI / Monthly Payment
+          </span>
+        </div>
+        <div className={`w-10 h-5 rounded-full transition-all relative ${form.isEMI ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${form.isEMI ? 'left-5' : 'left-0.5'}`} />
+        </div>
+      </button>
+
+      {form.isEMI && (
+        <div className="grid grid-cols-2 gap-4 p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-xl border border-indigo-100 dark:border-indigo-800">
+          <div>
+            <label className="label">Monthly EMI Amount (₹)</label>
+            <input type="number" step="0.01" min="0" className="input-field" placeholder="e.g. 3500.00" value={form.emiAmount}
+              onChange={(e) => setForm({ ...form, emiAmount: e.target.value })} required={form.isEMI} />
+          </div>
+          <div>
+            <label className="label">EMI Due Day (of month)</label>
+            <input type="number" min="1" max="31" className="input-field" placeholder="e.g. 5" value={form.emiDay}
+              onChange={(e) => setForm({ ...form, emiDay: e.target.value })} required={form.isEMI} />
+            <p className="text-xs text-gray-400 mt-1">Day of month payment is due</p>
+          </div>
+          <div>
+            <label className="label">EMI Start Date</label>
+            <input type="date" className="input-field" value={form.emiStartDate}
+              onChange={(e) => setForm({ ...form, emiStartDate: e.target.value })} required={form.isEMI} />
+          </div>
+          <div>
+            <label className="label">Tenure (months)</label>
+            <input type="number" min="1" className="input-field" placeholder="e.g. 60" value={form.tenure}
+              onChange={(e) => setForm({ ...form, tenure: e.target.value })} required={form.isEMI} />
+          </div>
+          {form.emiAmount && form.tenure && (
+            <div className="col-span-2 px-3 py-2 bg-white dark:bg-gray-800 rounded-xl text-sm">
+              <span className="text-gray-500">Total Payable: </span>
+              <span className="font-bold text-indigo-600">₹{(parseFloat(form.emiAmount) * parseInt(form.tenure)).toFixed(2)}</span>
+              <span className="text-gray-400 ml-2">({form.tenure} months × ₹{form.emiAmount})</span>
+            </div>
+          )}
+        </div>
+      )}
+
       <button type="submit" className="btn-primary w-full">{isEdit ? 'Update Debt' : 'Record Debt'}</button>
     </form>
   );
 }
 
-function RepaymentForm({ onSubmit }) {
-  const [form, setForm] = useState(repaymentDefault);
+function RepaymentForm({ onSubmit, defaultAmount = '' }) {
+  const [form, setForm] = useState({ ...repaymentDefault, amount: defaultAmount });
   const handleSubmit = (e) => { e.preventDefault(); onSubmit(form); };
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -94,7 +154,7 @@ export default function Debts() {
   const { debts, fetchDebts, createDebt, updateDebt, deleteDebt, addRepayment, isLoading } = useDebtStore();
   const { user } = useAuthStore();
   const [modalOpen, setModalOpen] = useState(false);
-  const [repaymentModal, setRepaymentModal] = useState(null);
+  const [repaymentModal, setRepaymentModal] = useState(null); // { id, emiAmount }
   const [editDebt, setEditDebt] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [form, setForm] = useState(defaultForm);
@@ -104,7 +164,14 @@ export default function Debts() {
 
   const openCreate = () => { setForm(defaultForm); setEditDebt(null); setModalOpen(true); };
   const openEdit = (d) => {
-    setForm({ type: d.type, amount: d.amount, person: d.person, description: d.description || '', dueDate: d.dueDate?.split('T')[0] || '', interestRate: d.interestRate || '' });
+    setForm({
+      type: d.type, amount: d.amount, person: d.person,
+      description: d.description || '', dueDate: d.dueDate?.split('T')[0] || '',
+      interestRate: d.interestRate || '',
+      isEMI: !!d.isEMI, emiAmount: d.emiAmount || '', emiDay: d.emiDay || '',
+      emiStartDate: d.emiStartDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+      tenure: d.tenure || '',
+    });
     setEditDebt(d);
     setModalOpen(true);
   };
@@ -169,13 +236,21 @@ export default function Debts() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map((debt, i) => {
             const pct = debt.amount > 0 ? ((debt.amount - (debt.remainingAmount || 0)) / debt.amount) * 100 : 0;
+            const paidEMIs = debt.isEMI && debt.emiAmount
+              ? Math.round((debt.amount - (debt.remainingAmount || 0)) / debt.emiAmount)
+              : 0;
+            const nextEMIDate = debt.isEMI ? getNextEMIDate(debt.emiDay, debt.emiStartDate, paidEMIs) : null;
+            const isOverdue = nextEMIDate && nextEMIDate < new Date() && debt.status !== 'paid';
+
             return (
-              <motion.div key={debt._id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className="card p-5 group">
+              <motion.div key={debt._id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
+                className={`card p-5 group ${isOverdue ? 'border-red-200 dark:border-red-800' : ''}`}>
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-lg">{debt.type === 'borrowed' ? '🔴' : '🟢'}</span>
                       <h3 className="font-semibold text-gray-900 dark:text-white">{debt.person}</h3>
+                      {debt.isEMI && <span className="text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 px-2 py-0.5 rounded-full font-medium">EMI</span>}
                     </div>
                     {debt.description && <p className="text-sm text-gray-500 mt-0.5">{debt.description}</p>}
                   </div>
@@ -188,38 +263,60 @@ export default function Debts() {
                   </div>
                 </div>
 
-                <div className="flex justify-between mb-2">
-                  <div>
-                    <p className="text-xs text-gray-500">Original</p>
-                    <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(debt.amount, user?.currency)}</p>
+                {/* EMI Summary */}
+                {debt.isEMI && debt.tenure ? (
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    <div className="text-center px-2 py-2 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                      <p className="text-xs text-gray-400">EMI</p>
+                      <p className="font-bold text-sm text-gray-900 dark:text-white">{formatCurrency(debt.emiAmount, user?.currency)}</p>
+                    </div>
+                    <div className="text-center px-2 py-2 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                      <p className="text-xs text-gray-400">Paid</p>
+                      <p className="font-bold text-sm text-green-600">{paidEMIs}/{debt.tenure}</p>
+                    </div>
+                    <div className="text-center px-2 py-2 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                      <p className="text-xs text-gray-400">Left</p>
+                      <p className="font-bold text-sm text-red-500">{Math.max(0, debt.tenure - paidEMIs)}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">Remaining</p>
-                    <p className={`font-bold ${debt.status === 'paid' ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(debt.remainingAmount || 0, user?.currency)}
-                    </p>
+                ) : (
+                  <div className="flex justify-between mb-2">
+                    <div>
+                      <p className="text-xs text-gray-500">Original</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{formatCurrency(debt.amount, user?.currency)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Remaining</p>
+                      <p className={`font-bold ${debt.status === 'paid' ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(debt.remainingAmount || 0, user?.currency)}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mb-3">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${pct}%` }}
-                    transition={{ duration: 0.8 }}
-                    className="h-full rounded-full bg-green-500"
-                  />
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8 }}
+                    className="h-full rounded-full bg-green-500" />
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
-                    {debt.dueDate && (
-                      <><Clock size={12} /><span>Due {formatDate(debt.dueDate, 'short')}</span></>
-                    )}
+                  <div className="text-xs text-gray-500">
+                    {debt.isEMI && nextEMIDate && debt.status !== 'paid' ? (
+                      <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-500 font-semibold' : ''}`}>
+                        <CalendarClock size={12} />
+                        <span>{isOverdue ? '⚠ Overdue · ' : 'Next EMI · '}
+                          {nextEMIDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                    ) : debt.dueDate ? (
+                      <div className="flex items-center gap-1"><Clock size={12} /><span>Due {formatDate(debt.dueDate, 'short')}</span></div>
+                    ) : null}
                   </div>
                   {debt.status !== 'paid' && (
-                    <button onClick={() => setRepaymentModal(debt._id)}
-                      className="flex items-center gap-1.5 text-xs bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors">
-                      <PlusCircle size={12} /> Add Repayment
+                    <button
+                      onClick={() => setRepaymentModal({ id: debt._id, emiAmount: debt.isEMI ? debt.emiAmount : '' })}
+                      className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors ${debt.isEMI ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 hover:bg-indigo-100'}`}>
+                      {debt.isEMI ? <><CheckCircle2 size={12} /> Pay EMI</> : <><PlusCircle size={12} /> Add Repayment</>}
                     </button>
                   )}
                 </div>
@@ -233,8 +330,12 @@ export default function Debts() {
         <DebtForm form={form} setForm={setForm} onSubmit={handleSubmit} isEdit={!!editDebt} />
       </Modal>
 
-      <Modal isOpen={!!repaymentModal} onClose={() => setRepaymentModal(null)} title="Add Repayment" size="sm">
-        <RepaymentForm onSubmit={async (data) => { await addRepayment(repaymentModal, data); setRepaymentModal(null); }} />
+      <Modal isOpen={!!repaymentModal} onClose={() => setRepaymentModal(null)}
+        title={repaymentModal?.emiAmount ? '💳 Pay EMI' : 'Add Repayment'} size="sm">
+        <RepaymentForm
+          defaultAmount={repaymentModal?.emiAmount || ''}
+          onSubmit={async (data) => { await addRepayment(repaymentModal?.id, data); setRepaymentModal(null); }}
+        />
       </Modal>
 
       <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteDebt(deleteId)} title="Delete Debt" message="Are you sure you want to delete this debt record?" />

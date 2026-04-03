@@ -55,6 +55,11 @@ const debtSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Account',
     },
+    isEMI:        { type: Boolean, default: false },
+    emiAmount:    { type: Number },
+    emiDay:       { type: Number, min: 1, max: 31 },
+    emiStartDate: { type: Date },
+    tenure:       { type: Number },
   },
   { timestamps: true }
 );

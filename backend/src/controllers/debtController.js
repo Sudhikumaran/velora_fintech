@@ -17,7 +17,9 @@ export const getDebts = async (req, res, next) => {
 
 export const createDebt = async (req, res, next) => {
   try {
-    const { type, amount, person, description, dueDate, interestRate, account } = req.body;
+    const { type, person, description, dueDate, interestRate, account,
+            isEMI, emiAmount, emiDay, emiStartDate, tenure } = req.body;
+    const amount = parseFloat(req.body.amount);
 
     if (!type || !amount || !person) {
       return errorResponse(res, 'Type, amount and person are required.', 400);
@@ -28,6 +30,11 @@ export const createDebt = async (req, res, next) => {
       type, amount, person, description, dueDate,
       interestRate: interestRate || 0, account,
       remainingAmount: amount,
+      isEMI: !!isEMI,
+      emiAmount: emiAmount ? parseFloat(emiAmount) : undefined,
+      emiDay: emiDay ? parseInt(emiDay) : undefined,
+      emiStartDate: emiStartDate || undefined,
+      tenure: tenure ? parseInt(tenure) : undefined,
     });
 
     successResponse(res, debt, 'Debt recorded successfully.', 201);
@@ -41,8 +48,17 @@ export const updateDebt = async (req, res, next) => {
     const debt = await Debt.findOne({ _id: req.params.id, user: req.user._id });
     if (!debt) return errorResponse(res, 'Debt not found.', 404);
 
-    const { type, amount, person, description, dueDate, interestRate, account } = req.body;
-    Object.assign(debt, { type, amount, person, description, dueDate, interestRate, account });
+    const { type, person, description, dueDate, interestRate, account,
+            isEMI, emiAmount, emiDay, emiStartDate, tenure } = req.body;
+    const amount = parseFloat(req.body.amount);
+    Object.assign(debt, {
+      type, amount, person, description, dueDate, interestRate, account,
+      isEMI: !!isEMI,
+      emiAmount: emiAmount ? parseFloat(emiAmount) : debt.emiAmount,
+      emiDay: emiDay ? parseInt(emiDay) : debt.emiDay,
+      emiStartDate: emiStartDate || debt.emiStartDate,
+      tenure: tenure ? parseInt(tenure) : debt.tenure,
+    });
     await debt.save();
 
     successResponse(res, debt, 'Debt updated successfully.');
