@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, CreditCard, Edit3, Trash2, Archive, MoreVertical, Wallet, TrendingUp } from 'lucide-react';
 import { useAccountStore } from '../store/accountStore';
+import { useInvestmentStore } from '../store/financeStore';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { ACCOUNT_TYPES, COLORS } from '../utils/constants';
@@ -72,6 +73,7 @@ const accountTypeIcons = { bank: '🏦', cash: '💵', credit: '💳', savings: 
 
 export default function Accounts() {
   const { accounts, fetchAccounts, createAccount, updateAccount, deleteAccount, archiveAccount, isLoading } = useAccountStore();
+  const { investments, fetchInvestments } = useInvestmentStore();
   const { user } = useAuthStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editAccount, setEditAccount] = useState(null);
@@ -79,7 +81,7 @@ export default function Accounts() {
   const [form, setForm] = useState(() => getDefaultForm(user?.currency));
   const [showArchived, setShowArchived] = useState(false);
 
-  useEffect(() => { fetchAccounts(showArchived); }, [showArchived]);
+  useEffect(() => { fetchAccounts(showArchived); fetchInvestments(); }, [showArchived]);
 
   const openCreate = () => { setForm(getDefaultForm(user?.currency)); setEditAccount(null); setModalOpen(true); };
   const openEdit = (account) => {
@@ -102,6 +104,9 @@ export default function Accounts() {
   const bankAccounts = accounts.filter((a) => !a.isArchived && ['bank', 'savings', 'cash', 'wallet'].includes(a.type));
   const creditAccounts = accounts.filter((a) => !a.isArchived && a.type === 'credit');
   const investmentAccounts = accounts.filter((a) => !a.isArchived && a.type === 'investment');
+  const portfolioValue = investments.reduce((s, inv) => s + inv.units * (inv.currentPrice || inv.buyPrice), 0);
+  const investmentAccountsValue = investmentAccounts.reduce((s, a) => s + a.balance, 0);
+  const totalInvestments = portfolioValue + investmentAccountsValue;
 
   return (
     <div className="space-y-6">
@@ -120,7 +125,7 @@ export default function Accounts() {
         {[
           { label: 'Total Balance', value: totalBalance, color: 'bg-indigo-50 dark:bg-indigo-900/20', text: 'text-indigo-600', icon: Wallet },
           { label: 'Credit Used', value: creditAccounts.reduce((s, a) => s + Math.abs(a.balance), 0), color: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-600', icon: CreditCard },
-          { label: 'Investments', value: investmentAccounts.reduce((s, a) => s + a.balance, 0), color: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-600', icon: TrendingUp },
+          { label: 'Investments', value: totalInvestments, color: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-600', icon: TrendingUp },
         ].map((card, i) => (
           <motion.div key={card.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="card p-5">
             <div className="flex items-center gap-3">
