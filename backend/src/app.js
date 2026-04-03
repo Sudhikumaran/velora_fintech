@@ -5,7 +5,6 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import path from 'path';
-import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -92,51 +91,10 @@ app.get('/api/debug-paths', (req, res) => {
   });
 });
 
-// Serve React build in production
-if (isProd) {
-  const distPath = path.resolve(process.cwd(), 'frontend', 'dist');
-  console.log('Serving static from:', distPath);
-
-  const MIME = {
-    '.html': 'text/html',
-    '.js':   'application/javascript',
-    '.css':  'text/css',
-    '.svg':  'image/svg+xml',
-    '.png':  'image/png',
-    '.jpg':  'image/jpeg',
-    '.ico':  'image/x-icon',
-    '.json': 'application/json',
-    '.woff': 'font/woff',
-    '.woff2':'font/woff2',
-    '.ttf':  'font/ttf',
-  };
-
-  app.use((req, res, next) => {
-    const ext = path.extname(req.path);
-    if (!ext) return next();
-    const filePath = path.join(distPath, req.path);
-    if (!fs.existsSync(filePath)) return next();
-    try {
-      const data = fs.readFileSync(filePath);
-      res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
-      return res.end(data);
-    } catch (e) {
-      return next(e);
-    }
-  });
-
-  // SPA fallback
-  app.get(/(.*)/, (req, res, next) => {
-    const indexPath = path.join(distPath, 'index.html');
-    try {
-      const html = fs.readFileSync(indexPath, 'utf8');
-      res.setHeader('Content-Type', 'text/html');
-      return res.end(html);
-    } catch (e) {
-      return next(e);
-    }
-  });
-}
+// API-only: frontend is served separately (Vercel)
+app.get('/', (req, res) => {
+  res.json({ success: true, message: 'Velora API is running.' });
+});
 
 // Error handling
 app.use(notFound);
