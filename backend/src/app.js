@@ -77,15 +77,18 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/debug-paths', (req, res) => {
   const p1 = path.resolve(process.cwd(), 'frontend', 'dist');
-  const p2 = path.resolve(__dirname, '../../frontend/dist');
-  const p3 = path.resolve(__dirname, '../../../frontend/dist');
-  const tryRead = (p) => { try { return fs.readdirSync(p).slice(0, 5); } catch { return 'NOT FOUND'; } };
+  const tryRead = (p) => { try { return fs.readdirSync(p); } catch { return 'NOT FOUND'; } };
+  const indexContent = (() => { try { return fs.readFileSync(path.join(p1, 'index.html'), 'utf8').slice(0, 200); } catch (e) { return e.message; } })();
   res.json({
     cwd: process.cwd(),
     dirname: __dirname,
-    p1, p1exists: fs.existsSync(p1), p1files: tryRead(p1),
-    p2, p2exists: fs.existsSync(p2), p2files: tryRead(p2),
-    p3, p3exists: fs.existsSync(p3), p3files: tryRead(p3),
+    distPath: p1,
+    distExists: fs.existsSync(p1),
+    distFiles: tryRead(p1),
+    assetsFiles: tryRead(path.join(p1, 'assets')),
+    indexSnippet: indexContent,
+    isProd,
+    NODE_ENV: process.env.NODE_ENV,
   });
 });
 
