@@ -97,21 +97,44 @@ if (isProd) {
   const distPath = path.resolve(process.cwd(), 'frontend', 'dist');
   console.log('Serving static from:', distPath);
 
-  // Serve static assets directly
+  const MIME = {
+    '.html': 'text/html',
+    '.js':   'application/javascript',
+    '.css':  'text/css',
+    '.svg':  'image/svg+xml',
+    '.png':  'image/png',
+    '.jpg':  'image/jpeg',
+    '.ico':  'image/x-icon',
+    '.json': 'application/json',
+    '.woff': 'font/woff',
+    '.woff2':'font/woff2',
+    '.ttf':  'font/ttf',
+  };
+
   app.use((req, res, next) => {
     const ext = path.extname(req.path);
-    if (ext && req.path !== '/') {
-      const filePath = path.join(distPath, req.path);
-      if (fs.existsSync(filePath)) {
-        return res.sendFile(filePath);
-      }
+    if (!ext) return next();
+    const filePath = path.join(distPath, req.path);
+    if (!fs.existsSync(filePath)) return next();
+    try {
+      const data = fs.readFileSync(filePath);
+      res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
+      return res.end(data);
+    } catch (e) {
+      return next(e);
     }
-    next();
   });
 
-  // SPA fallback — serve index.html for all non-API routes
-  app.get(/(.*)/, (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
+  // SPA fallback
+  app.get(/(.*)/, (req, res, next) => {
+    const indexPath = path.join(distPath, 'index.html');
+    try {
+      const html = fs.readFileSync(indexPath, 'utf8');
+      res.setHeader('Content-Type', 'text/html');
+      return res.end(html);
+    } catch (e) {
+      return next(e);
+    }
   });
 }
 
