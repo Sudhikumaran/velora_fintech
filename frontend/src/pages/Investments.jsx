@@ -38,50 +38,84 @@ const TYPE_META = {
 
 function InvestmentForm({ form, setForm, onSubmit, isEdit }) {
   const isDigiGold = form.type === 'digi-gold';
+
+  // For Digi Gold: units=1, buyPrice=totalInvested, currentPrice=currentValue
+  const totalInvested = isDigiGold ? form.buyPrice : '';
+  const currentValue  = isDigiGold ? form.currentPrice : '';
+  const gain = isDigiGold && totalInvested && currentValue
+    ? parseFloat(currentValue) - parseFloat(totalInvested) : null;
+
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
           <label className="label">Name</label>
-          <input className="input-field" placeholder={isDigiGold ? 'e.g. Zerodha DigiGold' : 'e.g. Apple Inc.'} value={form.name}
+          <input className="input-field" placeholder={isDigiGold ? 'e.g. Digi Gold - MoneyView' : 'e.g. Apple Inc.'} value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         </div>
-        <div>
+        <div className={isDigiGold ? 'col-span-2' : ''}>
           <label className="label">Type</label>
-          <select className="input-field" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+          <select className="input-field" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value, units: e.target.value === 'digi-gold' ? 1 : form.units })}>
             {INVESTMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
+
+        {isDigiGold ? (
+          <>
+            <div>
+              <label className="label">Total Invested (₹)</label>
+              <input type="number" step="0.01" min="0" className="input-field" placeholder="e.g. 500.00"
+                value={totalInvested}
+                onChange={(e) => setForm({ ...form, units: 1, buyPrice: e.target.value })} required />
+            </div>
+            <div>
+              <label className="label">Current Value (₹)</label>
+              <input type="number" step="0.01" min="0" className="input-field" placeholder="e.g. 520.00"
+                value={currentValue}
+                onChange={(e) => setForm({ ...form, currentPrice: e.target.value })} />
+            </div>
+            {gain !== null && (
+              <div className="col-span-2 flex items-center justify-between px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800">
+                <span className="text-sm text-gray-500">Profit / Loss</span>
+                <span className={`font-bold text-sm ${gain >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {gain >= 0 ? '+' : ''}₹{gain.toFixed(2)} ({totalInvested > 0 ? ((gain / parseFloat(totalInvested)) * 100).toFixed(2) : 0}%)
+                </span>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div>
+              <label className="label">Units / Quantity</label>
+              <input type="number" step="any" min="0" className="input-field" placeholder="0"
+                value={form.units} onChange={(e) => setForm({ ...form, units: e.target.value })} required />
+            </div>
+            <div>
+              <label className="label">Buy Price (per unit)</label>
+              <input type="number" step="0.01" min="0" className="input-field" placeholder="0.00" value={form.buyPrice}
+                onChange={(e) => setForm({ ...form, buyPrice: e.target.value })} required />
+            </div>
+            <div>
+              <label className="label">Current Price (per unit)</label>
+              <input type="number" step="0.01" min="0" className="input-field" placeholder="0.00" value={form.currentPrice}
+                onChange={(e) => setForm({ ...form, currentPrice: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Symbol (optional)</label>
+              <input className="input-field uppercase" placeholder="e.g. AAPL" value={form.symbol}
+                onChange={(e) => setForm({ ...form, symbol: e.target.value.toUpperCase() })} />
+            </div>
+          </>
+        )}
+
         <div>
-          <label className="label">{isDigiGold ? 'Grams' : 'Units / Quantity'}</label>
-          <input type="number" step="any" min="0" className="input-field" placeholder={isDigiGold ? '0.00 grams' : '0'}
-            value={form.units} onChange={(e) => setForm({ ...form, units: e.target.value })} required />
-        </div>
-        <div>
-          <label className="label">{isDigiGold ? 'Buy Price (per gram)' : 'Buy Price (per unit)'}</label>
-          <input type="number" step="0.01" min="0" className="input-field" placeholder="0.00" value={form.buyPrice}
-            onChange={(e) => setForm({ ...form, buyPrice: e.target.value })} required />
-        </div>
-        <div>
-          <label className="label">{isDigiGold ? 'Current Gold Price (per gram)' : 'Current Price (per unit)'}</label>
-          <input type="number" step="0.01" min="0" className="input-field" placeholder="0.00" value={form.currentPrice}
-            onChange={(e) => setForm({ ...form, currentPrice: e.target.value })} />
-        </div>
-        <div>
-          <label className="label">Buy Date</label>
+          <label className="label">Date</label>
           <input type="date" className="input-field" value={form.buyDate}
             onChange={(e) => setForm({ ...form, buyDate: e.target.value })} />
         </div>
-        {!isDigiGold && (
-          <div>
-            <label className="label">Symbol (optional)</label>
-            <input className="input-field uppercase" placeholder="e.g. AAPL" value={form.symbol}
-              onChange={(e) => setForm({ ...form, symbol: e.target.value.toUpperCase() })} />
-          </div>
-        )}
-        <div className={isDigiGold ? '' : 'col-span-2'}>
+        <div>
           <label className="label">Platform</label>
-          <input className="input-field" placeholder={isDigiGold ? 'e.g. Zerodha, PhonePe, Paytm' : 'e.g. Robinhood, Zerodha'}
+          <input className="input-field" placeholder={isDigiGold ? 'e.g. MoneyView, Paytm' : 'e.g. Zerodha'}
             value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })} />
         </div>
       </div>
@@ -530,18 +564,18 @@ export default function Investments() {
                 </div>
               </div>
               <div className="mb-2">
-                <label className="label">Current Gold Price (₹/gram)</label>
+                <label className="label">Current Value (₹)</label>
                 <input
                   type="number" step="0.01" min="0"
                   className="input-field text-lg font-semibold"
-                  placeholder="e.g. 7450.00"
+                  placeholder="e.g. 520.00"
                   value={quickPrice.price}
                   onChange={(e) => setQuickPrice((p) => ({ ...p, price: e.target.value }))}
                   onKeyDown={(e) => e.key === 'Enter' && handleQuickPrice()}
                   autoFocus
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  Previous: {formatCurrency(quickPrice.inv?.currentPrice || quickPrice.inv?.buyPrice, user?.currency)}/g
+                  Previous value: {formatCurrency(quickPrice.inv?.currentPrice || quickPrice.inv?.buyPrice, user?.currency)}
                 </p>
               </div>
               <div className="flex gap-2 mt-4">
