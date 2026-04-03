@@ -27,7 +27,7 @@ const app = express();
 
 // Security & utility middleware
 app.use(helmet({
-  contentSecurityPolicy: isProd ? undefined : false,
+  contentSecurityPolicy: false,
 }));
 
 const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map((o) => o.trim());
@@ -76,10 +76,16 @@ app.get('/api/health', (req, res) => {
 
 // Serve React build in production
 if (isProd) {
-  const distPath = path.resolve(__dirname, '../../frontend/dist');
+  const distPath = path.resolve(process.cwd(), '..', 'frontend', 'dist');
+  console.log('Serving frontend from:', distPath);
   app.use(express.static(distPath));
   app.get(/(.*)/, (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
+    res.sendFile(path.join(distPath, 'index.html'), (err) => {
+      if (err) {
+        console.error('sendFile error:', err.message, '| distPath:', distPath);
+        res.status(500).json({ error: 'Frontend not found', distPath });
+      }
+    });
   });
 }
 
