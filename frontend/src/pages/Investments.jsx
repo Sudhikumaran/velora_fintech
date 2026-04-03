@@ -248,8 +248,18 @@ export default function Investments() {
   const [historyInv, setHistoryInv]   = useState(null);
   const [form, setForm]               = useState(defaultForm);
   const [filterType, setFilterType]   = useState('all');
+  const [quickPrice, setQuickPrice]   = useState({ open: false, inv: null, price: '' });
+  const { updatePrice } = useInvestmentStore();
 
   useEffect(() => { fetchInvestments(); }, []);
+
+  const openQuickPrice = (inv) => setQuickPrice({ open: true, inv, price: inv.currentPrice || inv.buyPrice });
+  const handleQuickPrice = async () => {
+    if (!quickPrice.price || !quickPrice.inv) return;
+    await updatePrice(quickPrice.inv._id, parseFloat(quickPrice.price), '');
+    await fetchInvestments();
+    setQuickPrice({ open: false, inv: null, price: '' });
+  };
 
   const openCreate = () => { setForm(defaultForm); setEditInv(null); setModalOpen(true); };
   const openEdit   = (inv) => {
@@ -330,7 +340,7 @@ export default function Investments() {
               </p>
             </div>
           </div>
-          <div className="flex gap-2 mt-4">
+          <div className="flex flex-wrap gap-2 mt-4">
             {digiGoldInvs.map((inv) => (
               <button
                 key={inv._id}
@@ -340,6 +350,14 @@ export default function Investments() {
                 <History size={12} /> {inv.name} · {inv.units}g · {formatCurrency(inv.currentPrice, user?.currency)}/g
               </button>
             ))}
+            {digiGoldInvs.length > 0 && (
+              <button
+                onClick={() => openQuickPrice(digiGoldInvs[0])}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 rounded-xl text-xs font-semibold text-white transition-all"
+              >
+                <RefreshCw size={12} /> Update Today's Price
+              </button>
+            )}
           </div>
         </motion.div>
       )}
@@ -490,6 +508,53 @@ export default function Investments() {
       <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)}
         onConfirm={() => { deleteInvestment(deleteId); setDeleteId(null); }}
         title="Delete Investment" message="Are you sure you want to delete this investment?" />
+
+      {/* Quick Gold Price Update Mini Modal */}
+      <AnimatePresence>
+        {quickPrice.open && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={() => setQuickPrice({ open: false, inv: null, price: '' })}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 w-full max-w-sm"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}>🪙</div>
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white">Update Gold Price</h3>
+                  <p className="text-xs text-gray-400">Today's rate per gram</p>
+                </div>
+              </div>
+              <div className="mb-2">
+                <label className="label">Current Gold Price (₹/gram)</label>
+                <input
+                  type="number" step="0.01" min="0"
+                  className="input-field text-lg font-semibold"
+                  placeholder="e.g. 7450.00"
+                  value={quickPrice.price}
+                  onChange={(e) => setQuickPrice((p) => ({ ...p, price: e.target.value }))}
+                  onKeyDown={(e) => e.key === 'Enter' && handleQuickPrice()}
+                  autoFocus
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Previous: {formatCurrency(quickPrice.inv?.currentPrice || quickPrice.inv?.buyPrice, user?.currency)}/g
+                </p>
+              </div>
+              <div className="flex gap-2 mt-4">
+                <button onClick={handleQuickPrice} className="btn-primary flex-1">Save Price</button>
+                <button onClick={() => setQuickPrice({ open: false, inv: null, price: '' })}
+                  className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
