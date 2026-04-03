@@ -12,7 +12,7 @@ import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
-const defaultForm = { name: '', type: 'bank', balance: '', currency: 'USD', color: '#6366f1', description: '', creditLimit: '' };
+const getDefaultForm = (userCurrency = 'INR') => ({ name: '', type: 'bank', balance: '', currency: userCurrency, color: '#6366f1', description: '', creditLimit: '' });
 
 function AccountForm({ form, setForm, onSubmit, isEdit }) {
   return (
@@ -76,12 +76,12 @@ export default function Accounts() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editAccount, setEditAccount] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
-  const [form, setForm] = useState(defaultForm);
+  const [form, setForm] = useState(() => getDefaultForm(user?.currency));
   const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => { fetchAccounts(showArchived); }, [showArchived]);
 
-  const openCreate = () => { setForm(defaultForm); setEditAccount(null); setModalOpen(true); };
+  const openCreate = () => { setForm(getDefaultForm(user?.currency)); setEditAccount(null); setModalOpen(true); };
   const openEdit = (account) => {
     setForm({ name: account.name, type: account.type, balance: account.balance, currency: account.currency, color: account.color, description: account.description || '', creditLimit: account.creditLimit || '' });
     setEditAccount(account);
@@ -191,7 +191,7 @@ export default function Accounts() {
 
                 <div className="mb-1">
                   <p className="text-2xl font-bold" style={{ color: account.balance < 0 ? '#ef4444' : account.color }}>
-                    {formatCurrency(account.balance, account.currency)}
+                    {formatCurrency(account.balance, user?.currency)}
                   </p>
                 </div>
 
@@ -199,7 +199,7 @@ export default function Accounts() {
                   <div className="mt-2">
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                       <span>Credit used</span>
-                      <span>{formatCurrency(Math.abs(account.balance))} / {formatCurrency(account.creditLimit)}</span>
+                      <span>{formatCurrency(Math.abs(account.balance), user?.currency)} / {formatCurrency(account.creditLimit, user?.currency)}</span>
                     </div>
                     <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                       <div
