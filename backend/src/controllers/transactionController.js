@@ -39,7 +39,8 @@ export const getTransactions = async (req, res, next) => {
     }
 
     const total = await Transaction.countDocuments(filter);
-    const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
+    const sortDir = sortOrder === 'desc' ? -1 : 1;
+    const sort = { [sortBy]: sortDir, createdAt: -1 };
     const transactions = await Transaction.find(filter)
       .populate('account', 'name type color icon')
       .populate('toAccount', 'name type color icon')
