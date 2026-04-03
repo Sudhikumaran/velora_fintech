@@ -94,23 +94,24 @@ app.get('/api/debug-paths', (req, res) => {
 
 // Serve React build in production
 if (isProd) {
-  const candidatePaths = [
-    path.resolve(process.cwd(), 'frontend', 'dist'),
-    path.resolve(__dirname, '../../frontend/dist'),
-    path.resolve(__dirname, '../../../frontend/dist'),
-  ];
-  const distPath = candidatePaths.find((p) => fs.existsSync(p)) || candidatePaths[0];
-  console.log('CWD:', process.cwd());
-  console.log('__dirname:', __dirname);
-  console.log('Serving frontend from:', distPath, '| exists:', fs.existsSync(distPath));
-  app.use(express.static(distPath));
-  app.get(/(.*)/, (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'), (err) => {
-      if (err) {
-        console.error('sendFile error:', err.message, '| distPath:', distPath);
-        res.status(500).json({ error: 'Frontend not found', distPath });
+  const distPath = path.resolve(process.cwd(), 'frontend', 'dist');
+  console.log('Serving static from:', distPath);
+
+  // Serve static assets directly
+  app.use((req, res, next) => {
+    const ext = path.extname(req.path);
+    if (ext && req.path !== '/') {
+      const filePath = path.join(distPath, req.path);
+      if (fs.existsSync(filePath)) {
+        return res.sendFile(filePath);
       }
-    });
+    }
+    next();
+  });
+
+  // SPA fallback — serve index.html for all non-API routes
+  app.get(/(.*)/, (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
   });
 }
 
