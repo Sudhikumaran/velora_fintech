@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -76,8 +77,15 @@ app.get('/api/health', (req, res) => {
 
 // Serve React build in production
 if (isProd) {
-  const distPath = path.resolve(process.cwd(), 'frontend', 'dist');
-  console.log('Serving frontend from:', distPath);
+  const candidatePaths = [
+    path.resolve(process.cwd(), 'frontend', 'dist'),
+    path.resolve(__dirname, '../../frontend/dist'),
+    path.resolve(__dirname, '../../../frontend/dist'),
+  ];
+  const distPath = candidatePaths.find((p) => fs.existsSync(p)) || candidatePaths[0];
+  console.log('CWD:', process.cwd());
+  console.log('__dirname:', __dirname);
+  console.log('Serving frontend from:', distPath, '| exists:', fs.existsSync(distPath));
   app.use(express.static(distPath));
   app.get(/(.*)/, (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'), (err) => {
