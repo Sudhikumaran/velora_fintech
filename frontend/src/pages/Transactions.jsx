@@ -164,6 +164,21 @@ export default function Transactions() {
   const { transactions, pagination, fetchTransactions, createTransaction, updateTransaction, deleteTransaction, archiveTransaction, filters, setFilters, isLoading } = useTransactionStore();
   const { accounts, fetchAccounts } = useAccountStore();
   const { user } = useAuthStore();
+
+  // Running balance: work backwards from current total balance
+  const totalBalance = accounts.filter((a) => !a.isArchived).reduce((s, a) => s + a.balance, 0);
+  const runningBalances = (() => {
+    const balances = [];
+    let bal = totalBalance;
+    for (let i = 0; i < transactions.length; i++) {
+      balances[i] = bal;
+      const tx = transactions[i];
+      if (tx.type === 'income') bal -= tx.amount;
+      else if (tx.type === 'expense') bal += tx.amount;
+    }
+    return balances;
+  })();
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editTx, setEditTx] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
@@ -289,6 +304,14 @@ export default function Transactions() {
           />
         ) : (
           <div className="divide-y divide-gray-50 dark:divide-gray-800">
+            {/* Header row */}
+            <div className="flex items-center gap-4 px-6 py-2 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              <div className="w-9 shrink-0" />
+              <div className="flex-1">Transaction</div>
+              <div className="w-28 text-right">Amount</div>
+              <div className="w-32 text-right">Balance</div>
+              <div className="w-16" />
+            </div>
             {transactions.map((tx, i) => (
               <motion.div
                 key={tx._id}
@@ -328,13 +351,21 @@ export default function Transactions() {
                   </div>
                 </div>
 
-                <div className="text-right">
+                <div className="w-28 text-right shrink-0">
                   <p className={`text-sm font-semibold ${
                     tx.type === 'income' ? 'text-green-600' : tx.type === 'expense' ? 'text-red-600' : 'text-indigo-600'
                   }`}>
                     {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : ''}
                     {formatCurrency(tx.amount, user?.currency)}
                   </p>
+                </div>
+
+                {/* Running Balance */}
+                <div className="w-32 text-right shrink-0">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">
+                    {formatCurrency(runningBalances[i], user?.currency)}
+                  </p>
+                  <p className="text-xs text-gray-400">balance</p>
                 </div>
 
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
