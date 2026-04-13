@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit3, Trash2, RefreshCw, PauseCircle, PlayCircle, Calendar } from 'lucide-react';
+import { Plus, Edit3, Trash2, RefreshCw, PauseCircle, PlayCircle, Calendar, CheckCircle2 } from 'lucide-react';
 import { useSubscriptionStore } from '../store/financeStore';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency, formatDate } from '../utils/formatters';
@@ -69,6 +69,21 @@ function SubscriptionForm({ form, setForm, onSubmit, isEdit }) {
 
 const frequencyMultiplier = { daily: 365, weekly: 52, biweekly: 26, monthly: 12, quarterly: 4, yearly: 1 };
 
+// Advance nextBillingDate by one cycle
+function nextCycleDate(currentDate, frequency) {
+  const d = new Date(currentDate);
+  switch (frequency) {
+    case 'daily':     d.setDate(d.getDate() + 1); break;
+    case 'weekly':    d.setDate(d.getDate() + 7); break;
+    case 'biweekly':  d.setDate(d.getDate() + 14); break;
+    case 'monthly':   d.setMonth(d.getMonth() + 1); break;
+    case 'quarterly': d.setMonth(d.getMonth() + 3); break;
+    case 'yearly':    d.setFullYear(d.getFullYear() + 1); break;
+    default:          d.setMonth(d.getMonth() + 1);
+  }
+  return d.toISOString().split('T')[0];
+}
+
 export default function Subscriptions() {
   const { subscriptions, fetchSubscriptions, createSubscription, updateSubscription, deleteSubscription, toggleStatus, isLoading } = useSubscriptionStore();
   const { user } = useAuthStore();
@@ -91,6 +106,11 @@ export default function Subscriptions() {
     if (editSub) await updateSubscription(editSub._id, form);
     else await createSubscription(form);
     setModalOpen(false);
+  };
+
+  const markPaid = async (sub) => {
+    const next = nextCycleDate(sub.nextBillingDate || new Date(), sub.frequency);
+    await updateSubscription(sub._id, { ...sub, nextBillingDate: next });
   };
 
   const filtered = filterStatus === 'all' ? subscriptions : subscriptions.filter((s) => s.status === filterStatus);
@@ -178,13 +198,23 @@ export default function Subscriptions() {
                 </div>
 
                 {daysUntilBilling !== null && (
-                  <div className={`flex items-center gap-1.5 mt-3 text-xs ${daysUntilBilling <= 3 ? 'text-red-600' : daysUntilBilling <= 7 ? 'text-yellow-600' : 'text-gray-500'}`}>
-                    <Calendar size={12} />
-                    <span>
-                      {daysUntilBilling < 0 ? `Overdue by ${Math.abs(daysUntilBilling)}d` :
-                       daysUntilBilling === 0 ? 'Due today' :
-                       `Due in ${daysUntilBilling}d`} · {formatDate(sub.nextBillingDate, 'short')}
-                    </span>
+                  <div className="mt-3 space-y-2">
+                    <div className={`flex items-center gap-1.5 text-xs ${daysUntilBilling < 0 ? 'text-red-600 font-semibold' : daysUntilBilling <= 3 ? 'text-red-500' : daysUntilBilling <= 7 ? 'text-yellow-600' : 'text-gray-500'}`}>
+                      <Calendar size={12} />
+                      <span>
+                        {daysUntilBilling < 0 ? `⚠ Overdue by ${Math.abs(daysUntilBilling)}d` :
+                         daysUntilBilling === 0 ? '🔴 Due today' :
+                         `Due in ${daysUntilBilling}d`} · {formatDate(sub.nextBillingDate, 'short')}
+                      </span>
+                    </div>
+                    {daysUntilBilling <= 0 && sub.status === 'active' && (
+                      <button
+                        onClick={() => markPaid(sub)}
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/40 text-xs font-semibold transition-colors"
+                      >
+                        <CheckCircle2 size={13} /> Mark as Paid
+                      </button>
+                    )}
                   </div>
                 )}
               </motion.div>
