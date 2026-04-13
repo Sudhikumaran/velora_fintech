@@ -60,7 +60,8 @@ export const createTransaction = async (req, res, next) => {
     const toAccount = req.body.toAccount || null;
     const amount = parseFloat(req.body.amount);
 
-    if (!account || !type || !amount || !category) {
+    const effectiveCategory = category || (type === 'transfer' ? 'Transfer' : null);
+    if (!account || !type || !amount || !effectiveCategory) {
       return errorResponse(res, 'Account, type, amount and category are required.', 400);
     }
 
@@ -69,7 +70,7 @@ export const createTransaction = async (req, res, next) => {
 
     const transaction = await Transaction.create({
       user: req.user._id,
-      account, toAccount, type, amount, category, subcategory,
+      account, toAccount, type, amount, category: effectiveCategory, subcategory,
       description, date: date || Date.now(), tags, notes, isRecurring, receiptUrl,
     });
 

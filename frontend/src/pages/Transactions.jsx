@@ -52,7 +52,7 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
           <button
             key={t}
             type="button"
-            onClick={() => setForm({ ...form, type: t, category: '' })}
+            onClick={() => setForm({ ...form, type: t, category: t === 'transfer' ? 'Transfer' : '' })}
             className={`flex-1 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
               form.type === t
                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
