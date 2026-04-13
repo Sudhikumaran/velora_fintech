@@ -223,7 +223,8 @@ export default function Transactions() {
       await createTransaction(data);
     }
     setModalOpen(false);
-    fetchTransactions({ page });
+    await fetchTransactions({ page });
+    fetchAccounts(); // refresh balances immediately after transaction
   };
 
   return (
@@ -378,7 +379,7 @@ export default function Transactions() {
                   <button onClick={() => openEdit(tx)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
                     <Edit3 size={13} className="text-gray-500" />
                   </button>
-                  <button onClick={() => archiveTransaction(tx._id)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                  <button onClick={async () => { await archiveTransaction(tx._id); fetchAccounts(); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
                     <Archive size={13} className="text-gray-500" />
                   </button>
                   <button onClick={() => setDeleteId(tx._id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
@@ -415,7 +416,7 @@ export default function Transactions() {
       <ConfirmDialog
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
-        onConfirm={() => deleteTransaction(deleteId)}
+        onConfirm={async () => { await deleteTransaction(deleteId); setDeleteId(null); fetchAccounts(); fetchTransactions({ page }); }}
         title="Delete Transaction"
         message="Are you sure you want to delete this transaction? Account balances will be updated."
       />
