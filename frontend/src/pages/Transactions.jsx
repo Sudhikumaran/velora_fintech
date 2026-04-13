@@ -165,18 +165,24 @@ export default function Transactions() {
   const { accounts, fetchAccounts } = useAccountStore();
   const { user } = useAuthStore();
 
-  // Running balance: work backwards from current total balance
-  const totalBalance = accounts.filter((a) => !a.isArchived).reduce((s, a) => s + a.balance, 0);
+  // Per-account running balance: work backwards from each account's current balance
+  const accountBalanceMap = Object.fromEntries(accounts.map((a) => [a._id, a.balance]));
   const runningBalances = (() => {
-    const balances = [];
-    let bal = totalBalance;
-    for (let i = 0; i < transactions.length; i++) {
-      balances[i] = bal;
-      const tx = transactions[i];
-      if (tx.type === 'income') bal -= tx.amount;
-      else if (tx.type === 'expense') bal += tx.amount;
-    }
-    return balances;
+    // Track running balance per account as we go newest→oldest
+    const currentBal = { ...accountBalanceMap };
+    return transactions.map((tx) => {
+      const accId = tx.account?._id || tx.account;
+      const bal = currentBal[accId] ?? 0;
+      // Reverse the effect to get balance before moving to next (older) tx
+      if (tx.type === 'income') currentBal[accId] = (currentBal[accId] ?? 0) - tx.amount;
+      else if (tx.type === 'expense') currentBal[accId] = (currentBal[accId] ?? 0) + tx.amount;
+      else if (tx.type === 'transfer') {
+        currentBal[accId] = (currentBal[accId] ?? 0) + tx.amount;
+        const toId = tx.toAccount?._id || tx.toAccount;
+        if (toId) currentBal[toId] = (currentBal[toId] ?? 0) - tx.amount;
+      }
+      return { bal, accName: tx.account?.name || '' };
+    });
   })();
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -309,7 +315,7 @@ export default function Transactions() {
               <div className="w-9 shrink-0" />
               <div className="flex-1">Transaction</div>
               <div className="w-28 text-right">Amount</div>
-              <div className="w-32 text-right">Balance</div>
+              <div className="w-36 text-right">Balance</div>
               <div className="w-16" />
             </div>
             {transactions.map((tx, i) => (
@@ -360,12 +366,12 @@ export default function Transactions() {
                   </p>
                 </div>
 
-                {/* Running Balance */}
-                <div className="w-32 text-right shrink-0">
+                {/* Running Balance per account */}
+                <div className="w-36 text-right shrink-0">
                   <p className="text-sm font-bold text-gray-900 dark:text-white">
-                    {formatCurrency(runningBalances[i], user?.currency)}
+                    {formatCurrency(runningBalances[i]?.bal, user?.currency)}
                   </p>
-                  <p className="text-xs text-gray-400">balance</p>
+                  <p className="text-xs text-gray-400 truncate">{runningBalances[i]?.accName}</p>
                 </div>
 
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
