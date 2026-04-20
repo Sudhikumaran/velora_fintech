@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
+import { Download, Filter } from 'lucide-react';
 import { useAnalyticsStore } from '../store/financeStore';
+import { useAccountStore } from '../store/accountStore';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency } from '../utils/formatters';
+import { exportToCSV, analyticsDailyReportToCSV } from '../utils/csvExport';
 import PageHeader from '../components/ui/PageHeader';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6'];
 
@@ -28,13 +30,51 @@ const ChartTooltip = ({ active, payload, label, currency = 'USD' }) => {
   return null;
 };
 
+function toLocalDateInput(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function startOfWeekMonday(d) {
+  const x = new Date(d);
+  const day = x.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  x.setDate(x.getDate() + mondayOffset);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function defaultReportRange() {
+  const now = new Date();
+  const sm = new Date(now.getFullYear(), now.getMonth(), 1);
+  return {
+    startDate: toLocalDateInput(sm),
+    endDate: toLocalDateInput(now),
+    account: '',
+    type: '',
+  };
+}
+
 export default function Analytics() {
-  const { spendingByCategory, monthlyTrend, cashFlow, fetchSpendingByCategory, fetchMonthlyTrend, fetchCashFlow } = useAnalyticsStore();
+  const {
+    spendingByCategory, monthlyTrend, cashFlow, dailyReport,
+    fetchSpendingByCategory, fetchMonthlyTrend, fetchCashFlow, fetchDailyReport,
+  } = useAnalyticsStore();
+  const { accounts, fetchAccounts } = useAccountStore();
   const { user } = useAuthStore();
   const [period, setPeriod] = useState('month');
   const [months, setMonths] = useState('6');
+  const [reportFilters, setReportFilters] = useState(defaultReportRange);
+  const [showReportFilters, setShowReportFilters] = useState(false);
+  const [activeRangePreset, setActiveRangePreset] = useState('month');
   const currSymbol = user?.currency === 'INR' ? '₹' : user?.currency === 'EUR' ? '€' : user?.currency === 'GBP' ? '£' : '$';
   const fmtK = (v) => `${currSymbol}${(v / 1000).toFixed(0)}k`;
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
 
   useEffect(() => {
     fetchSpendingByCategory({ period });
@@ -42,16 +82,230 @@ export default function Analytics() {
     fetchCashFlow({ year: new Date().getFullYear() });
   }, [period, months]);
 
+  useEffect(() => {
+    const params = {};
+    if (reportFilters.startDate) params.startDate = reportFilters.startDate;
+    if (reportFilters.endDate) params.endDate = reportFilters.endDate;
+    if (reportFilters.account) params.account = reportFilters.account;
+    if (reportFilters.type) params.type = reportFilters.type;
+    fetchDailyReport(params);
+  }, [reportFilters]);
+
   const totalExpenses = spendingByCategory.reduce((sum, c) => sum + c.total, 0);
+
+  const reportTotals = useMemo(() => {
+    const s = dailyReport?.series || [];
+    return s.reduce(
+      (acc, r) => ({ income: acc.income + r.income, expense: acc.expense + r.expense }),
+      { income: 0, expense: 0 },
+    );
+  }, [dailyReport]);
+
+  const setThisWeekRange = () => {
+    const now = new Date();
+    const start = startOfWeekMonday(now);
+    setReportFilters((f) => ({
+      ...f,
+      startDate: toLocalDateInput(start),
+      endDate: toLocalDateInput(now),
+    }));
+    setActiveRangePreset('week');
+  };
+
+  const setThisMonthRange = () => {
+    const now = new Date();
+    const sm = new Date(now.getFullYear(), now.getMonth(), 1);
+    setReportFilters((f) => ({
+      ...f,
+      startDate: toLocalDateInput(sm),
+      endDate: toLocalDateInput(now),
+    }));
+    setActiveRangePreset('month');
+  };
+
+  const setLastSixMonthsRange = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    setReportFilters((f) => ({
+      ...f,
+      startDate: toLocalDateInput(start),
+      endDate: toLocalDateInput(now),
+    }));
+    setActiveRangePreset('sixMonths');
+  };
+
+  const rangePresets = [
+    { id: 'week', label: 'This week', fn: setThisWeekRange },
+    { id: 'month', label: 'This month', fn: setThisMonthRange },
+    { id: 'sixMonths', label: 'Last 6 months', fn: setLastSixMonthsRange },
+  ];
+
+  const presetChipClass = (id) =>
+    `px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+      activeRangePreset === id
+        ? 'bg-indigo-600 text-white border-indigo-600'
+        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+    }`;
+
+  const handleExportReport = () => {
+    const rows = analyticsDailyReportToCSV(dailyReport?.series);
+    if (!rows.length) return;
+    const acc = reportFilters.account ? `-acct-${reportFilters.account.slice(-6)}` : '';
+    const typ = reportFilters.type ? `-${reportFilters.type}` : '';
+    exportToCSV(
+      rows,
+      `analytics-daily${typ}${acc}-${reportFilters.startDate}_${reportFilters.endDate}.csv`,
+    );
+  };
+
+  const dailyChartData = (dailyReport?.series || []).map((r) => ({
+    ...r,
+    label: r.date.slice(5),
+  }));
 
   return (
     <div className="space-y-6">
       <PageHeader title="Analytics" subtitle="Insights into your financial health" />
 
+      {/* Daily income & expense report */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="card p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Daily income & expenses</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Per-day totals (income vs spending), same filters as transactions</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleExportReport}
+              disabled={!dailyReport?.series?.length}
+              className="btn-secondary flex items-center gap-2 disabled:opacity-50"
+              title="Download CSV"
+            >
+              <Download size={16} /> Export report
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowReportFilters(!showReportFilters)}
+              className={`btn-secondary flex items-center gap-2 ${showReportFilters ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-200' : ''}`}
+            >
+              <Filter size={16} /> Filters
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {rangePresets.map(({ id, label, fn }) => (
+            <button key={id} type="button" onClick={fn} className={presetChipClass(id)}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40 p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Custom range</p>
+            {activeRangePreset === 'custom' && (
+              <span className="text-[10px] uppercase tracking-wide text-indigo-600 dark:text-indigo-400 font-semibold">Custom</span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label text-xs mb-1 block">From</label>
+              <input
+                type="date"
+                className="input-field text-sm w-full"
+                value={reportFilters.startDate}
+                onChange={(e) => {
+                  setReportFilters((f) => ({ ...f, startDate: e.target.value }));
+                  setActiveRangePreset('custom');
+                }}
+              />
+            </div>
+            <div>
+              <label className="label text-xs mb-1 block">To</label>
+              <input
+                type="date"
+                className="input-field text-sm w-full"
+                value={reportFilters.endDate}
+                onChange={(e) => {
+                  setReportFilters((f) => ({ ...f, endDate: e.target.value }));
+                  setActiveRangePreset('custom');
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {showReportFilters && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <select
+                  className="input-field text-sm"
+                  value={reportFilters.type}
+                  onChange={(e) => setReportFilters((f) => ({ ...f, type: e.target.value }))}
+                >
+                  <option value="">Income & expenses</option>
+                  <option value="income">Income only</option>
+                  <option value="expense">Expenses only</option>
+                </select>
+                <select
+                  className="input-field text-sm"
+                  value={reportFilters.account}
+                  onChange={(e) => setReportFilters((f) => ({ ...f, account: e.target.value }))}
+                >
+                  <option value="">All accounts</option>
+                  {accounts.map((a) => (
+                    <option key={a._id} value={a._id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="grid grid-cols-3 gap-3 text-sm">
+          <div className="rounded-xl bg-green-50 dark:bg-green-900/15 px-3 py-2 border border-green-100 dark:border-green-900/30">
+            <p className="text-xs text-green-700 dark:text-green-400/90">Income in range</p>
+            <p className="font-semibold text-green-900 dark:text-green-300">{formatCurrency(reportTotals.income, user?.currency)}</p>
+          </div>
+          <div className="rounded-xl bg-red-50 dark:bg-red-900/15 px-3 py-2 border border-red-100 dark:border-red-900/30">
+            <p className="text-xs text-red-700 dark:text-red-400/90">Expenses in range</p>
+            <p className="font-semibold text-red-900 dark:text-red-300">{formatCurrency(reportTotals.expense, user?.currency)}</p>
+          </div>
+          <div className="rounded-xl bg-indigo-50 dark:bg-indigo-900/15 px-3 py-2 border border-indigo-100 dark:border-indigo-900/30">
+            <p className="text-xs text-indigo-700 dark:text-indigo-400/90">Net</p>
+            <p className="font-semibold text-indigo-900 dark:text-indigo-300">{formatCurrency(reportTotals.income - reportTotals.expense, user?.currency)}</p>
+          </div>
+        </div>
+
+        {dailyChartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={dailyChartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={fmtK} />
+              <Tooltip content={<ChartTooltip currency={user?.currency} />} />
+              <Legend />
+              <Bar dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={28} />
+              <Bar dataKey="expense" name="Expenses" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center h-40 text-gray-400 text-sm">No data for this range</div>
+        )}
+      </motion.div>
+
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="flex gap-1 p-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl">
-          {['week', 'month', 'year'].map((p) => (
+          {['day', 'week', 'month', 'year'].map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}

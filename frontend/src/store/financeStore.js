@@ -335,6 +335,7 @@ export const useAnalyticsStore = create((set) => ({
   spendingByCategory: [],
   monthlyTrend: [],
   cashFlow: [],
+  dailyReport: { series: [], startDate: null, endDate: null },
   isLoading: false,
 
   fetchDashboard: async () => {
@@ -371,6 +372,15 @@ export const useAnalyticsStore = create((set) => ({
       set({ cashFlow: data.data });
     } catch (error) {
       toast.error('Failed to fetch cash flow');
+    }
+  },
+
+  fetchDailyReport: async (params = {}) => {
+    try {
+      const { data } = await api.get('/analytics/income-vs-expense', { params });
+      set({ dailyReport: data.data });
+    } catch (error) {
+      toast.error('Failed to fetch daily income & expense');
     }
   },
 

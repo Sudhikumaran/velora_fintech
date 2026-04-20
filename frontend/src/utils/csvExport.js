@@ -34,3 +34,13 @@ export function transactionsToCSV(transactions) {
     Notes: tx.notes || '',
   }));
 }
+
+export function analyticsDailyReportToCSV(series) {
+  if (!series?.length) return [];
+  return series.map((row) => ({
+    Date: row.date,
+    Income: row.income,
+    Expenses: row.expense,
+    Net: row.net,
+  }));
+}

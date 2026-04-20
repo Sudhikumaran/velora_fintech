@@ -1,7 +1,31 @@
+import mongoose from 'mongoose';
 import Transaction from '../models/Transaction.js';
 import Account from '../models/Account.js';
 import Budget from '../models/Budget.js';
 import { successResponse } from '../utils/apiResponse.js';
+
+function startOfWeekMonday(d) {
+  const x = new Date(d);
+  const day = x.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  x.setDate(x.getDate() + mondayOffset);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function enumerateCalendarDays(start, end) {
+  const days = [];
+  const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const last = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  while (cur <= last) {
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, '0');
+    const d = String(cur.getDate()).padStart(2, '0');
+    days.push(`${y}-${m}-${d}`);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return days;
+}
 
 export const getDashboardSummary = async (req, res, next) => {
   try {
@@ -57,12 +81,19 @@ export const getSpendingByCategory = async (req, res, next) => {
 
     let start, end;
     const now = new Date();
-    if (period === 'month') {
+    if (period === 'day') {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    } else if (period === 'week') {
+      start = startOfWeekMonday(now);
+      end = new Date(now);
+      end.setHours(23, 59, 59, 999);
+    } else if (period === 'month') {
       start = new Date(now.getFullYear(), now.getMonth(), 1);
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     } else if (period === 'year') {
       start = new Date(now.getFullYear(), 0, 1);
-      end = new Date(now.getFullYear(), 11, 31);
+      end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
     } else {
       start = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
       end = endDate ? new Date(endDate) : now;
@@ -181,20 +212,33 @@ export const getCashFlow = async (req, res, next) => {
 
 export const getIncomeVsExpense = async (req, res, next) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, account, type: typeParam } = req.query;
     const userId = req.user._id;
     const now = new Date();
-    const start = startDate ? new Date(startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = endDate ? new Date(endDate) : now;
+    const end = endDate ? new Date(endDate) : new Date(now);
+    end.setHours(23, 59, 59, 999);
+    const start = startDate
+      ? new Date(startDate)
+      : new Date(end.getFullYear(), end.getMonth(), end.getDate() - 29);
+    start.setHours(0, 0, 0, 0);
 
-    const data = await Transaction.aggregate([
-      {
-        $match: {
-          user: userId,
-          isArchived: false,
-          date: { $gte: start, $lte: end },
-        },
-      },
+    const typeClause =
+      typeParam === 'income' || typeParam === 'expense'
+        ? typeParam
+        : { $in: ['income', 'expense'] };
+
+    const match = {
+      user: userId,
+      isArchived: false,
+      type: typeClause,
+      date: { $gte: start, $lte: end },
+    };
+    if (account && mongoose.Types.ObjectId.isValid(account)) {
+      match.account = new mongoose.Types.ObjectId(account);
+    }
+
+    const rows = await Transaction.aggregate([
+      { $match: match },
       {
         $group: {
           _id: {
@@ -207,7 +251,22 @@ export const getIncomeVsExpense = async (req, res, next) => {
       { $sort: { '_id.date': 1 } },
     ]);
 
-    successResponse(res, data, 'Income vs expense fetched.');
+    const byDate = {};
+    rows.forEach(({ _id, total }) => {
+      const d = _id.date;
+      if (!byDate[d]) byDate[d] = { income: 0, expense: 0 };
+      if (_id.type === 'income') byDate[d].income = total;
+      else if (_id.type === 'expense') byDate[d].expense = total;
+    });
+
+    const allDays = enumerateCalendarDays(start, end);
+    const series = allDays.map((date) => {
+      const inc = byDate[date]?.income ?? 0;
+      const exp = byDate[date]?.expense ?? 0;
+      return { date, income: inc, expense: exp, net: inc - exp };
+    });
+
+    successResponse(res, { series, startDate: allDays[0], endDate: allDays[allDays.length - 1] }, 'Income vs expense fetched.');
   } catch (error) {
     next(error);
   }
