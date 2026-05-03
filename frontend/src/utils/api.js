@@ -1,7 +1,16 @@
 import axios from 'axios';
 
+/** Backend mounts all routes under `/api`. Accepts `https://host` or `https://host/api` in VITE_API_URL. */
+function resolveApiBaseURL() {
+  const raw = import.meta.env.VITE_API_URL;
+  if (raw == null || String(raw).trim() === '') return '/api';
+  const trimmed = String(raw).replace(/\/+$/, '');
+  if (trimmed.endsWith('/api')) return trimmed;
+  return `${trimmed}/api`;
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: resolveApiBaseURL(),
   headers: { 'Content-Type': 'application/json' },
 });
 
