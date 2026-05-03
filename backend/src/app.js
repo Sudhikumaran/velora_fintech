@@ -56,6 +56,20 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Clients that call https://api-host/auth/... instead of https://api-host/api/auth/...
+const API_FIRST_SEGMENTS = new Set([
+  'auth', 'accounts', 'transactions', 'budgets', 'debts', 'investments',
+  'subscriptions', 'goals', 'analytics', 'calendar-events', 'health',
+]);
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  const seg = req.path.split('/').filter(Boolean)[0];
+  if (seg && API_FIRST_SEGMENTS.has(seg)) {
+    req.url = `/api${req.originalUrl}`;
+  }
+  next();
+});
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,

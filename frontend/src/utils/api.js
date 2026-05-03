@@ -1,10 +1,14 @@
 import axios from 'axios';
 
-/** Backend mounts all routes under `/api`. Accepts `https://host` or `https://host/api` in VITE_API_URL. */
+/**
+ * API base: always ends with `/api` (no trailing slash).
+ * - Empty VITE_API_URL → `/api` (same origin; Vercel should proxy `/api/*` to Render in vercel.json).
+ * - `https://host` or `https://host/api` both work.
+ */
 function resolveApiBaseURL() {
   const raw = import.meta.env.VITE_API_URL;
   if (raw == null || String(raw).trim() === '') return '/api';
-  const trimmed = String(raw).replace(/\/+$/, '');
+  const trimmed = String(raw).trim().replace(/\/+$/, '');
   if (trimmed.endsWith('/api')) return trimmed;
   return `${trimmed}/api`;
 }
