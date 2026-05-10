@@ -60,7 +60,8 @@ function defaultReportRange() {
 export default function Analytics() {
   const {
     spendingByCategory, monthlyTrend, cashFlow, dailyReport,
-    fetchSpendingByCategory, fetchMonthlyTrend, fetchCashFlow, fetchDailyReport,
+    budgetAnalysis,
+    fetchSpendingByCategory, fetchMonthlyTrend, fetchCashFlow, fetchDailyReport, fetchBudgetAnalysis,
   } = useAnalyticsStore();
   const { accounts, fetchAccounts } = useAccountStore();
   const { user } = useAuthStore();
@@ -69,6 +70,19 @@ export default function Analytics() {
   const [reportFilters, setReportFilters] = useState(defaultReportRange);
   const [showReportFilters, setShowReportFilters] = useState(false);
   const [activeRangePreset, setActiveRangePreset] = useState('month');
+  const [analysisPreset, setAnalysisPreset] = useState('lastMonth'); // day|week|month|lastMonth|year|all|custom
+  const [analysisGroupBy, setAnalysisGroupBy] = useState(''); // '', 'day', 'week'
+  const [analysisCustom, setAnalysisCustom] = useState(() => {
+    const now = new Date();
+    const sm = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { startDate: toLocalDateInput(sm), endDate: toLocalDateInput(now) };
+  });
+  const [analysisMonth, setAnalysisMonth] = useState(() => {
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [analysisYear, setAnalysisYear] = useState(() => String(new Date().getFullYear()));
   const currSymbol = user?.currency === 'INR' ? '₹' : user?.currency === 'EUR' ? '€' : user?.currency === 'GBP' ? '£' : '$';
   const fmtK = (v) => `${currSymbol}${(v / 1000).toFixed(0)}k`;
 
@@ -81,6 +95,22 @@ export default function Analytics() {
     fetchMonthlyTrend({ months });
     fetchCashFlow({ year: new Date().getFullYear() });
   }, [period, months]);
+
+  useEffect(() => {
+    const params = { period: analysisPreset };
+    if (analysisPreset === 'month') {
+      const [y, m] = analysisMonth.split('-');
+      params.year = y;
+      params.month = m;
+    } else if (analysisPreset === 'year') {
+      params.year = analysisYear;
+    } else if (analysisPreset === 'custom') {
+      params.startDate = analysisCustom.startDate;
+      params.endDate = analysisCustom.endDate;
+    }
+    if (analysisGroupBy) params.groupBy = analysisGroupBy;
+    fetchBudgetAnalysis(params);
+  }, [analysisPreset, analysisMonth, analysisYear, analysisCustom.startDate, analysisCustom.endDate, analysisGroupBy]);
 
   useEffect(() => {
     const params = {};
@@ -166,6 +196,196 @@ export default function Analytics() {
   return (
     <div className="space-y-6">
       <PageHeader title="Analytics" subtitle="Insights into your financial health" />
+
+      {/* Monthly budget analysis */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="card p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Budget analysis</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Filter by day, week, month, last month, year, or a custom range</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            { id: 'day', label: 'Today' },
+            { id: 'week', label: 'This week' },
+            { id: 'month', label: 'Month' },
+            { id: 'lastMonth', label: 'Last month' },
+            { id: 'year', label: 'Year' },
+            { id: 'all', label: 'Overall' },
+            { id: 'custom', label: 'Custom' },
+          ].map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setAnalysisPreset(p.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                analysisPreset === p.id
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <div className="flex gap-1 p-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl">
+              {[
+                { id: '', label: 'Summary' },
+                { id: 'day', label: 'Daily' },
+                { id: 'week', label: 'Weekly' },
+              ].map((g) => (
+                <button
+                  key={g.id || 'none'}
+                  type="button"
+                  onClick={() => setAnalysisGroupBy(g.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    analysisGroupBy === g.id ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {(analysisPreset === 'month' || analysisPreset === 'year' || analysisPreset === 'custom') && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {analysisPreset === 'month' && (
+              <div className="sm:col-span-1">
+                <label className="label text-xs mb-1 block">Month</label>
+                <input type="month" className="input-field text-sm w-full" value={analysisMonth} onChange={(e) => setAnalysisMonth(e.target.value)} />
+              </div>
+            )}
+            {analysisPreset === 'year' && (
+              <div className="sm:col-span-1">
+                <label className="label text-xs mb-1 block">Year</label>
+                <input type="number" className="input-field text-sm w-full" value={analysisYear} onChange={(e) => setAnalysisYear(e.target.value)} />
+              </div>
+            )}
+            {analysisPreset === 'custom' && (
+              <>
+                <div>
+                  <label className="label text-xs mb-1 block">From</label>
+                  <input
+                    type="date"
+                    className="input-field text-sm w-full"
+                    value={analysisCustom.startDate}
+                    onChange={(e) => setAnalysisCustom((c) => ({ ...c, startDate: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="label text-xs mb-1 block">To</label>
+                  <input
+                    type="date"
+                    className="input-field text-sm w-full"
+                    value={analysisCustom.endDate}
+                    onChange={(e) => setAnalysisCustom((c) => ({ ...c, endDate: e.target.value }))}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {budgetAnalysis ? (
+          <>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div className="rounded-xl bg-indigo-50 dark:bg-indigo-900/15 px-3 py-2 border border-indigo-100 dark:border-indigo-900/30">
+                <p className="text-xs text-indigo-700 dark:text-indigo-400/90">Total budget</p>
+                <p className="font-semibold text-indigo-900 dark:text-indigo-300">{formatCurrency(budgetAnalysis.totalLimit, user?.currency)}</p>
+              </div>
+              <div className="rounded-xl bg-red-50 dark:bg-red-900/15 px-3 py-2 border border-red-100 dark:border-red-900/30">
+                <p className="text-xs text-red-700 dark:text-red-400/90">Total spent</p>
+                <p className="font-semibold text-red-900 dark:text-red-300">{formatCurrency(budgetAnalysis.totalSpent, user?.currency)}</p>
+              </div>
+              <div className="rounded-xl bg-green-50 dark:bg-green-900/15 px-3 py-2 border border-green-100 dark:border-green-900/30">
+                <p className="text-xs text-green-700 dark:text-green-400/90">Remaining</p>
+                <p className="font-semibold text-green-900 dark:text-green-300">{formatCurrency(budgetAnalysis.totalRemaining, user?.currency)}</p>
+              </div>
+            </div>
+
+            {budgetAnalysis.insights?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {budgetAnalysis.insights.map((i, idx) => (
+                  <span
+                    key={idx}
+                    className={`text-xs px-3 py-1.5 rounded-full border ${
+                      i.type === 'danger'
+                        ? 'bg-red-50 dark:bg-red-900/15 border-red-100 dark:border-red-900/30 text-red-700 dark:text-red-300'
+                        : i.type === 'warning'
+                          ? 'bg-amber-50 dark:bg-amber-900/15 border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-300'
+                          : 'bg-green-50 dark:bg-green-900/15 border-green-100 dark:border-green-900/30 text-green-700 dark:text-green-300'
+                    }`}
+                  >
+                    {i.text}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-gray-500 border-b border-gray-100 dark:border-gray-800">
+                    <th className="text-left py-2 pr-3 font-medium">Budget</th>
+                    <th className="text-left py-2 pr-3 font-medium">Category</th>
+                    <th className="text-right py-2 pr-3 font-medium">Limit</th>
+                    <th className="text-right py-2 pr-3 font-medium">Spent</th>
+                    <th className="text-right py-2 font-medium">Usage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {budgetAnalysis.budgets?.map((b) => {
+                    const usage = Number.isFinite(b.utilizationPct) ? b.utilizationPct : 0;
+                    const over = b.spent > b.limit;
+                    return (
+                      <>
+                        <tr key={b._id} className="border-b border-gray-50 dark:border-gray-900/40">
+                          <td className="py-2 pr-3 text-gray-900 dark:text-white font-medium">{b.name}</td>
+                          <td className="py-2 pr-3 text-gray-600 dark:text-gray-400">{b.category}</td>
+                          <td className="py-2 pr-3 text-right text-gray-700 dark:text-gray-300">{formatCurrency(b.limit, user?.currency)}</td>
+                          <td className={`py-2 pr-3 text-right ${over ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-700 dark:text-gray-300'}`}>
+                            {formatCurrency(b.spent, user?.currency)}
+                          </td>
+                          <td className={`py-2 text-right ${over ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-700 dark:text-gray-300'}`}>
+                            {usage.toFixed(0)}%
+                          </td>
+                        </tr>
+                        {analysisGroupBy && Array.isArray(b.breakdown) && b.breakdown.length > 0 && (
+                          <tr className="border-b border-gray-50 dark:border-gray-900/40">
+                            <td colSpan={5} className="pb-3">
+                              <div className="mt-2 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40 p-3">
+                                <div className="text-xs text-gray-500 mb-2">{analysisGroupBy === 'day' ? 'Daily' : 'Weekly'} breakdown</div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                  {b.breakdown.slice(0, 12).map((x) => (
+                                    <div key={x.key} className="flex items-center justify-between text-xs bg-white/70 dark:bg-gray-950/30 border border-gray-100 dark:border-gray-800 rounded-lg px-3 py-2">
+                                      <span className="text-gray-600 dark:text-gray-400">{x.label}</span>
+                                      <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(x.spent, user?.currency)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                                {b.breakdown.length > 12 && (
+                                  <div className="text-[11px] text-gray-400 mt-2">Showing first 12 buckets</div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-center h-32 text-gray-400 text-sm">Loading analysis…</div>
+        )}
+      </motion.div>
 
       {/* Daily income & expense report */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="card p-6 space-y-4">

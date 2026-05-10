@@ -2,6 +2,49 @@ import Budget from '../models/Budget.js';
 import Transaction from '../models/Transaction.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 
+function startOfWeekMonday(d) {
+  const x = new Date(d);
+  const day = x.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  x.setDate(x.getDate() + mondayOffset);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function clampDateRange(start, end, minStart, maxEnd) {
+  const s = minStart && start < minStart ? new Date(minStart) : new Date(start);
+  const e = maxEnd && end > maxEnd ? new Date(maxEnd) : new Date(end);
+  return { start: s, end: e };
+}
+
+function getBudgetPeriodWindow(budget, now = new Date()) {
+  const period = budget.period || 'monthly';
+
+  let start;
+  let end;
+  if (period === 'weekly') {
+    start = startOfWeekMonday(now);
+    end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+  } else if (period === 'yearly') {
+    start = new Date(now.getFullYear(), 0, 1);
+    end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+  } else {
+    // monthly default
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  }
+
+  // Respect explicit budget bounds (e.g., custom start/end)
+  const budgetStart = budget.startDate ? new Date(budget.startDate) : null;
+  const budgetEnd = budget.endDate ? new Date(budget.endDate) : null;
+  ({ start, end } = clampDateRange(start, end, budgetStart, budgetEnd));
+
+  // Never look into the future
+  if (end > now) end = new Date(now);
+  return { start, end };
+}
+
 export const getBudgets = async (req, res, next) => {
   try {
     const budgets = await Budget.find({ user: req.user._id }).sort({ createdAt: -1 });
@@ -9,8 +52,7 @@ export const getBudgets = async (req, res, next) => {
     // Calculate spent for each budget
     const budgetsWithSpent = await Promise.all(
       budgets.map(async (budget) => {
-        const startDate = budget.startDate;
-        const endDate = budget.endDate || new Date();
+        const { start: startDate, end: endDate } = getBudgetPeriodWindow(budget, new Date());
 
         const result = await Transaction.aggregate([
           {
@@ -28,6 +70,7 @@ export const getBudgets = async (req, res, next) => {
         const spent = result[0]?.total || 0;
         const budgetObj = budget.toObject();
         budgetObj.spent = spent;
+        budgetObj.periodWindow = { startDate, endDate };
         return budgetObj;
       })
     );

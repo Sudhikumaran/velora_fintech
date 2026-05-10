@@ -336,6 +336,8 @@ export const useAnalyticsStore = create((set) => ({
   monthlyTrend: [],
   cashFlow: [],
   dailyReport: { series: [], startDate: null, endDate: null },
+  monthlyBudgetAnalysis: null,
+  budgetAnalysis: null,
   isLoading: false,
 
   fetchDashboard: async () => {
@@ -381,6 +383,24 @@ export const useAnalyticsStore = create((set) => ({
       set({ dailyReport: data.data });
     } catch (error) {
       toast.error('Failed to fetch daily income & expense');
+    }
+  },
+
+  fetchMonthlyBudgetAnalysis: async (params = {}) => {
+    try {
+      const { data } = await api.get('/analytics/budget-monthly', { params });
+      set({ monthlyBudgetAnalysis: data.data });
+    } catch (error) {
+      toast.error('Failed to fetch monthly budget analysis');
+    }
+  },
+
+  fetchBudgetAnalysis: async (params = {}) => {
+    try {
+      const { data } = await api.get('/analytics/budget-analysis', { params });
+      set({ budgetAnalysis: data.data });
+    } catch (error) {
+      toast.error('Failed to fetch budget analysis');
     }
   },
 
