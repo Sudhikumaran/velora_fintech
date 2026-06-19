@@ -10,9 +10,11 @@ function buildNotifications(budgets, subscriptions, debts, currency) {
   const notifs = [];
   const today = new Date();
 
-  budgets.forEach((b) => {
-    const pct = b.limit > 0 ? (b.spent / b.limit) * 100 : 0;
-    if (pct >= 100) notifs.push({ id: `budget-over-${b._id}`, type: 'danger', icon: AlertTriangle, title: 'Budget exceeded', body: `"${b.name}" is over budget by ${formatCurrency(b.spent - b.limit, currency)}.`, time: 'Now' });
+  budgets.filter((b) => b.notifications !== false).forEach((b) => {
+    const limit = Number(b.limit);
+    const spent = Number(b.spent || 0);
+    const pct = limit > 0 ? (spent / limit) * 100 : 0;
+    if (pct >= 100) notifs.push({ id: `budget-over-${b._id}`, type: 'danger', icon: AlertTriangle, title: 'Budget exceeded', body: `"${b.name}" is over budget by ${formatCurrency(spent - limit, currency)}.`, time: 'Now' });
     else if (pct >= b.alertThreshold) notifs.push({ id: `budget-warn-${b._id}`, type: 'warning', icon: AlertTriangle, title: 'Budget warning', body: `"${b.name}" is at ${pct.toFixed(0)}% of its limit.`, time: 'Now' });
   });
 

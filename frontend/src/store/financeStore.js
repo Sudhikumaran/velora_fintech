@@ -13,7 +13,7 @@ const createCrudStore = (endpoint, storeName) => ({
   remove: async (id) => {},
 });
 
-export const useBudgetStore = create((set) => ({
+export const useBudgetStore = create((set, get) => ({
   budgets: [],
   isLoading: false,
 
@@ -30,10 +30,10 @@ export const useBudgetStore = create((set) => ({
 
   createBudget: async (budgetData) => {
     try {
-      const { data } = await api.post('/budgets', budgetData);
-      set((state) => ({ budgets: [data.data, ...state.budgets] }));
+      await api.post('/budgets', budgetData);
+      await get().fetchBudgets();
       toast.success('Budget created successfully');
-      return data.data;
+      return true;
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to create budget');
       return null;
@@ -42,10 +42,10 @@ export const useBudgetStore = create((set) => ({
 
   updateBudget: async (id, budgetData) => {
     try {
-      const { data } = await api.put(`/budgets/${id}`, budgetData);
-      set((state) => ({ budgets: state.budgets.map((b) => (b._id === id ? data.data : b)) }));
+      await api.put(`/budgets/${id}`, budgetData);
+      await get().fetchBudgets();
       toast.success('Budget updated successfully');
-      return data.data;
+      return true;
     } catch (error) {
       toast.error('Failed to update budget');
       return null;

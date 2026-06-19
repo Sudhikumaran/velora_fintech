@@ -17,7 +17,7 @@ function clampDateRange(start, end, minStart, maxEnd) {
   return { start: s, end: e };
 }
 
-function getBudgetPeriodWindow(budget, now = new Date()) {
+export function getBudgetPeriodWindow(budget, now = new Date()) {
   const period = budget.period || 'monthly';
 
   let start;
@@ -30,51 +30,69 @@ function getBudgetPeriodWindow(budget, now = new Date()) {
     start = new Date(now.getFullYear(), 0, 1);
     end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
   } else {
-    // monthly default
     start = new Date(now.getFullYear(), now.getMonth(), 1);
     end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   }
 
-  // Respect explicit budget bounds (e.g., custom start/end)
   const budgetStart = budget.startDate ? new Date(budget.startDate) : null;
   const budgetEnd = budget.endDate ? new Date(budget.endDate) : null;
   ({ start, end } = clampDateRange(start, end, budgetStart, budgetEnd));
 
-  // Never look into the future
   if (end > now) end = new Date(now);
   return { start, end };
+}
+
+async function computeBudgetSpent(budget, now = new Date()) {
+  const { start: startDate, end: endDate } = getBudgetPeriodWindow(budget, now);
+
+  if (startDate > endDate) {
+    return { spent: 0, periodWindow: { startDate, endDate }, notStarted: true };
+  }
+
+  const result = await Transaction.aggregate([
+    {
+      $match: {
+        user: budget.user,
+        category: budget.category,
+        type: 'expense',
+        isArchived: false,
+        date: { $gte: startDate, $lte: endDate },
+      },
+    },
+    { $group: { _id: null, total: { $sum: '$amount' } } },
+  ]);
+
+  return {
+    spent: result[0]?.total || 0,
+    periodWindow: { startDate, endDate },
+    notStarted: false,
+  };
+}
+
+async function attachSpentToBudget(budget, now = new Date()) {
+  const budgetObj = budget.toObject ? budget.toObject() : { ...budget };
+  const { spent, periodWindow, notStarted } = await computeBudgetSpent(budgetObj, now);
+  budgetObj.spent = spent;
+  budgetObj.periodWindow = periodWindow;
+  budgetObj.notStarted = notStarted;
+  return budgetObj;
+}
+
+function applyBudgetUpdates(budget, body) {
+  const scalarFields = ['name', 'category', 'period', 'color', 'isActive', 'rollover', 'notifications'];
+  for (const key of scalarFields) {
+    if (body[key] !== undefined) budget[key] = body[key];
+  }
+  if (body.limit !== undefined) budget.limit = parseFloat(body.limit);
+  if (body.alertThreshold !== undefined) budget.alertThreshold = parseFloat(body.alertThreshold);
+  if (body.startDate !== undefined) budget.startDate = body.startDate;
+  if ('endDate' in body) budget.endDate = body.endDate || undefined;
 }
 
 export const getBudgets = async (req, res, next) => {
   try {
     const budgets = await Budget.find({ user: req.user._id }).sort({ createdAt: -1 });
-
-    // Calculate spent for each budget
-    const budgetsWithSpent = await Promise.all(
-      budgets.map(async (budget) => {
-        const { start: startDate, end: endDate } = getBudgetPeriodWindow(budget, new Date());
-
-        const result = await Transaction.aggregate([
-          {
-            $match: {
-              user: budget.user,
-              category: budget.category,
-              type: 'expense',
-              isArchived: false,
-              date: { $gte: startDate, $lte: endDate },
-            },
-          },
-          { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]);
-
-        const spent = result[0]?.total || 0;
-        const budgetObj = budget.toObject();
-        budgetObj.spent = spent;
-        budgetObj.periodWindow = { startDate, endDate };
-        return budgetObj;
-      })
-    );
-
+    const budgetsWithSpent = await Promise.all(budgets.map((b) => attachSpentToBudget(b)));
     successResponse(res, budgetsWithSpent, 'Budgets fetched successfully.');
   } catch (error) {
     next(error);
@@ -91,12 +109,20 @@ export const createBudget = async (req, res, next) => {
 
     const budget = await Budget.create({
       user: req.user._id,
-      name, category, limit, period: period || 'monthly',
-      startDate, endDate, color: color || '#6366f1',
-      rollover, notifications, alertThreshold,
+      name,
+      category,
+      limit: parseFloat(limit),
+      period: period || 'monthly',
+      startDate,
+      endDate: endDate || undefined,
+      color: color || '#6366f1',
+      rollover: rollover ?? false,
+      notifications: notifications ?? true,
+      alertThreshold: alertThreshold != null ? parseFloat(alertThreshold) : 80,
     });
 
-    successResponse(res, budget, 'Budget created successfully.', 201);
+    const budgetWithSpent = await attachSpentToBudget(budget);
+    successResponse(res, budgetWithSpent, 'Budget created successfully.', 201);
   } catch (error) {
     next(error);
   }
@@ -107,11 +133,11 @@ export const updateBudget = async (req, res, next) => {
     const budget = await Budget.findOne({ _id: req.params.id, user: req.user._id });
     if (!budget) return errorResponse(res, 'Budget not found.', 404);
 
-    const { name, category, limit, period, startDate, endDate, color, isActive, rollover, notifications, alertThreshold } = req.body;
-    Object.assign(budget, { name, category, limit, period, startDate, endDate, color, isActive, rollover, notifications, alertThreshold });
+    applyBudgetUpdates(budget, req.body);
     await budget.save();
 
-    successResponse(res, budget, 'Budget updated successfully.');
+    const budgetWithSpent = await attachSpentToBudget(budget);
+    successResponse(res, budgetWithSpent, 'Budget updated successfully.');
   } catch (error) {
     next(error);
   }

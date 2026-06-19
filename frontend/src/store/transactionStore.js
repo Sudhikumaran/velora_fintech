@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { useBudgetStore } from './financeStore';
+
+function refreshBudgets() {
+  useBudgetStore.getState().fetchBudgets();
+}
 
 export const useTransactionStore = create((set, get) => ({
   transactions: [],
@@ -33,6 +38,7 @@ export const useTransactionStore = create((set, get) => ({
     try {
       const { data } = await api.post('/transactions', transactionData);
       set((state) => ({ transactions: [data.data, ...state.transactions] }));
+      if (transactionData.type === 'expense') refreshBudgets();
       toast.success('Transaction added successfully');
       return data.data;
     } catch (error) {
@@ -43,10 +49,14 @@ export const useTransactionStore = create((set, get) => ({
 
   updateTransaction: async (id, transactionData) => {
     try {
+      const existing = get().transactions.find((t) => t._id === id);
       const { data } = await api.put(`/transactions/${id}`, transactionData);
       set((state) => ({
         transactions: state.transactions.map((t) => (t._id === id ? data.data : t)),
       }));
+      if (existing?.type === 'expense' || transactionData.type === 'expense' || data.data?.type === 'expense') {
+        refreshBudgets();
+      }
       toast.success('Transaction updated successfully');
       return data.data;
     } catch (error) {
@@ -57,8 +67,10 @@ export const useTransactionStore = create((set, get) => ({
 
   deleteTransaction: async (id) => {
     try {
+      const existing = get().transactions.find((t) => t._id === id);
       await api.delete(`/transactions/${id}`);
       set((state) => ({ transactions: state.transactions.filter((t) => t._id !== id) }));
+      if (existing?.type === 'expense') refreshBudgets();
       toast.success('Transaction deleted successfully');
       return true;
     } catch (error) {
@@ -69,10 +81,12 @@ export const useTransactionStore = create((set, get) => ({
 
   archiveTransaction: async (id) => {
     try {
+      const existing = get().transactions.find((t) => t._id === id);
       const { data } = await api.patch(`/transactions/${id}/archive`);
       set((state) => ({
         transactions: state.transactions.map((t) => (t._id === id ? data.data : t)),
       }));
+      if (existing?.type === 'expense') refreshBudgets();
       toast.success(data.message);
       return true;
     } catch (error) {

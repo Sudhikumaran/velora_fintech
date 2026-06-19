@@ -86,7 +86,12 @@ export default function Budgets() {
   const [deleteId, setDeleteId] = useState(null);
   const [form, setForm] = useState(defaultForm);
 
-  useEffect(() => { fetchBudgets(); }, []);
+  useEffect(() => {
+    fetchBudgets();
+    const onFocus = () => fetchBudgets();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
   const openCreate = () => { setForm(defaultForm); setEditBudget(null); setModalOpen(true); };
   const openEdit = (b) => {
@@ -97,13 +102,20 @@ export default function Budgets() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editBudget) { await updateBudget(editBudget._id, form); }
-    else { await createBudget(form); }
-    setModalOpen(false);
+    const payload = {
+      ...form,
+      limit: parseFloat(form.limit),
+      alertThreshold: parseFloat(form.alertThreshold),
+      endDate: form.endDate || undefined,
+    };
+    const ok = editBudget
+      ? await updateBudget(editBudget._id, payload)
+      : await createBudget(payload);
+    if (ok) setModalOpen(false);
   };
 
-  const totalLimit = budgets.reduce((s, b) => s + b.limit, 0);
-  const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
+  const totalLimit = budgets.reduce((s, b) => s + Number(b.limit), 0);
+  const totalSpent = budgets.reduce((s, b) => s + Number(b.spent || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -137,9 +149,12 @@ export default function Budgets() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {budgets.map((budget, i) => {
-            const pct = Math.min(100, budget.limit > 0 ? (budget.spent / budget.limit) * 100 : 0);
+            const limit = Number(budget.limit);
+            const spent = Number(budget.spent || 0);
+            const pct = Math.min(100, limit > 0 ? (spent / limit) * 100 : 0);
             const isOver = pct >= 100;
             const isWarning = pct >= budget.alertThreshold && !isOver;
+            const notStarted = budget.notStarted;
 
             return (
               <motion.div
@@ -155,6 +170,7 @@ export default function Budgets() {
                       <h3 className="font-semibold text-gray-900 dark:text-white">{budget.name}</h3>
                       {isOver && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Over budget</span>}
                       {isWarning && <span className="text-xs bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded-full">Near limit</span>}
+                      {notStarted && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">Not started</span>}
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="default" size="xs">{budget.category}</Badge>
@@ -175,7 +191,7 @@ export default function Budgets() {
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-gray-500">Spent</span>
                     <span className="font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(budget.spent, user?.currency)} / {formatCurrency(budget.limit, user?.currency)}
+                      {formatCurrency(spent, user?.currency)} / {formatCurrency(limit, user?.currency)}
                     </span>
                   </div>
                   <div className="h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -192,7 +208,7 @@ export default function Budgets() {
                       {pct.toFixed(0)}% used
                     </span>
                     <span className="text-gray-500">
-                      {formatCurrency(Math.max(0, budget.limit - budget.spent), user?.currency)} left
+                      {formatCurrency(Math.max(0, limit - spent), user?.currency)} left
                     </span>
                   </div>
                 </div>
