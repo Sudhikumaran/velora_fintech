@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, X, AlertTriangle, CheckCircle2, Calendar, TrendingDown, RefreshCw } from 'lucide-react';
 import { useBudgetStore, useSubscriptionStore, useDebtStore } from '../../store/financeStore';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { getEffectiveDueDate, getDaysUntilDue } from '../../utils/debtHelpers';
 import { useAuthStore } from '../../store/authStore';
 
 function buildNotifications(budgets, subscriptions, debts, currency) {
@@ -21,10 +22,12 @@ function buildNotifications(budgets, subscriptions, debts, currency) {
     else if (days <= 3) notifs.push({ id: `sub-soon-${s._id}`, type: 'warning', icon: Calendar, title: 'Upcoming bill', body: `${s.name} — ${formatCurrency(s.amount, currency)} due in ${days} day${days > 1 ? 's' : ''}.`, time: formatDate(s.nextBillingDate, 'short') });
   });
 
-  debts.filter((d) => d.status !== 'paid' && d.dueDate).forEach((d) => {
-    const days = Math.ceil((new Date(d.dueDate) - today) / (1000 * 60 * 60 * 24));
-    if (days < 0) notifs.push({ id: `debt-over-${d._id}`, type: 'danger', icon: TrendingDown, title: 'Debt overdue', body: `Debt to/from "${d.person}" was due ${Math.abs(days)} days ago.`, time: formatDate(d.dueDate, 'short') });
-    else if (days <= 7) notifs.push({ id: `debt-soon-${d._id}`, type: 'warning', icon: TrendingDown, title: 'Debt due soon', body: `${formatCurrency(d.remainingAmount || d.amount, currency)} owed to/from "${d.person}" in ${days} days.`, time: formatDate(d.dueDate, 'short') });
+  debts.filter((d) => d.status !== 'paid').forEach((d) => {
+    const dueDate = getEffectiveDueDate(d);
+    if (!dueDate) return;
+    const days = getDaysUntilDue(d);
+    if (days < 0) notifs.push({ id: `debt-over-${d._id}`, type: 'danger', icon: TrendingDown, title: 'Debt overdue', body: `Debt to/from "${d.person}" was due ${Math.abs(days)} days ago.`, time: formatDate(dueDate, 'short') });
+    else if (days <= 7) notifs.push({ id: `debt-soon-${d._id}`, type: 'warning', icon: TrendingDown, title: 'Debt due soon', body: `${formatCurrency(d.remainingAmount || d.amount, currency)} owed to/from "${d.person}" in ${days} days.`, time: formatDate(dueDate, 'short') });
   });
 
   return notifs;

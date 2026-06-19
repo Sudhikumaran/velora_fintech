@@ -45,6 +45,12 @@ const debtSchema = new mongoose.Schema(
       enum: ['pending', 'partial', 'paid'],
       default: 'pending',
     },
+    closedAt: {
+      type: Date,
+    },
+    lastReminderSentAt: {
+      type: Date,
+    },
     repayments: [repaymentSchema],
     interestRate: {
       type: Number,
@@ -67,12 +73,15 @@ const debtSchema = new mongoose.Schema(
 debtSchema.pre('save', function () {
   const totalRepaid = this.repayments.reduce((sum, r) => sum + r.amount, 0);
   this.remainingAmount = Math.max(0, this.amount - totalRepaid);
+  const wasPaid = this.status === 'paid';
   if (this.remainingAmount === 0) {
     this.status = 'paid';
-  } else if (totalRepaid > 0) {
-    this.status = 'partial';
+    if (!wasPaid || !this.closedAt) {
+      this.closedAt = new Date();
+    }
   } else {
-    this.status = 'pending';
+    this.status = totalRepaid > 0 ? 'partial' : 'pending';
+    this.closedAt = undefined;
   }
 });
 

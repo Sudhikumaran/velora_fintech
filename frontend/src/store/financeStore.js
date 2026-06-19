@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import { sortDebtsByDueDate } from '../utils/debtHelpers';
 
 const createCrudStore = (endpoint, storeName) => ({
   items: [],
@@ -72,7 +73,7 @@ export const useDebtStore = create((set) => ({
     set({ isLoading: true });
     try {
       const { data } = await api.get('/debts', { params });
-      set({ debts: data.data, isLoading: false });
+      set({ debts: sortDebtsByDueDate(data.data), isLoading: false });
     } catch (error) {
       set({ isLoading: false });
       toast.error('Failed to fetch debts');
@@ -82,7 +83,7 @@ export const useDebtStore = create((set) => ({
   createDebt: async (debtData) => {
     try {
       const { data } = await api.post('/debts', debtData);
-      set((state) => ({ debts: [data.data, ...state.debts] }));
+      set((state) => ({ debts: sortDebtsByDueDate([data.data, ...state.debts]) }));
       toast.success('Debt recorded successfully');
       return data.data;
     } catch (error) {
@@ -94,7 +95,7 @@ export const useDebtStore = create((set) => ({
   updateDebt: async (id, debtData) => {
     try {
       const { data } = await api.put(`/debts/${id}`, debtData);
-      set((state) => ({ debts: state.debts.map((d) => (d._id === id ? data.data : d)) }));
+      set((state) => ({ debts: sortDebtsByDueDate(state.debts.map((d) => (d._id === id ? data.data : d))) }));
       toast.success('Debt updated successfully');
       return data.data;
     } catch (error) {
@@ -118,7 +119,7 @@ export const useDebtStore = create((set) => ({
   addRepayment: async (id, repaymentData) => {
     try {
       const { data } = await api.post(`/debts/${id}/repayments`, repaymentData);
-      set((state) => ({ debts: state.debts.map((d) => (d._id === id ? data.data : d)) }));
+      set((state) => ({ debts: sortDebtsByDueDate(state.debts.map((d) => (d._id === id ? data.data : d))) }));
       toast.success('Repayment added successfully');
       return data.data;
     } catch (error) {

@@ -1,14 +1,25 @@
 import Debt from '../models/Debt.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
+import { sortDebtsByDueDate } from '../utils/debtHelpers.js';
 
 export const getDebts = async (req, res, next) => {
   try {
-    const { status, type } = req.query;
+    const { status, type, category } = req.query;
     const filter = { user: req.user._id };
-    if (status) filter.status = status;
+
+    if (category === 'closed') {
+      filter.status = 'paid';
+    } else if (category === 'active') {
+      filter.status = { $ne: 'paid' };
+    } else if (status) {
+      filter.status = status;
+    }
+
     if (type) filter.type = type;
 
-    const debts = await Debt.find(filter).sort({ createdAt: -1 });
+    let debts = await Debt.find(filter);
+    debts = sortDebtsByDueDate(debts, { closedFirst: category === 'closed' });
+
     successResponse(res, debts, 'Debts fetched successfully.');
   } catch (error) {
     next(error);
