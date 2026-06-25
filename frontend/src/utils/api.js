@@ -26,10 +26,14 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/register'];
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const url = error.config?.url || '';
+    const isAuthCall = AUTH_ENDPOINTS.some((e) => url.includes(e));
+    if (error.response?.status === 401 && !isAuthCall) {
       localStorage.removeItem('velora_token');
       localStorage.removeItem('velora_user');
       window.location.href = '/login';

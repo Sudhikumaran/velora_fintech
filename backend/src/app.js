@@ -11,6 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const isProd     = process.env.NODE_ENV === 'production';
 
+import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import accountRoutes from './routes/accountRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
@@ -68,6 +69,17 @@ app.use((req, res, next) => {
     req.url = `/api${req.originalUrl}`;
   }
   next();
+});
+
+// Ensure DB is connected before every request (needed for Vercel serverless cold starts)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('DB connection failed:', err.message);
+    res.status(503).json({ success: false, message: 'Service temporarily unavailable. Please try again.' });
+  }
 });
 
 // Rate limiting
