@@ -44,3 +44,56 @@ export function analyticsDailyReportToCSV(series) {
     Net: row.net,
   }));
 }
+
+export function ledgerToCSV(data) {
+  if (!data) return [];
+
+  if (data.view === 'trial-balance') {
+    return (data.accounts || []).map((row) => ({
+      Account: row.account?.name || '',
+      Type: row.account?.type || '',
+      'Opening Balance': row.openingBalance,
+      Debit: row.totalDebit,
+      Credit: row.totalCredit,
+      'Closing Balance': row.closingBalance,
+      Entries: row.entryCount,
+    }));
+  }
+
+  if (data.view === 'journal') {
+    return (data.entries || []).map((row) => ({
+      Date: new Date(row.date).toLocaleDateString(),
+      Particulars: row.description || '',
+      Account: row.accountName || '',
+      Contra: row.contra || '',
+      Debit: row.debit || '',
+      Credit: row.credit || '',
+      Type: row.type || '',
+    }));
+  }
+
+  return (data.entries || []).map((row) => ({
+    Date: new Date(row.date).toLocaleDateString(),
+    Particulars: row.description || '',
+    Contra: row.contra || '',
+    Type: row.type || '',
+    Debit: row.debit || '',
+    Credit: row.credit || '',
+    Balance: row.balance,
+  }));
+}
+
+export function incomePlanToCSV(plan) {
+  if (!plan?.entries?.length) return [];
+  return plan.entries.map((row) => ({
+    Date: new Date(row.date).toLocaleDateString(),
+    Type: row.type,
+    Name: row.name || '',
+    Category: row.category || '',
+    Received: row.type === 'received' ? row.amount : '',
+    Give: row.type === 'give' ? row.amount : '',
+    Status: row.type === 'give' ? (row.isDone ? 'Given' : 'Pending') : '',
+    Balance: row.balance,
+    Notes: row.notes || '',
+  }));
+}

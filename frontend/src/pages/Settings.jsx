@@ -17,12 +17,26 @@ const sections = [
 ];
 
 export default function Settings() {
-  const { user, updateProfile, updatePassword, logout } = useAuthStore();
+  const { user, updateProfile, updatePassword, logout, deleteAccount } = useAuthStore();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('profile');
   const [profileForm, setProfileForm] = useState({ name: user?.name || '', email: user?.email || '', currency: user?.currency || 'USD', timezone: user?.timezone || 'UTC', avatar: user?.avatar || '' });
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [deletePassword, setDeletePassword] = useState('');
   const [saved, setSaved] = useState(false);
+
+  const handleImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const json = JSON.parse(await file.text());
+      await api.post('/analytics/import', json);
+      toast.success('Import complete');
+    } catch {
+      toast.error('Import failed');
+    }
+    e.target.value = '';
+  };
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
@@ -211,11 +225,20 @@ export default function Settings() {
                     <button onClick={handleExport} className="btn-primary text-sm flex items-center gap-2 mt-3">
                       <Download size={14} /> Export JSON
                     </button>
+                    <label className="btn-secondary text-sm mt-3 inline-flex cursor-pointer">
+                      Import JSON
+                      <input type="file" accept="application/json" className="hidden" onChange={handleImport} />
+                    </label>
                   </div>
                   <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl">
                     <p className="font-medium text-red-700 dark:text-red-400">Danger Zone</p>
                     <p className="text-sm text-red-600/80 dark:text-red-400/80 mt-1">Deleting your account is permanent and cannot be undone.</p>
-                    <button className="btn-danger text-sm mt-3" onClick={() => toast.error('Account deletion not available in demo')}>
+                    <input type="password" className="input-field mt-3" placeholder="Confirm with your password"
+                      value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
+                    <button className="btn-danger text-sm mt-3" onClick={async () => {
+                      const ok = await deleteAccount(deletePassword);
+                      if (ok) navigate('/login');
+                    }}>
                       Delete Account
                     </button>
                   </div>

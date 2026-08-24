@@ -8,6 +8,9 @@ export const protect = async (req, res, next) => {
   if (req.headers.authorization?.startsWith('Bearer ')) {
     token = req.headers.authorization.split(' ')[1];
   }
+  if (!token && req.cookies?.velora_token) {
+    token = req.cookies.velora_token;
+  }
 
   if (!token) return errorResponse(res, 'Access denied. No token provided.', 401);
 

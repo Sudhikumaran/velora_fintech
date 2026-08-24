@@ -154,3 +154,52 @@ export const deleteBudget = async (req, res, next) => {
     next(error);
   }
 };
+
+export const copyBudgetsToCurrentPeriod = async (req, res, next) => {
+  try {
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    const existing = await Budget.find({ user: req.user._id });
+
+    const thisMonthKeys = new Set(
+      existing
+        .filter((b) => {
+          if (!b.startDate) return false;
+          const d = new Date(b.startDate);
+          return d.getFullYear() === startDate.getFullYear() && d.getMonth() === startDate.getMonth();
+        })
+        .map((b) => `${b.name}::${b.category}`)
+    );
+
+    const latestByKey = new Map();
+    for (const budget of existing) {
+      const key = `${budget.name}::${budget.category}`;
+      if (thisMonthKeys.has(key)) continue;
+      const prev = latestByKey.get(key);
+      if (!prev || new Date(budget.startDate || 0) > new Date(prev.startDate || 0)) {
+        latestByKey.set(key, budget);
+      }
+    }
+
+    const created = [];
+    for (const budget of latestByKey.values()) {
+      const copy = await Budget.create({
+        user: req.user._id,
+        name: budget.name,
+        category: budget.category,
+        limit: budget.limit,
+        period: budget.period || 'monthly',
+        startDate,
+        color: budget.color,
+        rollover: budget.rollover,
+        notifications: budget.notifications,
+        alertThreshold: budget.alertThreshold,
+      });
+      created.push(await attachSpentToBudget(copy));
+    }
+
+    successResponse(res, created, created.length ? 'Budgets copied into this month.' : 'Nothing new to copy.');
+  } catch (error) {
+    next(error);
+  }
+};

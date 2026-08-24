@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Edit3, Trash2, TrendingDown, TrendingUp, PlusCircle, Clock, CalendarClock, CheckCircle2, Archive } from 'lucide-react';
 import { useDebtStore } from '../store/financeStore';
+import { useAccountStore } from '../store/accountStore';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { getNextEMIDate, getPaidEmiCount, sortDebtsByDueDate, getEffectiveDueDate } from '../utils/debtHelpers';
@@ -109,8 +110,8 @@ function DebtForm({ form, setForm, onSubmit, isEdit }) {
   );
 }
 
-function RepaymentForm({ onSubmit, defaultAmount = '' }) {
-  const [form, setForm] = useState({ ...repaymentDefault, amount: defaultAmount });
+function RepaymentForm({ onSubmit, defaultAmount = '', accounts = [] }) {
+  const [form, setForm] = useState({ ...repaymentDefault, amount: defaultAmount, account: accounts[0]?._id || '' });
   const handleSubmit = (e) => { e.preventDefault(); onSubmit(form); };
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -124,6 +125,13 @@ function RepaymentForm({ onSubmit, defaultAmount = '' }) {
           <label className="label">Date</label>
           <input type="date" className="input-field" value={form.date}
             onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+        </div>
+        <div className="col-span-2">
+          <label className="label">Pay from account (posts a real transaction)</label>
+          <select className="input-field" value={form.account || ''} onChange={(e) => setForm({ ...form, account: e.target.value })}>
+            <option value="">Don't post to accounts</option>
+            {accounts.map((a) => <option key={a._id} value={a._id}>{a.name}</option>)}
+          </select>
         </div>
         <div className="col-span-2">
           <label className="label">Note (optional)</label>
@@ -151,6 +159,7 @@ const filterTabs = [
 
 export default function Debts() {
   const { debts, fetchDebts, createDebt, updateDebt, deleteDebt, addRepayment, isLoading } = useDebtStore();
+  const { accounts, fetchAccounts } = useAccountStore();
   const { user } = useAuthStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [repaymentModal, setRepaymentModal] = useState(null);
@@ -159,7 +168,7 @@ export default function Debts() {
   const [form, setForm] = useState(defaultForm);
   const [filterType, setFilterType] = useState('all');
 
-  useEffect(() => { fetchDebts(); }, []);
+  useEffect(() => { fetchDebts(); fetchAccounts(); }, []);
 
   const openCreate = () => { setForm(defaultForm); setEditDebt(null); setModalOpen(true); };
   const openEdit = (d) => {
@@ -248,7 +257,7 @@ export default function Debts() {
           action={filterType !== 'closed' ? <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus size={16} /> Record Debt</button> : null}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 stagger-in">
           {filtered.map((debt, i) => {
             const pct = debt.amount > 0 ? ((debt.amount - (debt.remainingAmount || 0)) / debt.amount) * 100 : 0;
             const paidEMIs = getPaidEmiCount(debt);
@@ -356,6 +365,7 @@ export default function Debts() {
         title={repaymentModal?.emiAmount ? '💳 Pay EMI' : 'Add Repayment'} size="sm">
         <RepaymentForm
           defaultAmount={repaymentModal?.emiAmount || ''}
+          accounts={accounts}
           onSubmit={async (data) => { await addRepayment(repaymentModal?.id, data); setRepaymentModal(null); }}
         />
       </Modal>

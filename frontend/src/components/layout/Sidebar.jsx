@@ -2,9 +2,9 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, CreditCard, ArrowLeftRight, BarChart3,
-  Target, TrendingDown, Briefcase, RefreshCw, Flag,
-  CalendarDays, Settings, LogOut, ChevronLeft, Wallet,
-  X, TrendingUp,
+  Target, TrendingDown, RefreshCw, Flag,
+  CalendarDays, Settings, LogOut, ChevronLeft,
+  X, TrendingUp, BookOpen, ClipboardList, FileText,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
@@ -14,6 +14,7 @@ const navGroups = [
     items: [
       { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
       { to: '/analytics', icon: BarChart3, label: 'Analytics' },
+      { to: '/reports', icon: FileText, label: 'Reports' },
       { to: '/calendar', icon: CalendarDays, label: 'Calendar' },
     ],
   },
@@ -22,13 +23,14 @@ const navGroups = [
     items: [
       { to: '/accounts', icon: CreditCard, label: 'Accounts' },
       { to: '/transactions', icon: ArrowLeftRight, label: 'Transactions' },
-      { to: '/income', icon: Wallet, label: 'Income' },
+      { to: '/ledger', icon: BookOpen, label: 'Ledger' },
     ],
   },
   {
     label: 'Planning',
     items: [
       { to: '/budgets', icon: Target, label: 'Budgets' },
+      { to: '/income-planner', icon: ClipboardList, label: 'Income Planner' },
       { to: '/goals', icon: Flag, label: 'Goals' },
       { to: '/debts', icon: TrendingDown, label: 'Debts' },
     ],
@@ -64,11 +66,21 @@ function NavItem({ to, icon: Icon, label, collapsed, onClick }) {
             <motion.div
               layoutId="nav-active"
               className="absolute inset-0 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl"
-              transition={{ type: 'spring', bounce: 0.2, duration: 0.35 }}
+              transition={{ type: 'spring', bounce: 0.25, duration: 0.45 }}
             />
           )}
-          <Icon size={18} className="shrink-0 relative z-10" />
-          {!collapsed && <span className="relative z-10 truncate">{label}</span>}
+          <motion.span
+            className="shrink-0 relative z-10"
+            whileHover={{ scale: 1.12, rotate: isActive ? 0 : -6 }}
+            whileTap={{ scale: 0.92 }}
+          >
+            <Icon size={18} />
+          </motion.span>
+          {!collapsed && (
+            <motion.span layout className="relative z-10 truncate">
+              {label}
+            </motion.span>
+          )}
         </>
       )}
     </NavLink>

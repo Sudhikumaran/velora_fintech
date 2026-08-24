@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ArrowLeftRight, CreditCard, Target, TrendingDown, TrendingUp, RefreshCw, Flag, X, CornerDownLeft } from 'lucide-react';
+import { Search, ArrowLeftRight, CreditCard, Target, TrendingDown, TrendingUp, RefreshCw, X, CornerDownLeft, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { formatCurrency } from '../../utils/formatters';
@@ -13,36 +13,17 @@ const TYPE_CONFIG = {
   debt:         { icon: TrendingDown,   color: 'text-red-500',     bg: 'bg-red-50 dark:bg-red-900/20',        path: '/debts' },
   investment:   { icon: TrendingUp,     color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20',path: '/investments' },
   subscription: { icon: RefreshCw,      color: 'text-purple-500',  bg: 'bg-purple-50 dark:bg-purple-900/20',  path: '/subscriptions' },
-  goal:         { icon: Flag,           color: 'text-pink-500',    bg: 'bg-pink-50 dark:bg-pink-900/20',      path: '/goals' },
+  planner:      { icon: ClipboardList,  color: 'text-teal-500',    bg: 'bg-teal-50 dark:bg-teal-900/20',      path: '/income-planner' },
 };
 
 async function globalSearch(query) {
   if (!query.trim() || query.length < 2) return [];
-  const q = encodeURIComponent(query);
-  const [txRes, accRes] = await Promise.allSettled([
-    api.get(`/transactions?search=${q}&limit=5`),
-    api.get(`/accounts`),
-  ]);
-
-  const results = [];
-  if (txRes.status === 'fulfilled') {
-    txRes.value.data.data.forEach((tx) => results.push({
-      type: 'transaction', id: tx._id,
-      title: tx.description || tx.category,
-      subtitle: `${tx.type} · ${tx.account?.name || ''}`,
-      amount: tx.amount, txType: tx.type,
-    }));
+  try {
+    const { data } = await api.get('/search', { params: { q: query } });
+    return data.data || [];
+  } catch {
+    return [];
   }
-  if (accRes.status === 'fulfilled') {
-    accRes.value.data.data
-      .filter((a) => a.name.toLowerCase().includes(query.toLowerCase()))
-      .slice(0, 3)
-      .forEach((acc) => results.push({
-        type: 'account', id: acc._id,
-        title: acc.name, subtitle: `${acc.type} account`, amount: acc.balance,
-      }));
-  }
-  return results;
 }
 
 export default function GlobalSearch() {

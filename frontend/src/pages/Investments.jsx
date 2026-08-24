@@ -274,7 +274,7 @@ function PriceHistoryModal({ investment, onClose, onUpdatePrice }) {
 }
 
 export default function Investments() {
-  const { investments, fetchInvestments, createInvestment, updateInvestment, deleteInvestment, isLoading } = useInvestmentStore();
+  const { investments, fetchInvestments, createInvestment, updateInvestment, deleteInvestment, refreshPrices, isLoading } = useInvestmentStore();
   const { user } = useAuthStore();
   const [modalOpen, setModalOpen]     = useState(false);
   const [editInv, setEditInv]         = useState(null);
@@ -333,7 +333,12 @@ export default function Investments() {
       <PageHeader
         title="Investments"
         subtitle="Track your portfolio growth"
-        action={<button onClick={openCreate} className="btn-primary"><Plus size={16} /> Add Investment</button>}
+        action={
+          <div className="flex gap-2">
+            <button onClick={() => refreshPrices()} className="btn-secondary"><RefreshCw size={16} /> Live prices</button>
+            <button onClick={openCreate} className="btn-primary"><Plus size={16} /> Add Investment</button>
+          </div>
+        }
       />
 
       {/* Summary stat cards */}

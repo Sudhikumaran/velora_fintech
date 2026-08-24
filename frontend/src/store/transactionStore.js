@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { createElement } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { useBudgetStore } from './financeStore';
@@ -34,12 +35,12 @@ export const useTransactionStore = create((set, get) => ({
     }
   },
 
-  createTransaction: async (transactionData) => {
+  createTransaction: async (transactionData, { silent } = {}) => {
     try {
       const { data } = await api.post('/transactions', transactionData);
       set((state) => ({ transactions: [data.data, ...state.transactions] }));
       if (transactionData.type === 'expense') refreshBudgets();
-      toast.success('Transaction added successfully');
+      if (!silent) toast.success('Transaction added successfully');
       return data.data;
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to create transaction');
@@ -68,14 +69,69 @@ export const useTransactionStore = create((set, get) => ({
   deleteTransaction: async (id) => {
     try {
       const existing = get().transactions.find((t) => t._id === id);
-      await api.delete(`/transactions/${id}`);
+      const { data } = await api.delete(`/transactions/${id}`);
       set((state) => ({ transactions: state.transactions.filter((t) => t._id !== id) }));
       if (existing?.type === 'expense') refreshBudgets();
-      toast.success('Transaction deleted successfully');
+      const snapshot = data.data;
+      toast((t) => createElement(
+        'span',
+        { className: 'flex items-center gap-3' },
+        'Transaction deleted',
+        snapshot
+          ? createElement(
+            'button',
+            {
+              className: 'text-indigo-600 font-semibold',
+              onClick: async () => {
+                toast.dismiss(t.id);
+                await get().createTransaction({
+                  account: snapshot.account?._id || snapshot.account,
+                  toAccount: snapshot.toAccount?._id || snapshot.toAccount,
+                  type: snapshot.type,
+                  amount: snapshot.amount,
+                  category: snapshot.category,
+                  description: snapshot.description,
+                  date: snapshot.date,
+                  notes: snapshot.notes,
+                  splits: snapshot.splits,
+                }, { silent: true });
+                toast.success('Transaction restored');
+              },
+            },
+            'Undo'
+          )
+          : null
+      ), { duration: 8000 });
       return true;
     } catch (error) {
       toast.error('Failed to delete transaction');
       return false;
+    }
+  },
+
+  importTransactions: async (rows, defaultAccount) => {
+    try {
+      const { data } = await api.post('/transactions/import', { rows, defaultAccount });
+      await get().fetchTransactions();
+      toast.success(`Imported ${data.data.imported} transactions`);
+      return data.data;
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Import failed');
+      return null;
+    }
+  },
+
+  postRecurring: async ({ silent } = {}) => {
+    try {
+      const { data } = await api.post('/transactions/post-recurring');
+      if (data.data.posted) {
+        await get().fetchTransactions();
+        toast.success(`Posted ${data.data.posted} recurring transactions`);
+      }
+      return data.data;
+    } catch (error) {
+      if (!silent) toast.error('Failed to post recurring transactions');
+      return null;
     }
   },
 

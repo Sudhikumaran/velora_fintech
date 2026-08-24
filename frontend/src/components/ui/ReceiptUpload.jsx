@@ -1,10 +1,9 @@
 import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Paperclip, X, Eye, Loader2, FileText } from 'lucide-react';
 import { uploadReceipt, deleteFile } from '../../utils/cloudinaryStorage';
 import { useAuthStore } from '../../store/authStore';
 
-export default function ReceiptUpload({ transactionId, currentUrl, onUploaded }) {
+export default function ReceiptUpload({ transactionId, currentUrl, onUploaded, onOcr }) {
   const { user } = useAuthStore();
   const [url, setUrl] = useState(currentUrl || '');
   const [progress, setProgress] = useState(0);
@@ -12,7 +11,7 @@ export default function ReceiptUpload({ transactionId, currentUrl, onUploaded })
   const [error, setError] = useState('');
   const inputRef = useRef();
 
-  const isPdf = url?.toLowerCase().includes('.pdf') || url?.includes('%2F') && url?.includes('.pdf');
+  const isPdf = url?.toLowerCase().includes('.pdf') || (url?.includes('%2F') && url?.includes('.pdf'));
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -20,6 +19,9 @@ export default function ReceiptUpload({ transactionId, currentUrl, onUploaded })
     setError('');
     setUploading(true);
     try {
+      if (onOcr && file.type.startsWith('image/')) {
+        try { await onOcr(file); } catch { /* optional */ }
+      }
       const txId = transactionId || `temp-${Date.now()}`;
       const downloadUrl = await uploadReceipt(user._id, txId, file, setProgress);
       setUrl(downloadUrl);
@@ -45,14 +47,14 @@ export default function ReceiptUpload({ transactionId, currentUrl, onUploaded })
 
       {url ? (
         <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center shrink-0 overflow-hidden">
             {isPdf ? <FileText size={16} className="text-indigo-500" /> : (
               <img src={url} alt="receipt" className="w-full h-full object-cover rounded-xl" />
             )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">Receipt attached</p>
-            <p className="text-xs text-gray-400">{isPdf ? 'PDF document' : 'Image'}</p>
+            <p className="text-xs text-gray-400">{isPdf ? 'PDF document' : 'Image · scanned for amount/date'}</p>
           </div>
           <div className="flex gap-1 shrink-0">
             <a href={url} target="_blank" rel="noopener noreferrer"
@@ -75,7 +77,7 @@ export default function ReceiptUpload({ transactionId, currentUrl, onUploaded })
           {uploading ? (
             <><Loader2 size={15} className="animate-spin" /> Uploading {progress}%…</>
           ) : (
-            <><Paperclip size={15} /> Attach receipt or document</>
+            <><Paperclip size={15} /> Attach receipt (auto-reads amount)</>
           )}
         </button>
       )}

@@ -79,7 +79,7 @@ function BudgetForm({ form, setForm, onSubmit, isEdit }) {
 }
 
 export default function Budgets() {
-  const { budgets, fetchBudgets, createBudget, updateBudget, deleteBudget, isLoading } = useBudgetStore();
+  const { budgets, fetchBudgets, createBudget, updateBudget, deleteBudget, copyPeriod, isLoading } = useBudgetStore();
   const { user } = useAuthStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editBudget, setEditBudget] = useState(null);
@@ -122,7 +122,12 @@ export default function Budgets() {
       <PageHeader
         title="Budgets"
         subtitle="Track your spending limits"
-        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus size={18} /> New Budget</button>}
+        action={
+          <div className="flex gap-2">
+            <button onClick={() => copyPeriod()} className="btn-secondary">Copy to this month</button>
+            <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus size={18} /> New Budget</button>
+          </div>
+        }
       />
 
       {/* Summary */}
@@ -147,7 +152,7 @@ export default function Budgets() {
           action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus size={16} /> Create Budget</button>}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 stagger-in">
           {budgets.map((budget, i) => {
             const limit = Number(budget.limit);
             const spent = Number(budget.spent || 0);

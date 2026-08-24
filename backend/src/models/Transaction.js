@@ -67,6 +67,29 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    splits: [
+      {
+        category: { type: String, trim: true },
+        amount: { type: Number, min: 0 },
+        notes: { type: String, trim: true, default: '' },
+      },
+    ],
+    frequency: {
+      type: String,
+      enum: ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'],
+    },
+    nextRunDate: {
+      type: Date,
+    },
+    source: {
+      type: String,
+      enum: ['manual', 'import', 'subscription', 'planner', 'goal', 'debt', 'recurring'],
+      default: 'manual',
+    },
+    sourceId: {
+      type: String,
+      trim: true,
+    },
   },
   { timestamps: true }
 );

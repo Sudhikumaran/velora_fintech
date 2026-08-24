@@ -1,15 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Search, Filter, ArrowUpRight, ArrowDownRight, ArrowLeftRight,
-  Edit3, Trash2, Archive, Download, ChevronLeft, ChevronRight, Paperclip,
+  Edit3, Trash2, Archive, Download, ChevronLeft, ChevronRight, Paperclip, Upload,
 } from 'lucide-react';
 import { exportToCSV, transactionsToCSV } from '../utils/csvExport';
+import { parseTransactionCsv } from '../utils/csvImport';
+import { ocrReceipt } from '../utils/receiptOcr';
 import { useTransactionStore } from '../store/transactionStore';
 import { useAccountStore } from '../store/accountStore';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency, formatDate } from '../utils/formatters';
-import { TRANSACTION_CATEGORIES } from '../utils/constants';
+import { TRANSACTION_CATEGORIES, FREQUENCIES } from '../utils/constants';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import EmptyState from '../components/ui/EmptyState';
@@ -21,6 +24,7 @@ import ReceiptUpload from '../components/ui/ReceiptUpload';
 const defaultForm = {
   account: '', toAccount: '', type: 'expense', amount: '',
   category: '', description: '', date: new Date().toISOString().split('T')[0], tags: '', notes: '', receiptUrl: '',
+  splits: [], isRecurring: false, frequency: 'monthly', nextRunDate: '',
 };
 
 function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
@@ -145,7 +149,67 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
             transactionId={isEdit ? form._id : null}
             currentUrl={form.receiptUrl}
             onUploaded={(url) => setForm((f) => ({ ...f, receiptUrl: url }))}
+            onOcr={async (file) => {
+              try {
+                const parsed = await ocrReceipt(file);
+                setForm((f) => ({
+                  ...f,
+                  amount: parsed.amount || f.amount,
+                  date: parsed.date || f.date,
+                  description: f.description || parsed.description,
+                }));
+              } catch { /* OCR optional */ }
+            }}
           />
+        </div>
+        {form.type !== 'transfer' && (
+          <div className="col-span-2">
+            <div className="flex items-center justify-between mb-2">
+              <label className="label mb-0">Split across categories</label>
+              <button type="button" className="text-xs text-indigo-600 font-semibold"
+                onClick={() => setForm({ ...form, splits: [...(form.splits || []), { category: '', amount: '' }] })}>
+                + Add split
+              </button>
+            </div>
+            {(form.splits || []).map((split, i) => (
+              <div key={i} className="flex gap-2 mb-2">
+                <select className="input-field flex-1" value={split.category}
+                  onChange={(e) => {
+                    const splits = [...form.splits];
+                    splits[i] = { ...splits[i], category: e.target.value };
+                    setForm({ ...form, splits, category: splits[0]?.category || form.category });
+                  }}>
+                  <option value="">Category</option>
+                  {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <input type="number" step="0.01" className="input-field w-28" placeholder="0.00" value={split.amount}
+                  onChange={(e) => {
+                    const splits = [...form.splits];
+                    splits[i] = { ...splits[i], amount: e.target.value };
+                    const total = splits.reduce((s, x) => s + parseFloat(x.amount || 0), 0);
+                    setForm({ ...form, splits, amount: total ? String(total) : form.amount });
+                  }} />
+                <button type="button" className="text-red-500 text-sm" onClick={() => setForm({ ...form, splits: form.splits.filter((_, j) => j !== i) })}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="col-span-2 flex items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+            <input type="checkbox" checked={!!form.isRecurring}
+              onChange={(e) => setForm({ ...form, isRecurring: e.target.checked })} />
+            Repeat this transaction
+          </label>
+          {form.isRecurring && (
+            <>
+              <select className="input-field w-36" value={form.frequency}
+                onChange={(e) => setForm({ ...form, frequency: e.target.value })}>
+                {FREQUENCIES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+              </select>
+              <input type="date" className="input-field w-40" value={form.nextRunDate}
+                onChange={(e) => setForm({ ...form, nextRunDate: e.target.value })} />
+            </>
+          )}
         </div>
       </div>
       <button type="submit" className="btn-primary w-full">{isEdit ? 'Update Transaction' : 'Add Transaction'}</button>
@@ -161,29 +225,11 @@ const typeIcons = {
 };
 
 export default function Transactions() {
-  const { transactions, pagination, fetchTransactions, createTransaction, updateTransaction, deleteTransaction, archiveTransaction, filters, setFilters, isLoading } = useTransactionStore();
+  const { transactions, pagination, fetchTransactions, createTransaction, updateTransaction, deleteTransaction, archiveTransaction, importTransactions, postRecurring, filters, setFilters, isLoading } = useTransactionStore();
   const { accounts, fetchAccounts } = useAccountStore();
   const { user } = useAuthStore();
-
-  // Per-account running balance: work backwards from each account's current balance
-  const accountBalanceMap = Object.fromEntries(accounts.map((a) => [a._id, a.balance]));
-  const runningBalances = (() => {
-    // Track running balance per account as we go newest→oldest
-    const currentBal = { ...accountBalanceMap };
-    return transactions.map((tx) => {
-      const accId = tx.account?._id || tx.account;
-      const bal = currentBal[accId] ?? 0;
-      // Reverse the effect to get balance before moving to next (older) tx
-      if (tx.type === 'income') currentBal[accId] = (currentBal[accId] ?? 0) - tx.amount;
-      else if (tx.type === 'expense') currentBal[accId] = (currentBal[accId] ?? 0) + tx.amount;
-      else if (tx.type === 'transfer') {
-        currentBal[accId] = (currentBal[accId] ?? 0) + tx.amount;
-        const toId = tx.toAccount?._id || tx.toAccount;
-        if (toId) currentBal[toId] = (currentBal[toId] ?? 0) - tx.amount;
-      }
-      return { bal, accName: tx.account?.name || '' };
-    });
-  })();
+  const [searchParams] = useSearchParams();
+  const fileRef = useRef();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editTx, setEditTx] = useState(null);
@@ -194,7 +240,13 @@ export default function Transactions() {
 
   useEffect(() => {
     fetchAccounts();
+    postRecurring({ silent: true });
   }, []);
+
+  useEffect(() => {
+    const type = searchParams.get('type') || '';
+    setFilters({ type });
+  }, [searchParams]);
 
   useEffect(() => {
     fetchTransactions({ page });
@@ -209,6 +261,8 @@ export default function Transactions() {
       description: tx.description || '', date: new Date(tx.date).toISOString().split('T')[0],
       receiptUrl: tx.receiptUrl || '',
       tags: tx.tags?.join(', ') || '', notes: tx.notes || '',
+      splits: tx.splits || [], isRecurring: !!tx.isRecurring, frequency: tx.frequency || 'monthly',
+      nextRunDate: tx.nextRunDate ? new Date(tx.nextRunDate).toISOString().split('T')[0] : '',
     });
     setEditTx(tx);
     setModalOpen(true);
@@ -241,6 +295,23 @@ export default function Transactions() {
             >
               <Download size={16} />
             </button>
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="btn-secondary"
+              title="Import CSV"
+            >
+              <Upload size={16} />
+            </button>
+            <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const text = await file.text();
+                const rows = parseTransactionCsv(text);
+                await importTransactions(rows, accounts[0]?._id);
+                e.target.value = '';
+                fetchAccounts();
+              }} />
             <button onClick={openCreate} className="btn-primary">
               <Plus size={16} /> Add Transaction
             </button>
@@ -325,7 +396,7 @@ export default function Transactions() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.03 }}
-                className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
+                className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group list-row"
               >
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                   tx.type === 'income' ? 'bg-green-50 dark:bg-green-900/20' :
@@ -370,9 +441,9 @@ export default function Transactions() {
                 {/* Running Balance per account */}
                 <div className="w-36 text-right shrink-0">
                   <p className="text-sm font-bold text-gray-900 dark:text-white">
-                    {formatCurrency(runningBalances[i]?.bal, user?.currency)}
+                    {formatCurrency(tx.runningBalance ?? accounts.find((a) => a._id === (tx.account?._id || tx.account))?.balance, user?.currency)}
                   </p>
-                  <p className="text-xs text-gray-400 truncate">{runningBalances[i]?.accName}</p>
+                  <p className="text-xs text-gray-400 truncate">{tx.account?.name}</p>
                 </div>
 
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

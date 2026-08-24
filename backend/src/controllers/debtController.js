@@ -1,6 +1,7 @@
 import Debt from '../models/Debt.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { sortDebtsByDueDate } from '../utils/debtHelpers.js';
+import { createUserTransaction } from '../utils/money.js';
 
 export const getDebts = async (req, res, next) => {
   try {
@@ -95,13 +96,30 @@ export const addRepayment = async (req, res, next) => {
     const debt = await Debt.findOne({ _id: req.params.id, user: req.user._id });
     if (!debt) return errorResponse(res, 'Debt not found.', 404);
 
-    const { amount, date, note } = req.body;
+    const { amount, date, note, account } = req.body;
     if (!amount) return errorResponse(res, 'Repayment amount is required.', 400);
 
-    debt.repayments.push({ amount, date: date || Date.now(), note });
+    const parsed = parseFloat(amount);
+    debt.repayments.push({ amount: parsed, date: date || Date.now(), note });
     await debt.save();
 
-    successResponse(res, debt, 'Repayment added successfully.');
+    let transaction = null;
+    if (account) {
+      const isBorrowed = debt.type === 'borrowed';
+      transaction = await createUserTransaction(req.user._id, {
+        account,
+        type: isBorrowed ? 'expense' : 'income',
+        amount: parsed,
+        category: isBorrowed ? 'Debt Repayment' : 'Loan Recovery',
+        description: isBorrowed ? `Repayment to ${debt.person}` : `Received from ${debt.person}`,
+        date: date || Date.now(),
+        notes: note || '',
+        source: 'debt',
+        sourceId: String(debt._id),
+      });
+    }
+
+    successResponse(res, { ...debt.toObject(), transaction }, 'Repayment added successfully.');
   } catch (error) {
     next(error);
   }

@@ -9,6 +9,8 @@ import {
   getMonthlyBudgetAnalysis,
   getBudgetAnalysis,
   exportData,
+  importData,
+  getMonthlyReport,
 } from '../controllers/analyticsController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -24,5 +26,7 @@ router.get('/cash-flow', getCashFlow);
 router.get('/income-vs-expense', getIncomeVsExpense);
 router.get('/net-worth', getNetWorth);
 router.get('/export', exportData);
+router.post('/import', importData);
+router.get('/monthly-report', getMonthlyReport);
 
 export default router;

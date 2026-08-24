@@ -53,6 +53,15 @@ export const GOAL_CATEGORIES = [
   'Travel', 'Wedding', 'Investment', 'Vacation', 'Business', 'Other',
 ];
 
+export const PLANNER_RECEIVE_CATEGORIES = [
+  'Salary', 'Freelance', 'Bonus', 'Business', 'Gift', 'Refund', 'Other',
+];
+
+export const PLANNER_GIVE_CATEGORIES = [
+  'Family', 'Rent', 'EMI', 'Bills', 'Savings', 'Food', 'Transport',
+  'Healthcare', 'Education', 'Shopping', 'Other',
+];
+
 export const COLORS = [
   '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316',
   '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6',

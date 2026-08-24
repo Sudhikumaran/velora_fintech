@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, CreditCard, Edit3, Trash2, Archive, MoreVertical, Wallet, TrendingUp } from 'lucide-react';
+import { Plus, CreditCard, Edit3, Trash2, Archive, MoreVertical, Wallet, TrendingUp, BookOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAccountStore } from '../store/accountStore';
 import { useInvestmentStore } from '../store/financeStore';
+import { useLedgerStore } from '../store/ledgerStore';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { ACCOUNT_TYPES, COLORS } from '../utils/constants';
@@ -74,6 +76,8 @@ const accountTypeIcons = { bank: '🏦', cash: '💵', credit: '💳', savings: 
 export default function Accounts() {
   const { accounts, fetchAccounts, createAccount, updateAccount, deleteAccount, archiveAccount, isLoading } = useAccountStore();
   const { investments, fetchInvestments } = useInvestmentStore();
+  const setLedgerFilters = useLedgerStore((s) => s.setFilters);
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editAccount, setEditAccount] = useState(null);
@@ -160,7 +164,7 @@ export default function Accounts() {
           action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus size={16} /> Add Account</button>}
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger-in">
           <AnimatePresence>
             {accounts.map((account, i) => (
               <motion.div
@@ -182,6 +186,16 @@ export default function Accounts() {
                     </div>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => {
+                        setLedgerFilters({ view: 'ledger', account: account._id });
+                        navigate('/ledger');
+                      }}
+                      className="p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg"
+                      title="Open ledger"
+                    >
+                      <BookOpen size={14} className="text-indigo-500" />
+                    </button>
                     <button onClick={() => openEdit(account)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
                       <Edit3 size={14} className="text-gray-500" />
                     </button>

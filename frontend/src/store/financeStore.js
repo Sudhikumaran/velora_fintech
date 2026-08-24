@@ -52,6 +52,18 @@ export const useBudgetStore = create((set, get) => ({
     }
   },
 
+  copyPeriod: async () => {
+    try {
+      const { data } = await api.post('/budgets/copy-period');
+      await get().fetchBudgets();
+      toast.success(data.message || 'Budgets copied');
+      return true;
+    } catch (error) {
+      toast.error('Failed to copy budgets');
+      return false;
+    }
+  },
+
   deleteBudget: async (id) => {
     try {
       await api.delete(`/budgets/${id}`);
@@ -129,7 +141,7 @@ export const useDebtStore = create((set) => ({
   },
 }));
 
-export const useInvestmentStore = create((set) => ({
+export const useInvestmentStore = create((set, get) => ({
   investments: [],
   isLoading: false,
 
@@ -201,6 +213,18 @@ export const useInvestmentStore = create((set) => ({
       return null;
     }
   },
+
+  refreshPrices: async () => {
+    try {
+      const { data } = await api.post('/investments/refresh-prices');
+      await get().fetchInvestments();
+      toast.success(`Updated ${data.data.updated} prices`);
+      return data.data;
+    } catch (error) {
+      toast.error('Failed to refresh prices');
+      return null;
+    }
+  },
 }));
 
 export const useSubscriptionStore = create((set) => ({
@@ -262,6 +286,19 @@ export const useSubscriptionStore = create((set) => ({
       return data.data;
     } catch (error) {
       toast.error('Failed to toggle subscription');
+      return null;
+    }
+  },
+
+  postDue: async ({ silent } = {}) => {
+    try {
+      const { data } = await api.post('/subscriptions/post-due');
+      set({ subscriptions: (await api.get('/subscriptions')).data.data });
+      if (data.data.posted) toast.success(`Posted ${data.data.posted} subscription payments`);
+      else if (!silent) toast.success('No due subscriptions');
+      return data.data;
+    } catch (error) {
+      if (!silent) toast.error(error.response?.data?.message || 'Failed to post subscriptions');
       return null;
     }
   },

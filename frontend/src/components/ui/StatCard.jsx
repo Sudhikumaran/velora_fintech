@@ -1,6 +1,6 @@
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import { useAnimatedCounter } from '../../hooks/useAnimatedCounter';
+import { easeOut } from '../../utils/motion';
 
 const colorMap = {
   indigo:  { bg: 'bg-indigo-50  dark:bg-indigo-900/20',  icon: 'text-indigo-600 dark:text-indigo-400',  border: 'border-indigo-100 dark:border-indigo-800/40' },
@@ -11,25 +11,30 @@ const colorMap = {
   blue:    { bg: 'bg-blue-50    dark:bg-blue-900/20',    icon: 'text-blue-600   dark:text-blue-400',     border: 'border-blue-100   dark:border-blue-800/40' },
 };
 
-export default function StatCard({ title, value, subtitle, trend, icon: Icon, color = 'indigo', delay = 0, rawValue }) {
+export default function StatCard({ title, value, subtitle, trend, icon: Icon, color = 'indigo', delay = 0 }) {
   const c = colorMap[color] || colorMap.indigo;
   const isUp   = trend?.direction === 'up';
   const isDown = trend?.direction === 'down';
-  const animated = useAnimatedCounter(typeof rawValue === 'number' ? rawValue : 0, 1000, 2);
+  const reduce = useReducedMotion();
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.35, ease: 'easeOut' }}
-      className="card p-5 flex flex-col gap-4"
+      initial={reduce ? false : { opacity: 0, y: 18, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      whileHover={reduce ? undefined : { y: -6, scale: 1.015 }}
+      whileTap={reduce ? undefined : { scale: 0.99 }}
+      transition={{ delay, duration: 0.4, ease: easeOut }}
+      className="card p-5 flex flex-col gap-4 cursor-default"
     >
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{title}</p>
         {Icon && (
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${c.bg}`}>
+          <motion.div
+            whileHover={reduce ? undefined : { rotate: -8, scale: 1.1 }}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center ${c.bg}`}
+          >
             <Icon size={18} className={c.icon} />
-          </div>
+          </motion.div>
         )}
       </div>
 
@@ -38,10 +43,15 @@ export default function StatCard({ title, value, subtitle, trend, icon: Icon, co
         {(trend || subtitle) && (
           <div className="flex items-center gap-2 mt-1.5">
             {trend && (
-              <span className={isUp ? 'change-up' : isDown ? 'change-down' : 'inline-flex items-center gap-1 text-xs font-semibold text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full'}>
+              <motion.span
+                initial={reduce ? false : { scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: delay + 0.25, type: 'spring', stiffness: 400, damping: 20 }}
+                className={isUp ? 'change-up' : isDown ? 'change-down' : 'inline-flex items-center gap-1 text-xs font-semibold text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full'}
+              >
                 {isUp ? <TrendingUp size={11} /> : isDown ? <TrendingDown size={11} /> : null}
                 {trend.percent}%
-              </span>
+              </motion.span>
             )}
             {subtitle && (
               <p className="text-xs text-gray-400 dark:text-gray-500">{subtitle}</p>

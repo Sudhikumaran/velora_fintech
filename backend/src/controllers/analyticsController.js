@@ -639,3 +639,113 @@ export const exportData = async (req, res, next) => {
     next(error);
   }
 };
+
+export const importData = async (req, res, next) => {
+  try {
+    const payload = req.body?.data || req.body || {};
+    const accountsIn = Array.isArray(payload.accounts) ? payload.accounts : [];
+    const txsIn = Array.isArray(payload.transactions) ? payload.transactions : [];
+    const budgetsIn = Array.isArray(payload.budgets) ? payload.budgets : [];
+
+    const idMap = {};
+    let accountsCreated = 0;
+    for (const acc of accountsIn) {
+      const created = await Account.create({
+        user: req.user._id,
+        name: acc.name || 'Imported account',
+        type: acc.type || 'other',
+        balance: acc.balance || 0,
+        currency: acc.currency || 'INR',
+        color: acc.color,
+        description: acc.description,
+        creditLimit: acc.creditLimit,
+      });
+      if (acc._id) idMap[String(acc._id)] = created._id;
+      accountsCreated += 1;
+    }
+
+    let txCreated = 0;
+    const { createUserTransaction } = await import('../utils/money.js');
+    const fallback = await Account.findOne({ user: req.user._id });
+    for (const tx of txsIn) {
+      const account = idMap[String(tx.account?._id || tx.account)] || fallback?._id;
+      if (!account) continue;
+      try {
+        await createUserTransaction(req.user._id, {
+          account,
+          toAccount: idMap[String(tx.toAccount?._id || tx.toAccount)] || null,
+          type: tx.type || 'expense',
+          amount: tx.amount,
+          category: tx.category || 'Other',
+          description: tx.description,
+          date: tx.date,
+          notes: tx.notes,
+          source: 'import',
+        });
+        txCreated += 1;
+      } catch {
+        // skip bad rows
+      }
+    }
+
+    let budgetsCreated = 0;
+    for (const b of budgetsIn) {
+      await Budget.create({
+        user: req.user._id,
+        name: b.name,
+        category: b.category,
+        limit: b.limit,
+        period: b.period || 'monthly',
+        startDate: b.startDate || new Date(),
+        color: b.color,
+        alertThreshold: b.alertThreshold,
+      });
+      budgetsCreated += 1;
+    }
+
+    successResponse(res, { accountsCreated, txCreated, budgetsCreated }, 'Import complete.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMonthlyReport = async (req, res, next) => {
+  try {
+    const now = new Date();
+    const year = parseInt(req.query.year, 10) || now.getFullYear();
+    const month = parseInt(req.query.month, 10) || now.getMonth() + 1;
+    const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
+    const end = new Date(year, month, 0, 23, 59, 59, 999);
+
+    const txs = await Transaction.find({
+      user: req.user._id,
+      isArchived: false,
+      date: { $gte: start, $lte: end },
+    }).populate('account', 'name');
+
+    const income = txs.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const expense = txs.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const byCategory = {};
+    txs.filter((t) => t.type === 'expense').forEach((t) => {
+      byCategory[t.category] = (byCategory[t.category] || 0) + t.amount;
+    });
+
+    successResponse(res, {
+      year,
+      month,
+      start,
+      end,
+      income,
+      expense,
+      net: income - expense,
+      savingsRate: income > 0 ? (income - expense) / income * 100 : 0,
+      transactionCount: txs.length,
+      categories: Object.entries(byCategory)
+        .map(([name, total]) => ({ name, total }))
+        .sort((a, b) => b.total - a.total),
+      transactions: txs,
+    }, 'Monthly report generated.');
+  } catch (error) {
+    next(error);
+  }
+};

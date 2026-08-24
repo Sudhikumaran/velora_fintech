@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Edit3, Trash2, RefreshCw, PauseCircle, PlayCircle, Calendar, CheckCircle2 } from 'lucide-react';
 import { useSubscriptionStore } from '../store/financeStore';
+import { useAccountStore } from '../store/accountStore';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { SUBSCRIPTION_CATEGORIES, FREQUENCIES, COLORS } from '../utils/constants';
@@ -12,9 +13,9 @@ import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
-const defaultForm = { name: '', amount: '', frequency: 'monthly', category: '', startDate: new Date().toISOString().split('T')[0], nextBillingDate: '', description: '', website: '', color: '#6366f1' };
+const defaultForm = { name: '', amount: '', frequency: 'monthly', category: '', startDate: new Date().toISOString().split('T')[0], nextBillingDate: '', description: '', website: '', color: '#6366f1', account: '', autoPost: true };
 
-function SubscriptionForm({ form, setForm, onSubmit, isEdit }) {
+function SubscriptionForm({ form, setForm, onSubmit, isEdit, accounts }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -45,6 +46,19 @@ function SubscriptionForm({ form, setForm, onSubmit, isEdit }) {
           <label className="label">Next Billing Date</label>
           <input type="date" className="input-field" value={form.nextBillingDate}
             onChange={(e) => setForm({ ...form, nextBillingDate: e.target.value })} required />
+        </div>
+        <div>
+          <label className="label">Charge account</label>
+          <select className="input-field" value={form.account} onChange={(e) => setForm({ ...form, account: e.target.value })}>
+            <option value="">Default first account</option>
+            {(accounts || []).map((a) => <option key={a._id} value={a._id}>{a.name}</option>)}
+          </select>
+        </div>
+        <div className="col-span-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.autoPost !== false} onChange={(e) => setForm({ ...form, autoPost: e.target.checked })} />
+            Auto-post as an expense when due
+          </label>
         </div>
         <div className="col-span-2">
           <label className="label">Website (optional)</label>
@@ -85,7 +99,8 @@ function nextCycleDate(currentDate, frequency) {
 }
 
 export default function Subscriptions() {
-  const { subscriptions, fetchSubscriptions, createSubscription, updateSubscription, deleteSubscription, toggleStatus, isLoading } = useSubscriptionStore();
+  const { subscriptions, fetchSubscriptions, createSubscription, updateSubscription, deleteSubscription, toggleStatus, postDue, isLoading } = useSubscriptionStore();
+  const { accounts, fetchAccounts } = useAccountStore();
   const { user } = useAuthStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [editSub, setEditSub] = useState(null);
@@ -93,11 +108,11 @@ export default function Subscriptions() {
   const [form, setForm] = useState(defaultForm);
   const [filterStatus, setFilterStatus] = useState('active');
 
-  useEffect(() => { fetchSubscriptions(); }, []);
+  useEffect(() => { fetchSubscriptions(); fetchAccounts(); postDue({ silent: true }); }, []);
 
   const openCreate = () => { setForm(defaultForm); setEditSub(null); setModalOpen(true); };
   const openEdit = (s) => {
-    setForm({ name: s.name, amount: s.amount, frequency: s.frequency, category: s.category, startDate: s.startDate?.split('T')[0] || '', nextBillingDate: s.nextBillingDate?.split('T')[0] || '', description: s.description || '', website: s.website || '', color: s.color });
+    setForm({ name: s.name, amount: s.amount, frequency: s.frequency, category: s.category, startDate: s.startDate?.split('T')[0] || '', nextBillingDate: s.nextBillingDate?.split('T')[0] || '', description: s.description || '', website: s.website || '', color: s.color, account: s.account || '', autoPost: s.autoPost !== false });
     setEditSub(s);
     setModalOpen(true);
   };
@@ -127,7 +142,12 @@ export default function Subscriptions() {
       <PageHeader
         title="Subscriptions"
         subtitle="Manage recurring expenses"
-        action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus size={18} /> Add Subscription</button>}
+        action={
+          <div className="flex gap-2">
+            <button onClick={() => postDue()} className="btn-secondary">Post due</button>
+            <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus size={18} /> Add Subscription</button>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -160,7 +180,7 @@ export default function Subscriptions() {
           action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus size={16} /> Add Subscription</button>}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger-in">
           {filtered.map((sub, i) => {
             const monthlyAmount = (sub.amount * frequencyMultiplier[sub.frequency]) / 12;
             const daysUntilBilling = sub.nextBillingDate ? Math.ceil((new Date(sub.nextBillingDate) - new Date()) / (1000 * 60 * 60 * 24)) : null;
@@ -224,7 +244,7 @@ export default function Subscriptions() {
       )}
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editSub ? 'Edit Subscription' : 'Add Subscription'}>
-        <SubscriptionForm form={form} setForm={setForm} onSubmit={handleSubmit} isEdit={!!editSub} />
+        <SubscriptionForm form={form} setForm={setForm} onSubmit={handleSubmit} isEdit={!!editSub} accounts={accounts} />
       </Modal>
 
       <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteSubscription(deleteId)} title="Delete Subscription" message="Are you sure you want to delete this subscription?" />

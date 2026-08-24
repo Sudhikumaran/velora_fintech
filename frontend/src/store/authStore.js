@@ -40,10 +40,48 @@ export const useAuthStore = create(
         }
       },
 
-      logout: () => {
+      logout: async () => {
+        try { await api.post('/auth/logout'); } catch { /* cookie may already be gone */ }
         localStorage.removeItem('velora_token');
         set({ user: null, token: null });
         toast.success('Logged out successfully');
+      },
+
+      forgotPassword: async (email) => {
+        try {
+          await api.post('/auth/forgot-password', { email });
+          toast.success('If that email exists, a reset link was sent');
+          return true;
+        } catch (error) {
+          toast.error(error.response?.data?.message || 'Could not send reset email');
+          return false;
+        }
+      },
+
+      resetPassword: async (token, password) => {
+        try {
+          const { data } = await api.post('/auth/reset-password', { token, password });
+          if (data.token) localStorage.setItem('velora_token', data.token);
+          set({ user: data.user, token: data.token });
+          toast.success('Password reset. You are signed in.');
+          return true;
+        } catch (error) {
+          toast.error(error.response?.data?.message || 'Reset failed');
+          return false;
+        }
+      },
+
+      deleteAccount: async (password) => {
+        try {
+          await api.delete('/auth/account', { data: { password } });
+          localStorage.removeItem('velora_token');
+          set({ user: null, token: null });
+          toast.success('Account deleted');
+          return true;
+        } catch (error) {
+          toast.error(error.response?.data?.message || 'Could not delete account');
+          return false;
+        }
       },
 
       updateProfile: async (profileData) => {

@@ -1,5 +1,6 @@
 import Goal from '../models/Goal.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
+import { createUserTransaction } from '../utils/money.js';
 
 export const getGoals = async (req, res, next) => {
   try {
@@ -68,17 +69,33 @@ export const addContribution = async (req, res, next) => {
     const goal = await Goal.findOne({ _id: req.params.id, user: req.user._id });
     if (!goal) return errorResponse(res, 'Goal not found.', 404);
 
-    const { amount, date, note } = req.body;
+    const { amount, date, note, account } = req.body;
     if (!amount) return errorResponse(res, 'Contribution amount is required.', 400);
 
-    goal.contributions.push({ amount, date: date || Date.now(), note });
-    goal.currentAmount += amount;
+    const parsed = parseFloat(amount);
+    goal.contributions.push({ amount: parsed, date: date || Date.now(), note });
+    goal.currentAmount += parsed;
 
     if (goal.currentAmount >= goal.targetAmount) {
       goal.status = 'completed';
     }
 
     await goal.save();
+
+    if (account) {
+      await createUserTransaction(req.user._id, {
+        account,
+        type: 'expense',
+        amount: parsed,
+        category: 'Savings',
+        description: `Contribution to ${goal.name}`,
+        date: date || Date.now(),
+        notes: note || '',
+        source: 'goal',
+        sourceId: String(goal._id),
+      });
+    }
+
     successResponse(res, goal, 'Contribution added successfully.');
   } catch (error) {
     next(error);

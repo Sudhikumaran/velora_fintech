@@ -16,6 +16,7 @@ function resolveApiBaseURL() {
 const api = axios.create({
   baseURL: resolveApiBaseURL(),
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
@@ -26,7 +27,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-const AUTH_ENDPOINTS = ['/auth/login', '/auth/register'];
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
 
 api.interceptors.response.use(
   (response) => response,

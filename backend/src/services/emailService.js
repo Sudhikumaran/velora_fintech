@@ -74,3 +74,27 @@ export async function sendDebtDueReminder({ to, userName, debts }) {
 
   return true;
 }
+
+export async function sendPasswordReset({ to, userName, resetUrl }) {
+  const mailer = getTransporter();
+  if (!mailer) {
+    console.warn('[Email] SMTP not configured — password reset URL:', resetUrl);
+    return false;
+  }
+
+  const from = process.env.EMAIL_FROM || `Velora <${process.env.SMTP_USER}>`;
+  await mailer.sendMail({
+    from,
+    to,
+    subject: 'Reset your Velora password',
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
+        <h2 style="color:#4f46e5;">Reset your password</h2>
+        <p>Hi ${userName || 'there'},</p>
+        <p>Click the button below to choose a new password. This link expires in 1 hour.</p>
+        <p><a href="${resetUrl}" style="background:#4f46e5;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Reset password</a></p>
+        <p style="color:#9ca3af;font-size:12px;">If you did not request this, you can ignore this email.</p>
+      </div>`,
+  });
+  return true;
+}

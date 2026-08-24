@@ -68,6 +68,13 @@ const subscriptionSchema = new mongoose.Schema(
       type: String,
       default: 'USD',
     },
+    autoPost: {
+      type: Boolean,
+      default: true,
+    },
+    lastPostedDate: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

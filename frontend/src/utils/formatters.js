@@ -1,20 +1,44 @@
+const LOCALE_BY_CURRENCY = {
+  INR: 'en-IN',
+  USD: 'en-US',
+  EUR: 'en-IE',
+  GBP: 'en-GB',
+  JPY: 'ja-JP',
+  AUD: 'en-AU',
+  CAD: 'en-CA',
+  CHF: 'de-CH',
+};
+
+export function localeForCurrency(currency = 'USD') {
+  return LOCALE_BY_CURRENCY[currency] || 'en-US';
+}
+
+function persistedCurrency() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('velora-auth') || '{}');
+    return raw?.state?.user?.currency || 'USD';
+  } catch {
+    return 'USD';
+  }
+}
+
 export const formatCurrency = (amount, currency = 'USD', compact = false) => {
   if (amount === null || amount === undefined) return '—';
   const options = {
     style: 'currency',
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: currency === 'JPY' ? 0 : 2,
+    maximumFractionDigits: currency === 'JPY' ? 0 : 2,
   };
   if (compact && Math.abs(amount) >= 1000) {
     options.notation = 'compact';
     options.minimumFractionDigits = 1;
     options.maximumFractionDigits = 1;
   }
-  return new Intl.NumberFormat('en-US', options).format(amount);
+  return new Intl.NumberFormat(localeForCurrency(currency), options).format(amount);
 };
 
-export const formatDate = (date, format = 'medium') => {
+export const formatDate = (date, format = 'medium', currency) => {
   if (!date) return '—';
   const d = new Date(date);
   if (isNaN(d.getTime())) return '—';
@@ -26,7 +50,7 @@ export const formatDate = (date, format = 'medium') => {
     time: { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
   };
 
-  return new Intl.DateTimeFormat('en-US', formats[format] || formats.medium).format(d);
+  return new Intl.DateTimeFormat(localeForCurrency(currency || persistedCurrency()), formats[format] || formats.medium).format(d);
 };
 
 export const formatRelativeTime = (date) => {
@@ -49,16 +73,16 @@ export const formatPercent = (value, decimals = 1) => {
   return `${Number(value).toFixed(decimals)}%`;
 };
 
-export const formatNumber = (value, decimals = 0) => {
+export const formatNumber = (value, decimals = 0, currency = 'USD') => {
   if (value === null || value === undefined) return '—';
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat(localeForCurrency(currency), {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(value);
 };
 
-export const getMonthName = (monthNum) => {
-  return new Date(2024, monthNum - 1, 1).toLocaleString('default', { month: 'short' });
+export const getMonthName = (monthNum, currency = 'USD') => {
+  return new Date(2024, monthNum - 1, 1).toLocaleString(localeForCurrency(currency), { month: 'short' });
 };
 
 export const getTrend = (current, previous) => {

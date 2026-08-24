@@ -17,6 +17,11 @@ import Subscriptions from './pages/Subscriptions';
 import Goals from './pages/Goals';
 import Calendar from './pages/Calendar';
 import Settings from './pages/Settings';
+import Ledger from './pages/Ledger';
+import IncomePlanner from './pages/IncomePlanner';
+import Reports from './pages/Reports';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 
 function ProtectedRoute({ children }) {
   const { token } = useAuthStore();
@@ -52,15 +57,20 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
           <Route index element={<Dashboard />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="accounts" element={<Accounts />} />
           <Route path="transactions" element={<Transactions />} />
+          <Route path="ledger" element={<Ledger />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="budgets" element={<Budgets />} />
           <Route path="debts" element={<Debts />} />
           <Route path="income" element={<Income />} />
+          <Route path="income-planner" element={<IncomePlanner />} />
+          <Route path="reports" element={<Reports />} />
           <Route path="investments" element={<Investments />} />
           <Route path="subscriptions" element={<Subscriptions />} />
           <Route path="goals" element={<Goals />} />

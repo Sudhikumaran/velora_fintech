@@ -87,7 +87,7 @@ export default function Dashboard() {
       </motion.div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger-in">
         <StatCard title="Total Balance"     value={formatCurrency(dashboard.totalBalance,    user?.currency)} subtitle={`${dashboard.totalAccounts} accounts`}  icon={Wallet}      color="indigo" delay={0}   />
         <StatCard title="Monthly Income"    value={formatCurrency(dashboard.monthlyIncome,   user?.currency)} trend={incomeTrend}  subtitle="vs last month" icon={TrendingUp}   color="green"  delay={0.05}/>
         <StatCard title="Monthly Expenses"  value={formatCurrency(dashboard.monthlyExpenses, user?.currency)} trend={{ ...expenseTrend, direction: expenseTrend.direction === 'up' ? 'down' : expenseTrend.direction === 'down' ? 'up' : 'neutral' }} subtitle="vs last month" icon={TrendingDown} color="red" delay={0.1}/>
@@ -99,6 +99,7 @@ export default function Dashboard() {
         {/* Area chart */}
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          whileHover={{ y: -4 }}
           className="card p-5 lg:col-span-2"
         >
           <div className="flex items-center justify-between mb-5">
@@ -135,6 +136,7 @@ export default function Dashboard() {
         {/* Pie chart */}
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+          whileHover={{ y: -4 }}
           className="card p-5"
         >
           <div className="flex items-center justify-between mb-4">
@@ -178,6 +180,7 @@ export default function Dashboard() {
         {netWorth && (
           <motion.div
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}
+            whileHover={{ y: -4 }}
             className="card p-5"
           >
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Net Worth</p>
@@ -261,7 +264,7 @@ export default function Dashboard() {
           {dashboard.accounts?.length > 0 ? (
             <div className="divide-y divide-gray-50 dark:divide-gray-800">
               {dashboard.accounts.slice(0, 4).map((acc) => (
-                <div key={acc._id} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-gray-800/40 transition-colors">
+                <div key={acc._id} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-gray-800/40 list-row">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                       style={{ background: acc.color + '18' }}>
@@ -300,7 +303,7 @@ export default function Dashboard() {
           {dashboard.recentTransactions?.length > 0 ? (
             <div className="divide-y divide-gray-50 dark:divide-gray-800">
               {dashboard.recentTransactions.map((tx) => (
-                <div key={tx._id} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-gray-800/40 transition-colors">
+                <div key={tx._id} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-gray-800/40 list-row">
                   <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                       tx.type === 'income' ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-red-50 dark:bg-red-900/20'

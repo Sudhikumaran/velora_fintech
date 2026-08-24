@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Edit3, Trash2, Flag, PlusCircle, CheckCircle } from 'lucide-react';
 import { useGoalStore } from '../store/financeStore';
+import { useAccountStore } from '../store/accountStore';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { GOAL_CATEGORIES, COLORS } from '../utils/constants';
@@ -75,8 +76,8 @@ function GoalForm({ form, setForm, onSubmit, isEdit }) {
   );
 }
 
-function ContributionForm({ onSubmit }) {
-  const [form, setForm] = useState(contribDefault);
+function ContributionForm({ onSubmit, accounts = [] }) {
+  const [form, setForm] = useState({ ...contribDefault, account: accounts[0]?._id || '' });
   const handleSubmit = (e) => { e.preventDefault(); onSubmit(form); };
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -90,6 +91,13 @@ function ContributionForm({ onSubmit }) {
           <label className="label">Date</label>
           <input type="date" className="input-field" value={form.date}
             onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+        </div>
+        <div className="col-span-2">
+          <label className="label">From account</label>
+          <select className="input-field" value={form.account || ''} onChange={(e) => setForm({ ...form, account: e.target.value })}>
+            <option value="">Don't post to accounts</option>
+            {accounts.map((a) => <option key={a._id} value={a._id}>{a.name}</option>)}
+          </select>
         </div>
         <div className="col-span-2">
           <label className="label">Note (optional)</label>
@@ -107,6 +115,7 @@ const statusConfig = { active: 'primary', completed: 'success', cancelled: 'dang
 
 export default function Goals() {
   const { goals, fetchGoals, createGoal, updateGoal, deleteGoal, addContribution, isLoading } = useGoalStore();
+  const { accounts, fetchAccounts } = useAccountStore();
   const { user } = useAuthStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [contribModal, setContribModal] = useState(null);
@@ -115,7 +124,7 @@ export default function Goals() {
   const [form, setForm] = useState(defaultForm);
   const [filterStatus, setFilterStatus] = useState('active');
 
-  useEffect(() => { fetchGoals(); }, []);
+  useEffect(() => { fetchGoals(); fetchAccounts(); }, []);
 
   const openCreate = () => { setForm(defaultForm); setEditGoal(null); setModalOpen(true); };
   const openEdit = (g) => {
@@ -173,7 +182,7 @@ export default function Goals() {
           action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus size={16} /> Create Goal</button>}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 stagger-in">
           {filtered.map((goal, i) => {
             const pct = goal.targetAmount > 0 ? Math.min(100, (goal.currentAmount / goal.targetAmount) * 100) : 0;
             return (
@@ -240,7 +249,7 @@ export default function Goals() {
       </Modal>
 
       <Modal isOpen={!!contribModal} onClose={() => setContribModal(null)} title="Add Contribution" size="sm">
-        <ContributionForm onSubmit={async (data) => { await addContribution(contribModal, data); setContribModal(null); }} />
+        <ContributionForm accounts={accounts} onSubmit={async (data) => { await addContribution(contribModal, data); setContribModal(null); }} />
       </Modal>
 
       <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={() => deleteGoal(deleteId)} title="Delete Goal" message="Are you sure you want to delete this goal?" />

@@ -8,6 +8,7 @@ import GlobalSearch from '../ui/GlobalSearch';
 import Onboarding from '../ui/Onboarding';
 import { useOnboarding } from '../../hooks/useOnboarding';
 import { useAccountStore } from '../../store/accountStore';
+import { pageTransition } from '../../utils/motion';
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -33,20 +34,19 @@ export default function AppLayout() {
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative">
         <Topbar
           onMenuClick={() => setMobileOpen(true)}
           theme={theme}
           onToggleTheme={toggleTheme}
         />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 relative">
+          <div className="pointer-events-none absolute inset-0 auth-mesh opacity-60 dark:opacity-30" />
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
+              {...pageTransition}
+              className="relative z-10"
             >
               <Outlet />
             </motion.div>

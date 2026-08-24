@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, ArrowUpRight, ArrowDownRight, ArrowLeftRight } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownRight, ArrowLeftRight } from 'lucide-react';
+import { PulseRing } from './Motion';
 import { useTransactionStore } from '../../store/transactionStore';
 import { useAccountStore } from '../../store/accountStore';
 import { TRANSACTION_CATEGORIES } from '../../utils/constants';
@@ -47,6 +48,7 @@ export default function QuickAdd() {
               transition={{ delay: i * 0.05, type: 'spring', stiffness: 300, damping: 22 }}
               onClick={() => openForm(a.type)}
               className={`flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-white text-sm font-semibold shadow-lg ${a.color} ring-4 ${a.ring} dark:ring-opacity-20`}
+              whileHover={{ x: -4, scale: 1.04 }}
             >
               <a.icon size={16} />
               {a.label}
@@ -57,11 +59,17 @@ export default function QuickAdd() {
         {/* Main FAB */}
         <motion.button
           onClick={() => setOpen(!open)}
-          whileTap={{ scale: 0.92 }}
-          className="w-14 h-14 rounded-2xl text-white shadow-xl flex items-center justify-center"
-          style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', boxShadow: '0 8px 24px rgba(99,102,241,.4)' }}
+          whileHover={{ scale: 1.08, rotate: open ? 45 : 8 }}
+          whileTap={{ scale: 0.9 }}
+          animate={{ boxShadow: open
+            ? '0 8px 24px rgba(99,102,241,.35)'
+            : ['0 8px 24px rgba(99,102,241,.35)', '0 12px 32px rgba(99,102,241,.55)', '0 8px 24px rgba(99,102,241,.35)'] }}
+          transition={{ boxShadow: { duration: 2.2, repeat: Infinity, ease: 'easeInOut' } }}
+          className="relative w-14 h-14 rounded-2xl text-white flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
         >
-          <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
+          <PulseRing className={open ? 'hidden' : ''} />
+          <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
             <Plus size={24} />
           </motion.div>
         </motion.button>

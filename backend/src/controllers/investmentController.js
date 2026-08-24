@@ -1,5 +1,6 @@
 import Investment from '../models/Investment.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
+import { quoteInvestment } from '../utils/priceQuotes.js';
 
 export const getInvestments = async (req, res, next) => {
   try {
@@ -103,6 +104,35 @@ export const getPriceHistory = async (req, res, next) => {
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
     successResponse(res, { investment, history }, 'Price history fetched.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const refreshPrices = async (req, res, next) => {
+  try {
+    const investments = await Investment.find({ user: req.user._id, isActive: { $ne: false } });
+    const updated = [];
+    const skipped = [];
+
+    for (const inv of investments) {
+      if (!inv.symbol) {
+        skipped.push({ id: inv._id, name: inv.name, reason: 'No symbol' });
+        continue;
+      }
+      const price = await quoteInvestment(inv);
+      if (!price) {
+        skipped.push({ id: inv._id, name: inv.name, reason: 'Quote unavailable' });
+        continue;
+      }
+      inv.currentPrice = price;
+      inv.priceHistory.push({ price, date: new Date(), note: 'Live quote' });
+      if (inv.priceHistory.length > 365) inv.priceHistory = inv.priceHistory.slice(-365);
+      await inv.save();
+      updated.push(inv);
+    }
+
+    successResponse(res, { updated: updated.length, skipped, data: updated }, 'Prices refreshed.');
   } catch (error) {
     next(error);
   }
