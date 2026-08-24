@@ -1,14 +1,6 @@
 import type { CapacitorConfig } from '@capacitor/cli';
-import { existsSync, readFileSync } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
-const dir = path.dirname(fileURLToPath(import.meta.url));
-const liveFile = path.join(dir, '.capacitor-live');
-const liveReloadUrl = existsSync(liveFile)
-  ? readFileSync(liveFile, 'utf8').trim()
-  : process.env.CAPACITOR_LIVE_RELOAD_URL?.trim();
-
+const liveReloadUrl = process.env.CAPACITOR_LIVE_RELOAD_URL?.trim();
 const hostedUrl = 'https://velora-fintech.vercel.app';
 
 const config: CapacitorConfig = {
@@ -17,7 +9,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     // Load the live site so UI/JS changes deploy with Vercel — no new APK.
-    // Write frontend/.capacitor-live (one URL) to point a debug build at Vite instead.
+    // For same-WiFi live reload: CAPACITOR_LIVE_RELOAD_URL=http://IP:5173 npx cap sync android
     url: liveReloadUrl || hostedUrl,
     cleartext: Boolean(liveReloadUrl),
     androidScheme: 'https',

@@ -1,7 +1,5 @@
-import { writeFileSync } from 'fs';
+import { spawn } from 'child_process';
 import os from 'os';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 function lanIp() {
   const nets = os.networkInterfaces();
@@ -16,13 +14,19 @@ function lanIp() {
 
 const ip = lanIp();
 const url = `http://${ip}:5173`;
-const file = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.capacitor-live');
-writeFileSync(file, url, 'utf8');
 
-console.log(`Live reload URL written to frontend/.capacitor-live`);
-console.log(`  ${url}`);
-console.log('');
-console.log('1. Keep the Vite server running:  npm run dev');
-console.log('2. Sync + rebuild the debug APK once so it points at your PC.');
-console.log('3. Phone and PC must be on the same Wi‑Fi.');
-console.log('Delete frontend/.capacitor-live and rebuild to use the hosted site again.');
+console.log(`Syncing Android to live-reload ${url}`);
+console.log('Keep `npm run dev` running. Phone and PC must be on the same Wi‑Fi.');
+console.log('Rebuild the debug APK once after this sync.');
+
+const child = spawn(
+  process.platform === 'win32' ? 'npx.cmd' : 'npx',
+  ['cap', 'sync', 'android'],
+  {
+    stdio: 'inherit',
+    env: { ...process.env, CAPACITOR_LIVE_RELOAD_URL: url },
+    shell: process.platform === 'win32',
+  }
+);
+
+child.on('exit', (code) => process.exit(code ?? 1));
