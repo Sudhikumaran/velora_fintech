@@ -535,8 +535,13 @@ export default function Transactions() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editTx ? 'Edit Transaction' : 'Add Transaction'}
+        headerAction={
+          <button type="submit" form="transaction-form" className="btn-primary px-4 py-2 text-sm min-h-10">
+            {editTx ? 'Update' : 'Add'}
+          </button>
+        }
         footer={
-          <button type="submit" form="transaction-form" className="btn-primary w-full">
+          <button type="submit" form="transaction-form" className="btn-primary w-full min-h-11">
             {editTx ? 'Update Transaction' : 'Add Transaction'}
           </button>
         }

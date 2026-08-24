@@ -259,8 +259,7 @@ html.native-app {
 }
 
 body.modal-open .mobile-tab-bar {
-  visibility: hidden;
-  pointer-events: none;
+  display: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

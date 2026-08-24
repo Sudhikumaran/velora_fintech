@@ -34,7 +34,7 @@ const config: CapacitorConfig = {
       backgroundColor: '#6366f1',
     },
     Keyboard: {
-      resize: 'body',
+      resize: 'none',
     },
   },
 };
