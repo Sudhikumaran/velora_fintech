@@ -8,7 +8,8 @@
     "install:all":      "cd backend && npm install && cd ../frontend && npm install",
     "build":            "cd frontend && npm install && npm run build && cd ../backend && npm install",
     "start":            "node backend/server.js",
-    "build:start":      "npm run build && npm start"
+    "cap:sync":         "npm run cap:sync --prefix frontend",
+    "cap:android":      "npm run cap:android --prefix frontend"
   },
   "keywords": ["finance", "dashboard", "react", "nodejs"],
   "author": "Velora",

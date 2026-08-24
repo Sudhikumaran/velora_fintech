@@ -20,7 +20,7 @@ export const useAuthStore = create(
           return true;
         } catch (error) {
           set({ isLoading: false });
-          toast.error(error.response?.data?.message || 'Login failed');
+          toast.error(error.response?.data?.message || (error.message === 'Network Error' ? 'Cannot reach the server. Check your internet connection.' : 'Login failed'));
           return false;
         }
       },

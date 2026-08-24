@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import MobileTabBar from './MobileTabBar';
 import GlobalSearch from '../ui/GlobalSearch';
 import Onboarding from '../ui/Onboarding';
 import { useOnboarding } from '../../hooks/useOnboarding';
@@ -26,7 +27,7 @@ export default function AppLayout() {
   useEffect(() => { fetchAccounts(); }, []);
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-gray-950 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 dark:bg-gray-950 overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <Sidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed((c) => !c)}
@@ -39,7 +40,7 @@ export default function AppLayout() {
           theme={theme}
           onToggleTheme={toggleTheme}
         />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 relative">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 relative pb-24 lg:pb-6">
           <div className="pointer-events-none absolute inset-0 auth-mesh opacity-60 dark:opacity-30" />
           <AnimatePresence mode="wait">
             <motion.div
@@ -51,6 +52,7 @@ export default function AppLayout() {
             </motion.div>
           </AnimatePresence>
         </main>
+        <MobileTabBar onMore={() => setMobileOpen(true)} />
         <GlobalSearch />
         {showOnboarding && <Onboarding onComplete={completeOnboarding} />}
       </div>

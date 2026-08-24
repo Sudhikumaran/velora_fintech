@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
+import { isNativeApp } from './utils/native';
 
 import AppLayout from './components/layout/AppLayout';
 import Login from './pages/auth/Login';
@@ -36,10 +37,12 @@ function PublicRoute({ children }) {
 }
 
 export default function App() {
+  const Router = isNativeApp() ? HashRouter : BrowserRouter;
+
   return (
-    <BrowserRouter>
+    <Router>
       <Toaster
-        position="top-right"
+        position={isNativeApp() ? 'top-center' : 'top-right'}
         toastOptions={{
           duration: 3000,
           style: {
@@ -78,6 +81,6 @@ export default function App() {
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }

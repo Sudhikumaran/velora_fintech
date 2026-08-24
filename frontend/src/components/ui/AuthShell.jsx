@@ -4,7 +4,7 @@ import { easeOut, stagger, fadeUp } from '../../utils/motion';
 
 export default function AuthShell({ headline, subhead, features = [], stats = [], children }) {
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div
         className="hidden lg:flex flex-col justify-between w-[420px] shrink-0 p-10 relative overflow-hidden"
         style={{ background: 'linear-gradient(145deg,#6366f1 0%,#7c3aed 60%,#4f46e5 100%)' }}

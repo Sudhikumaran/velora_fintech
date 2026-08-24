@@ -46,11 +46,24 @@ function isTrustedVercelOrigin(origin) {
   }
 }
 
+function isNativeAppOrigin(origin) {
+  try {
+    const u = new URL(origin);
+    if (u.protocol === 'capacitor:' || u.protocol === 'ionic:') return true;
+    const host = u.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 app.use(cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
     if (allowedOrigins.includes(origin)) return cb(null, true);
     if (isTrustedVercelOrigin(origin)) return cb(null, true);
+    if (isNativeAppOrigin(origin)) return cb(null, true);
     return cb(null, false);
   },
   credentials: true,

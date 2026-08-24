@@ -50,7 +50,7 @@ export default function Topbar({ onMenuClick, theme, onToggleTheme }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.22 }}
-            className="text-base font-bold text-gray-900 dark:text-white hidden sm:block"
+            className="text-base font-bold text-gray-900 dark:text-white"
           >
             {title}
           </motion.h2>

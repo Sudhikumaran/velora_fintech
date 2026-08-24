@@ -187,11 +187,11 @@ export function SearchTrigger() {
   return (
     <button
       onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
-      className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm text-gray-400"
+      className="flex items-center gap-2 p-2 md:px-3 md:py-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm text-gray-400"
     >
-      <Search size={14} />
-      <span>Search…</span>
-      <kbd className="flex items-center gap-0.5 text-xs text-gray-400 font-mono ml-1">⌘K</kbd>
+      <Search size={16} />
+      <span className="hidden md:inline">Search…</span>
+      <kbd className="hidden md:flex items-center gap-0.5 text-xs text-gray-400 font-mono ml-1">⌘K</kbd>
     </button>
   );
 }
