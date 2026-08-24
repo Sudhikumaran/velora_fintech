@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ArrowLeftRight, CreditCard, FileText, Menu,
@@ -12,6 +13,17 @@ const tabs = [
 
 export default function MobileTabBar({ onMore }) {
   const location = useLocation();
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setHidden(document.body.classList.contains('modal-open'));
+    sync();
+    const obs = new MutationObserver(sync);
+    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+
+  if (hidden) return null;
 
   return (
     <nav

@@ -212,6 +212,9 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
           )}
         </div>
       </div>
+      <button type="submit" className="btn-primary w-full min-h-12 text-base">
+        {isEdit ? 'Update Transaction' : 'Add Transaction'}
+      </button>
     </form>
   );
 }
@@ -536,12 +539,7 @@ export default function Transactions() {
         onClose={() => setModalOpen(false)}
         title={editTx ? 'Edit Transaction' : 'Add Transaction'}
         headerAction={
-          <button type="submit" form="transaction-form" className="btn-primary px-4 py-2 text-sm min-h-10">
-            {editTx ? 'Update' : 'Add'}
-          </button>
-        }
-        footer={
-          <button type="submit" form="transaction-form" className="btn-primary w-full min-h-11">
+          <button type="submit" form="transaction-form" className="btn-primary w-full min-h-12 text-base">
             {editTx ? 'Update Transaction' : 'Add Transaction'}
           </button>
         }
