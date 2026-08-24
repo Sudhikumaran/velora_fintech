@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, Palette, Globe, Download, LogOut, Check } from 'lucide-react';
+import { User, Lock, Palette, Globe, Download, LogOut, Check, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { CURRENCIES } from '../utils/constants';
@@ -8,6 +8,7 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 import PageHeader from '../components/ui/PageHeader';
 import AvatarUpload from '../components/ui/AvatarUpload';
+import { isNativeApp } from '../utils/native';
 
 const sections = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -206,6 +207,21 @@ export default function Settings() {
                     </div>
                     <Globe size={20} className="text-gray-400" />
                   </div>
+                  {isNativeApp() && (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                      <p className="font-medium text-gray-900 dark:text-white">App updates</p>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        The app loads the live website. After you push a change, reopen Velora or tap below.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => window.location.reload()}
+                        className="btn-secondary mt-3"
+                      >
+                        <RefreshCw size={15} /> Reload latest version
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

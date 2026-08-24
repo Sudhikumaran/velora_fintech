@@ -217,21 +217,25 @@ export default function Reports() {
             ) : (
               <div className="divide-y divide-gray-50 dark:divide-gray-800">
                 {filtered.map((tx) => (
-                  <div key={tx._id} className="flex items-center gap-3 px-5 py-3 list-row">
+                  <div key={tx._id} className="flex items-start gap-3 px-4 sm:px-5 py-3 list-row">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{tx.description || tx.category}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">
                         {formatDate(tx.date, 'short')} · {tx.account?.name || 'Account'}
                         {tx.category ? ` · ${tx.category}` : ''}
                       </p>
                     </div>
-                    <Badge variant={tx.type} size="xs">{tx.type}</Badge>
-                    <p className={`text-sm font-semibold shrink-0 ${
-                      tx.type === 'income' ? 'text-emerald-600' : tx.type === 'expense' ? 'text-red-600' : 'text-indigo-600'
-                    }`}>
-                      {tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''}
-                      {formatCurrency(tx.amount, user?.currency)}
-                    </p>
+                    <div className="text-right shrink-0">
+                      <p className={`text-sm font-semibold tabular-nums ${
+                        tx.type === 'income' ? 'text-emerald-600' : tx.type === 'expense' ? 'text-red-600' : 'text-indigo-600'
+                      }`}>
+                        {tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''}
+                        {formatCurrency(tx.amount, user?.currency)}
+                      </p>
+                      <div className="mt-1 flex justify-end">
+                        <Badge variant={tx.type} size="xs">{tx.type}</Badge>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>

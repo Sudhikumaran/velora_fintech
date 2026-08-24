@@ -4,11 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
     "build:native": "vite build --mode capacitor",
     "cap:sync": "npm run build:native && npx cap sync",
+    "cap:live": "node scripts/cap-live.mjs && npx cap sync android",
     "cap:android": "npm run cap:sync && npx cap open android",
     "cap:ios": "npm run cap:sync && npx cap open ios"
   },

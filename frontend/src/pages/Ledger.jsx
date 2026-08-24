@@ -260,7 +260,7 @@ function TrialBalanceView({ data, currency, onOpenAccount, search }) {
       </div>
 
       <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto table-scroll">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-800/60 text-xs font-semibold text-gray-400 uppercase tracking-wide">
@@ -343,7 +343,7 @@ function JournalView({ data, currency }) {
       </div>
 
       <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto table-scroll">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-800/60 text-xs font-semibold text-gray-400 uppercase tracking-wide">
@@ -444,7 +444,7 @@ function AccountLedgerView({ data, currency, onBack }) {
             description="This account has no entries in the selected period."
           />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto table-scroll">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-800/60 text-xs font-semibold text-gray-400 uppercase tracking-wide">

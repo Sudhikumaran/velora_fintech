@@ -1,7 +1,7 @@
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
-import { isNativeApp } from './utils/native';
+import { isNativeApp, usesHashRouter } from './utils/native';
 
 import AppLayout from './components/layout/AppLayout';
 import Login from './pages/auth/Login';
@@ -37,7 +37,7 @@ function PublicRoute({ children }) {
 }
 
 export default function App() {
-  const Router = isNativeApp() ? HashRouter : BrowserRouter;
+  const Router = usesHashRouter() ? HashRouter : BrowserRouter;
 
   return (
     <Router>

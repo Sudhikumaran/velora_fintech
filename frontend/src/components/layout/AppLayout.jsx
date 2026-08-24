@@ -40,7 +40,7 @@ export default function AppLayout() {
           theme={theme}
           onToggleTheme={toggleTheme}
         />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 relative pb-24 lg:pb-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6 relative pb-24 lg:pb-6">
           <div className="pointer-events-none absolute inset-0 auth-mesh opacity-60 dark:opacity-30" />
           <AnimatePresence mode="wait">
             <motion.div

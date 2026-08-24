@@ -98,7 +98,7 @@ export default function NotificationCenter() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97, y: -4 }}
               transition={{ duration: 0.15 }}
-              className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 z-50 overflow-hidden"
+              className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-1.5rem))] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 z-50 overflow-hidden"
               style={{ boxShadow: '0 16px 40px rgba(0,0,0,.12)' }}
             >
               <div className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 dark:border-gray-800">
@@ -135,7 +135,7 @@ export default function NotificationCenter() {
                             <p className="text-xs text-gray-400 mt-1">{n.time}</p>
                           </div>
                           <button onClick={() => dismiss(n.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-all shrink-0">
+                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-all shrink-0 sm:opacity-0 sm:group-hover:opacity-100">
                             <X size={13} className="text-gray-400" />
                           </button>
                         </div>

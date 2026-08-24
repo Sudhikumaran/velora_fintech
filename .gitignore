@@ -36,5 +36,5 @@ frontend/android/captures/
 frontend/android/local.properties
 *.apk
 *.aab
-*.ipa
+frontend/.capacitor-live
 

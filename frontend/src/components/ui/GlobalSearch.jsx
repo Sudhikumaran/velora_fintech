@@ -44,9 +44,14 @@ export default function GlobalSearch() {
         setOpen(true);
       }
       if (e.key === 'Escape') setOpen(false);
+      if (e.type === 'velora:search') setOpen(true);
     };
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('velora:search', handler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener('velora:search', handler);
+    };
   }, []);
 
   useEffect(() => {
@@ -186,7 +191,7 @@ export default function GlobalSearch() {
 export function SearchTrigger() {
   return (
     <button
-      onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
+      onClick={() => window.dispatchEvent(new Event('velora:search'))}
       className="flex items-center gap-2 p-2 md:px-3 md:py-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm text-gray-400"
     >
       <Search size={16} />

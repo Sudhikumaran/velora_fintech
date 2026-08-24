@@ -303,24 +303,22 @@ export default function Dashboard() {
           {dashboard.recentTransactions?.length > 0 ? (
             <div className="divide-y divide-gray-50 dark:divide-gray-800">
               {dashboard.recentTransactions.map((tx) => (
-                <div key={tx._id} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-gray-800/40 list-row">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                      tx.type === 'income' ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-red-50 dark:bg-red-900/20'
-                    }`}>
-                      {tx.type === 'income'
-                        ? <ArrowUpRight size={16} className="text-emerald-600" />
-                        : <ArrowDownRight size={16} className="text-red-500" />
-                      }
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[160px]">
-                        {tx.description || tx.category}
-                      </p>
-                      <p className="text-xs text-gray-400">{formatDate(tx.date, 'short')}</p>
-                    </div>
+                <div key={tx._id} className="flex items-center gap-3 px-4 sm:px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-gray-800/40 list-row">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    tx.type === 'income' ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-red-50 dark:bg-red-900/20'
+                  }`}>
+                    {tx.type === 'income'
+                      ? <ArrowUpRight size={16} className="text-emerald-600" />
+                      : <ArrowDownRight size={16} className="text-red-500" />
+                    }
                   </div>
-                  <p className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-red-500'}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                      {tx.description || tx.category}
+                    </p>
+                    <p className="text-xs text-gray-400">{formatDate(tx.date, 'short')}</p>
+                  </div>
+                  <p className={`text-sm font-bold shrink-0 tabular-nums ${tx.type === 'income' ? 'text-emerald-600' : 'text-red-500'}`}>
                     {tx.type === 'income' ? '+' : '−'}{formatCurrency(tx.amount, user?.currency)}
                   </p>
                 </div>

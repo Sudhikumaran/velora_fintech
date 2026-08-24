@@ -1,9 +1,9 @@
 import axios from 'axios';
-import { isNativeApp, NATIVE_API_URL } from './native';
+import { isNativeApp, NATIVE_API_URL, isHostedWebOrigin, loginRedirectPath } from './native';
 
 /**
  * API base: always ends with `/api` (no trailing slash).
- * Native (Capacitor) always talks to the hosted backend.
+ * Hosted WebView uses the same-origin Vercel proxy; bundled native hits the API host.
  */
 export function resolveApiBaseURL() {
   const raw = import.meta.env.VITE_API_URL;
@@ -12,6 +12,7 @@ export function resolveApiBaseURL() {
     if (trimmed.endsWith('/api')) return trimmed;
     return `${trimmed}/api`;
   }
+  if (isHostedWebOrigin()) return '/api';
   if (isNativeApp()) return NATIVE_API_URL;
   return '/api';
 }
@@ -25,7 +26,7 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   config.baseURL = resolveApiBaseURL();
-  if (isNativeApp()) {
+  if (isNativeApp() && !isHostedWebOrigin()) {
     config.withCredentials = false;
   }
   const token = localStorage.getItem('velora_token');
@@ -45,7 +46,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !isAuthCall) {
       localStorage.removeItem('velora_token');
       localStorage.removeItem('velora_user');
-      window.location.href = isNativeApp() ? '#/login' : '/login';
+      window.location.href = loginRedirectPath();
     }
     return Promise.reject(error);
   }

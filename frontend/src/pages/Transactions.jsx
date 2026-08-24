@@ -68,7 +68,7 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="label">Amount</label>
           <input type="number" step="0.01" min="0.01" className="input-field" placeholder="0.00"
@@ -115,9 +115,9 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
               <option value="__new__">+ Create new category</option>
             </select>
             {showNewCategory && (
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 mt-2">
                 <input
-                  className="input-field flex-1"
+                  className="input-field flex-1 min-w-[10rem]"
                   placeholder="New category name..."
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
@@ -194,21 +194,21 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
             ))}
           </div>
         )}
-        <div className="col-span-2 flex items-center gap-3">
+        <div className="col-span-1 sm:col-span-2 flex flex-col sm:flex-row sm:items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
             <input type="checkbox" checked={!!form.isRecurring}
               onChange={(e) => setForm({ ...form, isRecurring: e.target.checked })} />
             Repeat this transaction
           </label>
           {form.isRecurring && (
-            <>
-              <select className="input-field w-36" value={form.frequency}
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <select className="input-field sm:w-36" value={form.frequency}
                 onChange={(e) => setForm({ ...form, frequency: e.target.value })}>
                 {FREQUENCIES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
               </select>
-              <input type="date" className="input-field w-40" value={form.nextRunDate}
+              <input type="date" className="input-field sm:w-40" value={form.nextRunDate}
                 onChange={(e) => setForm({ ...form, nextRunDate: e.target.value })} />
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -290,14 +290,14 @@ export default function Transactions() {
           <div className="flex gap-2">
             <button
               onClick={() => exportToCSV(transactionsToCSV(transactions), `transactions-${new Date().toISOString().split('T')[0]}.csv`)}
-              className="btn-secondary"
+              className="btn-secondary px-3"
               title="Export CSV"
             >
               <Download size={16} />
             </button>
             <button
               onClick={() => fileRef.current?.click()}
-              className="btn-secondary"
+              className="btn-secondary px-3"
               title="Import CSV"
             >
               <Upload size={16} />
@@ -312,8 +312,10 @@ export default function Transactions() {
                 e.target.value = '';
                 fetchAccounts();
               }} />
-            <button onClick={openCreate} className="btn-primary">
-              <Plus size={16} /> Add Transaction
+            <button onClick={openCreate} className="btn-primary flex-1 lg:flex-none">
+              <Plus size={16} />
+              <span className="lg:hidden">Add</span>
+              <span className="hidden lg:inline">Add Transaction</span>
             </button>
           </div>
         }
@@ -334,9 +336,10 @@ export default function Transactions() {
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`btn-secondary flex items-center gap-2 ${showFilters ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-200' : ''}`}
+            className={`btn-secondary shrink-0 px-3 ${showFilters ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-200' : ''}`}
           >
-            <Filter size={16} /> Filters
+            <Filter size={16} />
+            <span className="hidden sm:inline">Filters</span>
           </button>
         </div>
 
@@ -382,91 +385,140 @@ export default function Transactions() {
           />
         ) : (
           <div className="divide-y divide-gray-50 dark:divide-gray-800">
-            {/* Header row */}
-            <div className="flex items-center gap-4 px-6 py-2 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            <div className="hidden lg:flex items-center gap-4 px-6 py-2 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wide">
               <div className="w-9 shrink-0" />
               <div className="flex-1">Transaction</div>
               <div className="w-28 text-right">Amount</div>
               <div className="w-36 text-right">Balance</div>
               <div className="w-16" />
             </div>
-            {transactions.map((tx, i) => (
+            {transactions.map((tx, i) => {
+              const amountClass = tx.type === 'income' ? 'text-green-600' : tx.type === 'expense' ? 'text-red-600' : 'text-indigo-600';
+              const amountLabel = `${tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : ''}${formatCurrency(tx.amount, user?.currency)}`;
+              const balanceLabel = formatCurrency(
+                tx.runningBalance ?? accounts.find((a) => a._id === (tx.account?._id || tx.account))?.balance,
+                user?.currency
+              );
+              const iconWrap = tx.type === 'income'
+                ? 'bg-green-50 dark:bg-green-900/20'
+                : tx.type === 'expense'
+                  ? 'bg-red-50 dark:bg-red-900/20'
+                  : 'bg-indigo-50 dark:bg-indigo-900/20';
+
+              return (
               <motion.div
                 key={tx._id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.03 }}
-                className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group list-row"
+                className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group list-row"
               >
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  tx.type === 'income' ? 'bg-green-50 dark:bg-green-900/20' :
-                  tx.type === 'expense' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-indigo-50 dark:bg-indigo-900/20'
-                }`}>
-                  {typeIcons[tx.type]}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                    {tx.description || tx.category}
-                  </p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-gray-500">{formatDate(tx.date, 'short')}</span>
-                    <span className="text-xs text-gray-400">•</span>
-                    <span className="text-xs text-gray-500">{tx.account?.name}</span>
-                    {tx.category && (
-                      <>
-                        <span className="text-xs text-gray-400">•</span>
-                        <Badge variant={typeColors[tx.type]} size="xs">{tx.category}</Badge>
-                      </>
-                    )}
-                    {tx.receiptUrl && (
-                      <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-0.5" title="View receipt"
-                        onClick={(e) => e.stopPropagation()}>
-                        <Paperclip size={11} /> Receipt
-                      </a>
-                    )}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openEdit(tx)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openEdit(tx); }}
+                  className="lg:hidden w-full text-left flex items-start gap-3 px-4 py-3 cursor-pointer"
+                >
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${iconWrap}`}>
+                    {typeIcons[tx.type]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {tx.description || tx.category}
+                      </p>
+                      <p className={`text-sm font-semibold shrink-0 tabular-nums ${amountClass}`}>
+                        {amountLabel}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <p className="text-xs text-gray-500 truncate">
+                        {formatDate(tx.date, 'short')}
+                        {tx.account?.name ? ` · ${tx.account.name}` : ''}
+                      </p>
+                      <p className="text-xs text-gray-400 shrink-0 tabular-nums">Bal {balanceLabel}</p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      {tx.category && <Badge variant={typeColors[tx.type]} size="xs">{tx.category}</Badge>}
+                      {tx.receiptUrl && (
+                        <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-indigo-500 flex items-center gap-0.5"
+                          onClick={(e) => e.stopPropagation()}>
+                          <Paperclip size={11} /> Receipt
+                        </a>
+                      )}
+                      <span className="flex-1" />
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); setDeleteId(tx._id); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setDeleteId(tx._id); } }}
+                        className="p-1.5 -mr-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                      >
+                        <Trash2 size={13} className="text-red-500" />
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="w-28 text-right shrink-0">
-                  <p className={`text-sm font-semibold ${
-                    tx.type === 'income' ? 'text-green-600' : tx.type === 'expense' ? 'text-red-600' : 'text-indigo-600'
-                  }`}>
-                    {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : ''}
-                    {formatCurrency(tx.amount, user?.currency)}
-                  </p>
-                </div>
-
-                {/* Running Balance per account */}
-                <div className="w-36 text-right shrink-0">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">
-                    {formatCurrency(tx.runningBalance ?? accounts.find((a) => a._id === (tx.account?._id || tx.account))?.balance, user?.currency)}
-                  </p>
-                  <p className="text-xs text-gray-400 truncate">{tx.account?.name}</p>
-                </div>
-
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openEdit(tx)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
-                    <Edit3 size={13} className="text-gray-500" />
-                  </button>
-                  <button onClick={async () => { await archiveTransaction(tx._id); fetchAccounts(); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
-                    <Archive size={13} className="text-gray-500" />
-                  </button>
-                  <button onClick={() => setDeleteId(tx._id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
-                    <Trash2 size={13} className="text-red-500" />
-                  </button>
+                <div className="hidden lg:flex items-center gap-4 px-6 py-4">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconWrap}`}>
+                    {typeIcons[tx.type]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {tx.description || tx.category}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5 min-w-0">
+                      <span className="text-xs text-gray-500 shrink-0">{formatDate(tx.date, 'short')}</span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-500 truncate">{tx.account?.name}</span>
+                      {tx.category && (
+                        <>
+                          <span className="text-xs text-gray-400">•</span>
+                          <Badge variant={typeColors[tx.type]} size="xs">{tx.category}</Badge>
+                        </>
+                      )}
+                      {tx.receiptUrl && (
+                        <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-0.5" title="View receipt"
+                          onClick={(e) => e.stopPropagation()}>
+                          <Paperclip size={11} /> Receipt
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div className="w-28 text-right shrink-0">
+                    <p className={`text-sm font-semibold tabular-nums ${amountClass}`}>{amountLabel}</p>
+                  </div>
+                  <div className="w-36 text-right shrink-0">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">{balanceLabel}</p>
+                    <p className="text-xs text-gray-400 truncate">{tx.account?.name}</p>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => openEdit(tx)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                      <Edit3 size={13} className="text-gray-500" />
+                    </button>
+                    <button onClick={async () => { await archiveTransaction(tx._id); fetchAccounts(); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                      <Archive size={13} className="text-gray-500" />
+                    </button>
+                    <button onClick={() => setDeleteId(tx._id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
+                      <Trash2 size={13} className="text-red-500" />
+                    </button>
+                  </div>
                 </div>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {/* Pagination */}
         {pagination.pages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-gray-800">
-            <p className="text-sm text-gray-500">
-              Showing {((page - 1) * pagination.limit) + 1}–{Math.min(page * pagination.limit, pagination.total)} of {pagination.total}
+          <div className="flex items-center justify-between gap-2 px-4 lg:px-6 py-3 lg:py-4 border-t border-gray-100 dark:border-gray-800">
+            <p className="text-xs sm:text-sm text-gray-500 truncate">
+              {((page - 1) * pagination.limit) + 1}–{Math.min(page * pagination.limit, pagination.total)} of {pagination.total}
             </p>
             <div className="flex gap-2">
               <button onClick={() => setPage((p) => p - 1)} disabled={page === 1} className="btn-secondary px-3 py-1.5 disabled:opacity-40">

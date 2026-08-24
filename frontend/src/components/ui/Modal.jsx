@@ -14,7 +14,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <motion.div
             {...modalOverlay}
             onClick={onClose}
@@ -22,10 +22,13 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
           />
           <motion.div
             {...modalPanel}
-            className={`relative w-full ${sizes[size]} bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 max-h-[90vh] overflow-hidden flex flex-col`}
-            style={{ boxShadow: '0 24px 80px rgba(99,102,241,.16), 0 8px 24px rgba(0,0,0,.08)' }}
+            className={`relative w-full ${sizes[size]} bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl border border-gray-100 dark:border-gray-800 max-h-[88vh] overflow-hidden flex flex-col`}
+            style={{
+              boxShadow: '0 24px 80px rgba(99,102,241,.16), 0 8px 24px rgba(0,0,0,.08)',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+            }}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
               <h2 className="text-base font-bold text-gray-900 dark:text-white">{title}</h2>
               <motion.button
                 whileHover={{ rotate: 90, scale: 1.08 }}
@@ -36,7 +39,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
                 <X size={16} />
               </motion.button>
             </div>
-            <div className="overflow-y-auto flex-1 px-6 py-5">{children}</div>
+            <div className="overflow-y-auto flex-1 px-5 sm:px-6 py-5">{children}</div>
           </motion.div>
         </div>
       )}

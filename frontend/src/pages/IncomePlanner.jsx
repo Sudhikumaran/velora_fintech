@@ -361,7 +361,7 @@ export default function IncomePlanner() {
                     }
                   />
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto table-scroll">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-gray-50 dark:bg-gray-800/60 text-xs font-semibold text-gray-400 uppercase tracking-wide">

@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useLocation } from 'react-router-dom';
 import { SearchTrigger } from '../ui/GlobalSearch';
 import NotificationCenter from '../ui/NotificationCenter';
+import { isNativeApp } from '../../utils/native';
 
 const pageTitles = {
   '/': 'Dashboard',
@@ -37,12 +38,14 @@ export default function Topbar({ onMenuClick, theme, onToggleTheme }) {
         className="absolute left-0 top-0 h-0.5 origin-left bg-gradient-to-r from-indigo-500 via-violet-500 to-transparent w-full"
       />
       <div className="flex items-center gap-3">
+        {!isNativeApp() && (
         <button
           onClick={onMenuClick}
           className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors lg:hidden"
         >
           <Menu size={19} className="text-gray-600 dark:text-gray-400" />
         </button>
+        )}
         <AnimatePresence mode="wait">
           <motion.h2
             key={title}
@@ -50,7 +53,7 @@ export default function Topbar({ onMenuClick, theme, onToggleTheme }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.22 }}
-            className="text-base font-bold text-gray-900 dark:text-white"
+            className="text-base font-bold text-gray-900 dark:text-white truncate max-w-[46vw]"
           >
             {title}
           </motion.h2>
