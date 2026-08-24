@@ -3,7 +3,6 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
-import QuickAdd from '../ui/QuickAdd';
 import GlobalSearch from '../ui/GlobalSearch';
 import Onboarding from '../ui/Onboarding';
 import { useOnboarding } from '../../hooks/useOnboarding';
@@ -52,7 +51,6 @@ export default function AppLayout() {
             </motion.div>
           </AnimatePresence>
         </main>
-        <QuickAdd />
         <GlobalSearch />
         {showOnboarding && <Onboarding onComplete={completeOnboarding} />}
       </div>
