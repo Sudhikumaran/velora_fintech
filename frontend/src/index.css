@@ -258,6 +258,11 @@ html.native-app {
   text-size-adjust: 100%;
 }
 
+body.modal-open .mobile-tab-bar {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

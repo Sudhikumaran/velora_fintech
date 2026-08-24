@@ -49,7 +49,7 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form id="transaction-form" onSubmit={onSubmit} className="space-y-4">
       {/* Type Tabs */}
       <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
         {['income', 'expense', 'transfer'].map((t) => (
@@ -212,7 +212,6 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
           )}
         </div>
       </div>
-      <button type="submit" className="btn-primary w-full">{isEdit ? 'Update Transaction' : 'Add Transaction'}</button>
     </form>
   );
 }
@@ -532,7 +531,16 @@ export default function Transactions() {
         )}
       </div>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editTx ? 'Edit Transaction' : 'Add Transaction'}>
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editTx ? 'Edit Transaction' : 'Add Transaction'}
+        footer={
+          <button type="submit" form="transaction-form" className="btn-primary w-full">
+            {editTx ? 'Update Transaction' : 'Add Transaction'}
+          </button>
+        }
+      >
         <TransactionForm form={form} setForm={setForm} onSubmit={handleSubmit} accounts={accounts} isEdit={!!editTx} />
       </Modal>
 
