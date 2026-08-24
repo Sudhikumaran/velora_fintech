@@ -61,8 +61,8 @@ function Stat({ label, value, color }) {
 function MoneyCell({ amount, currency, tone }) {
   if (!amount) return <span className="text-gray-300 dark:text-gray-700">—</span>;
   const color =
-    tone === 'debit' ? 'text-emerald-600 dark:text-emerald-400' :
-    tone === 'credit' ? 'text-red-600 dark:text-red-400' :
+    tone === 'in' ? 'text-emerald-600 dark:text-emerald-400' :
+    tone === 'out' ? 'text-red-600 dark:text-red-400' :
     'text-gray-900 dark:text-white';
   return <span className={`font-semibold tabular-nums ${color}`}>{formatCurrency(amount, currency)}</span>;
 }
@@ -103,7 +103,7 @@ export default function Ledger() {
     <div className="space-y-5">
       <PageHeader
         title="Ledger"
-        subtitle="Double-entry books, trial balance, and running account balances"
+        subtitle="Credit is money in, debit is money out — with running balances"
         action={
           <button
             onClick={() => exportToCSV(ledgerToCSV(data), filename)}
@@ -205,7 +205,7 @@ export default function Ledger() {
             title={filters.view === 'ledger' ? 'Choose an account' : 'No ledger data'}
             description={
               filters.view === 'ledger'
-                ? 'Select an account to open its debit and credit register.'
+                ? 'Select an account to open its credit (in) and debit (out) register.'
                 : 'Add accounts and transactions to build your books.'
             }
           />
@@ -254,8 +254,8 @@ function TrialBalanceView({ data, currency, onOpenAccount, search }) {
     <>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Stat label="Opening" value={formatCurrency(totals.opening, currency)} />
-        <Stat label="Total Debit" value={formatCurrency(totals.debit, currency)} color="text-emerald-600" />
-        <Stat label="Total Credit" value={formatCurrency(totals.credit, currency)} color="text-red-600" />
+        <Stat label="Total Debit (out)" value={formatCurrency(totals.credit, currency)} color="text-red-600" />
+        <Stat label="Total Credit (in)" value={formatCurrency(totals.debit, currency)} color="text-emerald-600" />
         <Stat label="Closing" value={formatCurrency(totals.closing, currency)} />
       </div>
 
@@ -267,8 +267,8 @@ function TrialBalanceView({ data, currency, onOpenAccount, search }) {
                 <th className="text-left px-5 py-3">Account</th>
                 <th className="text-left px-3 py-3">Type</th>
                 <th className="text-right px-3 py-3">Opening</th>
-                <th className="text-right px-3 py-3">Debit</th>
-                <th className="text-right px-3 py-3">Credit</th>
+                <th className="text-right px-3 py-3">Debit (out)</th>
+                <th className="text-right px-3 py-3">Credit (in)</th>
                 <th className="text-right px-5 py-3">Closing</th>
               </tr>
             </thead>
@@ -296,10 +296,10 @@ function TrialBalanceView({ data, currency, onOpenAccount, search }) {
                     {formatCurrency(row.openingBalance, currency)}
                   </td>
                   <td className="px-3 py-3.5 text-right">
-                    <MoneyCell amount={row.totalDebit} currency={currency} tone="debit" />
+                    <MoneyCell amount={row.totalCredit} currency={currency} tone="out" />
                   </td>
                   <td className="px-3 py-3.5 text-right">
-                    <MoneyCell amount={row.totalCredit} currency={currency} tone="credit" />
+                    <MoneyCell amount={row.totalDebit} currency={currency} tone="in" />
                   </td>
                   <td className="px-5 py-3.5 text-right font-bold tabular-nums text-gray-900 dark:text-white">
                     {formatCurrency(row.closingBalance, currency)}
@@ -311,8 +311,8 @@ function TrialBalanceView({ data, currency, onOpenAccount, search }) {
               <tr className="bg-gray-50 dark:bg-gray-800/60 font-semibold text-gray-900 dark:text-white">
                 <td className="px-5 py-3" colSpan={2}>Totals</td>
                 <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(totals.opening, currency)}</td>
-                <td className="px-3 py-3 text-right tabular-nums text-emerald-600">{formatCurrency(totals.debit, currency)}</td>
                 <td className="px-3 py-3 text-right tabular-nums text-red-600">{formatCurrency(totals.credit, currency)}</td>
+                <td className="px-3 py-3 text-right tabular-nums text-emerald-600">{formatCurrency(totals.debit, currency)}</td>
                 <td className="px-5 py-3 text-right tabular-nums">{formatCurrency(totals.closing, currency)}</td>
               </tr>
             </tfoot>
@@ -338,8 +338,8 @@ function JournalView({ data, currency }) {
     <>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <Stat label="Vouchers" value={data.voucherCount} />
-        <Stat label="Total Debit" value={formatCurrency(data.totalDebit, currency)} color="text-emerald-600" />
-        <Stat label="Total Credit" value={formatCurrency(data.totalCredit, currency)} color="text-red-600" />
+        <Stat label="Total Debit (out)" value={formatCurrency(data.totalCredit, currency)} color="text-red-600" />
+        <Stat label="Total Credit (in)" value={formatCurrency(data.totalDebit, currency)} color="text-emerald-600" />
       </div>
 
       <div className="card overflow-hidden">
@@ -350,8 +350,8 @@ function JournalView({ data, currency }) {
                 <th className="text-left px-5 py-3">Date</th>
                 <th className="text-left px-3 py-3">Particulars</th>
                 <th className="text-left px-3 py-3">Account</th>
-                <th className="text-right px-3 py-3">Debit</th>
-                <th className="text-right px-5 py-3">Credit</th>
+                <th className="text-right px-3 py-3">Debit (out)</th>
+                <th className="text-right px-5 py-3">Credit (in)</th>
               </tr>
             </thead>
             <tbody>
@@ -379,10 +379,10 @@ function JournalView({ data, currency }) {
                       {row.accountName}
                     </td>
                     <td className="px-3 py-2.5 text-right">
-                      <MoneyCell amount={row.debit} currency={currency} tone="debit" />
+                      <MoneyCell amount={row.credit} currency={currency} tone="out" />
                     </td>
                     <td className="px-5 py-2.5 text-right">
-                      <MoneyCell amount={row.credit} currency={currency} tone="credit" />
+                      <MoneyCell amount={row.debit} currency={currency} tone="in" />
                     </td>
                   </tr>
                 );
@@ -391,8 +391,8 @@ function JournalView({ data, currency }) {
             <tfoot>
               <tr className="bg-gray-50 dark:bg-gray-800/60 font-semibold">
                 <td className="px-5 py-3" colSpan={3}>Totals</td>
-                <td className="px-3 py-3 text-right tabular-nums text-emerald-600">{formatCurrency(data.totalDebit, currency)}</td>
-                <td className="px-5 py-3 text-right tabular-nums text-red-600">{formatCurrency(data.totalCredit, currency)}</td>
+                <td className="px-3 py-3 text-right tabular-nums text-red-600">{formatCurrency(data.totalCredit, currency)}</td>
+                <td className="px-5 py-3 text-right tabular-nums text-emerald-600">{formatCurrency(data.totalDebit, currency)}</td>
               </tr>
             </tfoot>
           </table>
@@ -408,14 +408,14 @@ function AccountLedgerView({ data, currency, onBack }) {
 
   return (
     <>
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="btn-secondary px-3 py-2">
-          <ArrowLeft size={15} /> Trial Balance
+      <div className="flex items-center gap-3 min-w-0">
+        <button onClick={onBack} className="btn-secondary px-3 py-2 shrink-0">
+          <ArrowLeft size={15} /> <span className="hidden sm:inline">Trial Balance</span>
         </button>
-        <div className="flex items-center gap-2.5">
-          <span className="w-3 h-3 rounded-full" style={{ background: account?.color }} />
-          <div>
-            <p className="font-semibold text-gray-900 dark:text-white leading-tight">{account?.name}</p>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="w-3 h-3 rounded-full shrink-0" style={{ background: account?.color }} />
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 dark:text-white leading-tight truncate">{account?.name}</p>
             <p className="text-xs text-gray-400">{accountTypeLabel(account?.type)}</p>
           </div>
         </div>
@@ -424,14 +424,14 @@ function AccountLedgerView({ data, currency, onBack }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Stat label="Opening" value={formatCurrency(data.openingBalance, currency)} />
         <Stat
-          label="Debit (in)"
-          value={formatCurrency(data.totalDebit, currency)}
-          color="text-emerald-600"
-        />
-        <Stat
-          label="Credit (out)"
+          label="Debit (out)"
           value={formatCurrency(data.totalCredit, currency)}
           color="text-red-600"
+        />
+        <Stat
+          label="Credit (in)"
+          value={formatCurrency(data.totalDebit, currency)}
+          color="text-emerald-600"
         />
         <Stat label="Closing" value={formatCurrency(data.closingBalance, currency)} />
       </div>
@@ -444,75 +444,120 @@ function AccountLedgerView({ data, currency, onBack }) {
             description="This account has no entries in the selected period."
           />
         ) : (
-          <div className="overflow-x-auto table-scroll">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-800/60 text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  <th className="text-left px-5 py-3">Date</th>
-                  <th className="text-left px-3 py-3">Particulars</th>
-                  <th className="text-left px-3 py-3">Contra</th>
-                  <th className="text-right px-3 py-3">Debit</th>
-                  <th className="text-right px-3 py-3">Credit</th>
-                  <th className="text-right px-5 py-3">Balance</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                <tr className="bg-indigo-50/40 dark:bg-indigo-900/10">
-                  <td className="px-5 py-2.5 text-xs text-gray-400" colSpan={3}>Opening balance</td>
-                  <td className="px-3 py-2.5" />
-                  <td className="px-3 py-2.5" />
-                  <td className="px-5 py-2.5 text-right font-semibold tabular-nums text-gray-900 dark:text-white">
-                    {formatCurrency(data.openingBalance, currency)}
-                  </td>
-                </tr>
-                {entries.map((row, i) => (
-                  <motion.tr
-                    key={row._id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: i * 0.02 }}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                  >
-                    <td className="px-5 py-3 text-gray-500 whitespace-nowrap">{formatDate(row.date, 'short')}</td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {row.type === 'income' ? (
-                          <ArrowUpRight size={14} className="text-emerald-500 shrink-0" />
-                        ) : row.type === 'expense' ? (
-                          <ArrowDownRight size={14} className="text-red-500 shrink-0" />
-                        ) : (
-                          <BookOpen size={14} className="text-indigo-500 shrink-0" />
-                        )}
-                        <span className="font-medium text-gray-900 dark:text-white truncate">{row.description}</span>
-                      </div>
+          <>
+            <div className="lg:hidden divide-y divide-gray-50 dark:divide-gray-800">
+              <div className="px-4 py-2.5 bg-indigo-50/40 dark:bg-indigo-900/10 flex items-center justify-between">
+                <p className="text-xs text-gray-400">Opening balance</p>
+                <p className="text-sm font-semibold tabular-nums">{formatCurrency(data.openingBalance, currency)}</p>
+              </div>
+              {entries.map((row) => (
+                <div key={row._id} className="px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white break-words">
+                        {row.description}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {formatDate(row.date, 'short')}
+                        {row.contra ? ` · ${row.contra}` : ''}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {row.debit ? (
+                        <p className="text-sm font-semibold tabular-nums text-emerald-600">
+                          +{formatCurrency(row.debit, currency)}
+                        </p>
+                      ) : (
+                        <p className="text-sm font-semibold tabular-nums text-red-600">
+                          −{formatCurrency(row.credit, currency)}
+                        </p>
+                      )}
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        {row.debit ? 'Credit' : 'Debit'}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1.5 text-right tabular-nums">
+                    Bal {formatCurrency(row.balance, currency)}
+                  </p>
+                </div>
+              ))}
+              <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/60 flex items-center justify-between">
+                <p className="text-sm font-semibold">Closing</p>
+                <p className="text-sm font-bold tabular-nums">{formatCurrency(data.closingBalance, currency)}</p>
+              </div>
+            </div>
+
+            <div className="hidden lg:block overflow-x-auto table-scroll">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-gray-800/60 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                    <th className="text-left px-5 py-3">Date</th>
+                    <th className="text-left px-3 py-3">Particulars</th>
+                    <th className="text-left px-3 py-3">Contra</th>
+                    <th className="text-right px-3 py-3">Debit (out)</th>
+                    <th className="text-right px-3 py-3">Credit (in)</th>
+                    <th className="text-right px-5 py-3">Balance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                  <tr className="bg-indigo-50/40 dark:bg-indigo-900/10">
+                    <td className="px-5 py-2.5 text-xs text-gray-400" colSpan={3}>Opening balance</td>
+                    <td className="px-3 py-2.5" />
+                    <td className="px-3 py-2.5" />
+                    <td className="px-5 py-2.5 text-right font-semibold tabular-nums text-gray-900 dark:text-white">
+                      {formatCurrency(data.openingBalance, currency)}
                     </td>
-                    <td className="px-3 py-3">
-                      <Badge variant={typeBadge[row.type] || 'default'} size="xs">{row.contra}</Badge>
+                  </tr>
+                  {entries.map((row, i) => (
+                    <motion.tr
+                      key={row._id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: i * 0.02 }}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    >
+                      <td className="px-5 py-3 text-gray-500 whitespace-nowrap">{formatDate(row.date, 'short')}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {row.type === 'income' ? (
+                            <ArrowUpRight size={14} className="text-emerald-500 shrink-0" />
+                          ) : row.type === 'expense' ? (
+                            <ArrowDownRight size={14} className="text-red-500 shrink-0" />
+                          ) : (
+                            <BookOpen size={14} className="text-indigo-500 shrink-0" />
+                          )}
+                          <span className="font-medium text-gray-900 dark:text-white">{row.description}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <Badge variant={typeBadge[row.type] || 'default'} size="xs">{row.contra}</Badge>
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <MoneyCell amount={row.credit} currency={currency} tone="out" />
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <MoneyCell amount={row.debit} currency={currency} tone="in" />
+                      </td>
+                      <td className="px-5 py-3 text-right font-bold tabular-nums text-gray-900 dark:text-white">
+                        {formatCurrency(row.balance, currency)}
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-50 dark:bg-gray-800/60 font-semibold">
+                    <td className="px-5 py-3" colSpan={3}>Closing balance</td>
+                    <td className="px-3 py-3 text-right tabular-nums text-red-600">{formatCurrency(data.totalCredit, currency)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums text-emerald-600">{formatCurrency(data.totalDebit, currency)}</td>
+                    <td className="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-white">
+                      {formatCurrency(data.closingBalance, currency)}
                     </td>
-                    <td className="px-3 py-3 text-right">
-                      <MoneyCell amount={row.debit} currency={currency} tone="debit" />
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      <MoneyCell amount={row.credit} currency={currency} tone="credit" />
-                    </td>
-                    <td className="px-5 py-3 text-right font-bold tabular-nums text-gray-900 dark:text-white">
-                      {formatCurrency(row.balance, currency)}
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-gray-50 dark:bg-gray-800/60 font-semibold">
-                  <td className="px-5 py-3" colSpan={3}>Closing balance</td>
-                  <td className="px-3 py-3 text-right tabular-nums text-emerald-600">{formatCurrency(data.totalDebit, currency)}</td>
-                  <td className="px-3 py-3 text-right tabular-nums text-red-600">{formatCurrency(data.totalCredit, currency)}</td>
-                  <td className="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-white">
-                    {formatCurrency(data.closingBalance, currency)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </>

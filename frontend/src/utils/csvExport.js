@@ -53,8 +53,8 @@ export function ledgerToCSV(data) {
       Account: row.account?.name || '',
       Type: row.account?.type || '',
       'Opening Balance': row.openingBalance,
-      Debit: row.totalDebit,
-      Credit: row.totalCredit,
+      Debit: row.totalCredit,
+      Credit: row.totalDebit,
       'Closing Balance': row.closingBalance,
       Entries: row.entryCount,
     }));
@@ -66,8 +66,8 @@ export function ledgerToCSV(data) {
       Particulars: row.description || '',
       Account: row.accountName || '',
       Contra: row.contra || '',
-      Debit: row.debit || '',
-      Credit: row.credit || '',
+      Debit: row.credit || '',
+      Credit: row.debit || '',
       Type: row.type || '',
     }));
   }
@@ -77,8 +77,8 @@ export function ledgerToCSV(data) {
     Particulars: row.description || '',
     Contra: row.contra || '',
     Type: row.type || '',
-    Debit: row.debit || '',
-    Credit: row.credit || '',
+    Debit: row.credit || '',
+    Credit: row.debit || '',
     Balance: row.balance,
   }));
 }
