@@ -1,7 +1,7 @@
 import Transaction from '../models/Transaction.js';
 import Account from '../models/Account.js';
 import { successResponse, errorResponse, paginatedResponse } from '../utils/apiResponse.js';
-import { applyBalanceChange, createUserTransaction, attachRunningBalances, alreadyPostedSource, isSameCalendarDay } from '../utils/money.js';
+import { applyBalanceChange, createUserTransaction, attachRunningBalances, alreadyPostedSource, isSameCalendarDay, repairAutoPostedTransactions } from '../utils/money.js';
 import { addFrequency, isDueOnOrBefore } from '../utils/recurrence.js';
 
 export const getTransactions = async (req, res, next) => {
@@ -241,6 +241,17 @@ export const postRecurringDue = async (req, res, next) => {
     }
 
     successResponse(res, { posted: posted.length, data: posted }, 'Recurring transactions posted.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const repairBalances = async (req, res, next) => {
+  try {
+    const result = await repairAutoPostedTransactions(req.user._id);
+    successResponse(res, result, result.removed
+      ? `Removed ${result.removed} extra auto-posted transactions and restored balances.`
+      : 'No extra auto-posted transactions found.');
   } catch (error) {
     next(error);
   }

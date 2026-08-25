@@ -121,6 +121,17 @@ export const useTransactionStore = create((set, get) => ({
     }
   },
 
+  repairBalances: async () => {
+    try {
+      const { data } = await api.post('/transactions/repair-balances', {}, { timeout: 60000 });
+      toast.success(data.message || 'Account balances restored');
+      return data.data;
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Could not restore balances');
+      return null;
+    }
+  },
+
   postRecurring: async ({ silent } = {}) => {
     try {
       const { data } = await api.post('/transactions/post-recurring');

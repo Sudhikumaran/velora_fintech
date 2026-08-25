@@ -1,5 +1,7 @@
 import Account from '../models/Account.js';
 import Transaction from '../models/Transaction.js';
+import Subscription from '../models/Subscription.js';
+import { addFrequency, isDueOnOrBefore } from './recurrence.js';
 
 export function normalizeSplits(splits) {
   if (!Array.isArray(splits)) return [];
@@ -159,4 +161,116 @@ export async function attachRunningBalances(userId, pageTxs) {
     obj.runningBalance = afterById[String(tx._id)];
     return obj;
   });
+}
+
+function dayKey(date) {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+/**
+ * Remove extra auto-posted copies (recurring/subscription) created after the
+ * 24 Aug 2026 auto-post bug, plus same-day duplicates, and put the money back.
+ */
+export async function repairAutoPostedTransactions(userId) {
+  const cutoff = new Date('2026-08-23T18:30:00.000Z');
+  const toRemove = new Map();
+
+  const auto = await Transaction.find({
+    user: userId,
+    isArchived: false,
+    source: { $in: ['recurring', 'subscription'] },
+  }).sort({ createdAt: 1 });
+
+  const groups = new Map();
+  for (const tx of auto) {
+    const key = `${tx.source}|${tx.sourceId || ''}|${dayKey(tx.date)}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(tx);
+  }
+  for (const list of groups.values()) {
+    list.slice(1).forEach((tx) => toRemove.set(String(tx._id), tx));
+  }
+
+  const templates = await Transaction.find({
+    user: userId,
+    isRecurring: true,
+    isArchived: false,
+  }).select('_id date nextRunDate frequency');
+
+  const templateById = Object.fromEntries(templates.map((t) => [String(t._id), t]));
+  for (const tx of auto) {
+    if (tx.source !== 'recurring' || !tx.sourceId) continue;
+    const tpl = templateById[String(tx.sourceId)];
+    if (tpl && isSameCalendarDay(tpl.date, tx.date)) toRemove.set(String(tx._id), tx);
+  }
+
+  for (const tx of auto) {
+    if (tx.createdAt && tx.createdAt >= cutoff) toRemove.set(String(tx._id), tx);
+  }
+
+  let removed = 0;
+  const balanceInc = new Map();
+  const bump = (id, delta) => {
+    if (!id || !Number.isFinite(delta) || delta === 0) return;
+    const key = String(id);
+    balanceInc.set(key, (balanceInc.get(key) || 0) + delta);
+  };
+  for (const tx of toRemove.values()) {
+    const amt = Number(tx.amount);
+    if (!Number.isFinite(amt)) continue;
+    if (tx.type === 'income') bump(tx.account, -amt);
+    else if (tx.type === 'expense') bump(tx.account, amt);
+    else if (tx.type === 'transfer') {
+      bump(tx.account, amt);
+      bump(tx.toAccount, -amt);
+    }
+  }
+  for (const [accountId, delta] of balanceInc) {
+    await Account.updateOne({ _id: accountId }, { $inc: { balance: delta } });
+  }
+  const ids = [...toRemove.keys()];
+  if (ids.length) {
+    const del = await Transaction.deleteMany({ _id: { $in: ids }, user: userId });
+    removed = del.deletedCount || 0;
+  }
+
+  for (const tpl of templates) {
+    if (!tpl.frequency) continue;
+    const start = tpl.date || tpl.nextRunDate;
+    if (!start) continue;
+    let next = new Date(start);
+    let guard = 0;
+    while (isDueOnOrBefore(next) && guard < 120) {
+      next = addFrequency(next, tpl.frequency);
+      guard += 1;
+    }
+    tpl.nextRunDate = next;
+    await tpl.save();
+  }
+
+  const subs = await Subscription.find({ user: userId, status: 'active' });
+  const cutoffMs = cutoff.getTime();
+  for (const sub of subs) {
+    const start = sub.startDate || sub.nextBillingDate;
+    if (start && sub.frequency) {
+      let next = new Date(start);
+      let guard = 0;
+      while (isDueOnOrBefore(next) && guard < 120) {
+        next = addFrequency(next, sub.frequency);
+        guard += 1;
+      }
+      sub.nextBillingDate = next;
+    }
+    if (sub.lastPostedDate && sub.lastPostedDate.getTime() >= cutoffMs) {
+      sub.lastPostedDate = null;
+    }
+    await sub.save();
+  }
+
+  const accounts = await Account.find({ user: userId, isArchived: false }).select('name balance type');
+  return {
+    removed,
+    accounts: accounts.map((a) => ({ name: a.name, balance: a.balance, type: a.type })),
+  };
 }

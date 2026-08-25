@@ -1,17 +1,14 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const liveReloadUrl = process.env.CAPACITOR_LIVE_RELOAD_URL?.trim();
-const hostedUrl = 'https://velora-fintech.vercel.app';
 
 const config: CapacitorConfig = {
   appId: 'app.velora.finance',
   appName: 'Velora',
   webDir: 'dist',
   server: {
-    // Load the live site so UI/JS changes deploy with Vercel — no new APK.
-    // For same-WiFi live reload: CAPACITOR_LIVE_RELOAD_URL=http://IP:5173 npx cap sync android
-    url: liveReloadUrl || hostedUrl,
-    cleartext: Boolean(liveReloadUrl),
+    // Bundle the UI into the APK. Set CAPACITOR_LIVE_RELOAD_URL to load Vite/Vercel instead.
+    ...(liveReloadUrl ? { url: liveReloadUrl, cleartext: liveReloadUrl.startsWith('http://') } : {}),
     androidScheme: 'https',
     hostname: 'localhost',
     allowNavigation: [

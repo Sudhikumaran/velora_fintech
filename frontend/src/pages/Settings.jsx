@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, Palette, Globe, Download, LogOut, Check, RefreshCw } from 'lucide-react';
+import { User, Lock, Palette, Globe, Download, LogOut, Check, RefreshCw, RotateCcw } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { CURRENCIES } from '../utils/constants';
@@ -9,6 +9,8 @@ import toast from 'react-hot-toast';
 import PageHeader from '../components/ui/PageHeader';
 import AvatarUpload from '../components/ui/AvatarUpload';
 import { isNativeApp } from '../utils/native';
+import { useAccountStore } from '../store/accountStore';
+import { useTransactionStore } from '../store/transactionStore';
 
 const sections = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -25,6 +27,9 @@ export default function Settings() {
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [deletePassword, setDeletePassword] = useState('');
   const [saved, setSaved] = useState(false);
+  const { fetchAccounts } = useAccountStore();
+  const { fetchTransactions, repairBalances } = useTransactionStore();
+  const [repairing, setRepairing] = useState(false);
 
   const handleImport = async (e) => {
     const file = e.target.files?.[0];
@@ -245,6 +250,32 @@ export default function Settings() {
                       Import JSON
                       <input type="file" accept="application/json" className="hidden" onChange={handleImport} />
                     </label>
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <p className="font-medium text-gray-900 dark:text-white">Restore account balances</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Removes extra auto-posted recurring/subscription copies from 24 Aug onward and puts the money back on your accounts.
+                      </p>
+                      <button
+                        type="button"
+                        disabled={repairing}
+                        onClick={async () => {
+                          if (!window.confirm('Remove extra auto-posted transactions and restore balances?')) return;
+                          setRepairing(true);
+                          try {
+                            const result = await repairBalances();
+                            if (result) {
+                              await fetchAccounts();
+                              await fetchTransactions({ page: 1 });
+                            }
+                          } finally {
+                            setRepairing(false);
+                          }
+                        }}
+                        className="btn-secondary text-sm mt-3 inline-flex items-center gap-2"
+                      >
+                        <RotateCcw size={14} /> {repairing ? 'Restoring…' : 'Restore balances'}
+                      </button>
+                    </div>
                   </div>
                   <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl">
                     <p className="font-medium text-red-700 dark:text-red-400">Danger Zone</p>

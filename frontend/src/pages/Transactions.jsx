@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Search, Filter, ArrowUpRight, ArrowDownRight, ArrowLeftRight,
-  Edit3, Trash2, Archive, Download, ChevronLeft, ChevronRight, Paperclip, Upload,
+  Edit3, Trash2, Archive, Download, ChevronLeft, ChevronRight, Paperclip, Upload, RotateCcw,
 } from 'lucide-react';
 import { exportToCSV, transactionsToCSV } from '../utils/csvExport';
 import { parseTransactionCsv } from '../utils/csvImport';
@@ -227,7 +227,7 @@ const typeIcons = {
 };
 
 export default function Transactions() {
-  const { transactions, pagination, fetchTransactions, createTransaction, updateTransaction, deleteTransaction, archiveTransaction, importTransactions, postRecurring, filters, setFilters, isLoading } = useTransactionStore();
+  const { transactions, pagination, fetchTransactions, createTransaction, updateTransaction, deleteTransaction, archiveTransaction, importTransactions, postRecurring, repairBalances, filters, setFilters, isLoading } = useTransactionStore();
   const { accounts, fetchAccounts } = useAccountStore();
   const { user } = useAuthStore();
   const [searchParams] = useSearchParams();
@@ -239,6 +239,8 @@ export default function Transactions() {
   const [form, setForm] = useState(defaultForm);
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [repairing, setRepairing] = useState(false);
+  const needsBalanceRepair = accounts.some((a) => a.type !== 'credit' && Number(a.balance) < 0);
 
   useEffect(() => {
     fetchAccounts();
@@ -322,6 +324,35 @@ export default function Transactions() {
           </div>
         }
       />
+
+      {needsBalanceRepair && (
+        <div className="card p-4 border border-amber-200 bg-amber-50 dark:bg-amber-900/10 dark:border-amber-800/40">
+          <p className="font-medium text-amber-900 dark:text-amber-200">Account balances look too low</p>
+          <p className="text-sm text-amber-800/80 dark:text-amber-200/70 mt-1">
+            Extra auto-posted recurring items likely subtracted more than once. Restore puts that money back and removes the duplicate rows.
+          </p>
+          <button
+            type="button"
+            disabled={repairing}
+            onClick={async () => {
+              if (!window.confirm('Remove extra auto-posted transactions and restore balances?')) return;
+              setRepairing(true);
+              try {
+                const result = await repairBalances();
+                if (result) {
+                  await fetchAccounts();
+                  await fetchTransactions({ page });
+                }
+              } finally {
+                setRepairing(false);
+              }
+            }}
+            className="btn-secondary text-sm mt-3 inline-flex items-center gap-2"
+          >
+            <RotateCcw size={14} /> {repairing ? 'Restoring…' : 'Restore balances'}
+          </button>
+        </div>
+      )}
 
       {/* Search & Filters */}
       <div className="card p-4 space-y-3">
