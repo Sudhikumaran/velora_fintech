@@ -1,7 +1,7 @@
 import Transaction from '../models/Transaction.js';
 import Account from '../models/Account.js';
 import { successResponse, errorResponse, paginatedResponse } from '../utils/apiResponse.js';
-import { applyBalanceChange, createUserTransaction, attachRunningBalances } from '../utils/money.js';
+import { applyBalanceChange, createUserTransaction, attachRunningBalances, alreadyPostedSource, isSameCalendarDay } from '../utils/money.js';
 import { addFrequency, isDueOnOrBefore } from '../utils/recurrence.js';
 
 export const getTransactions = async (req, res, next) => {
@@ -212,7 +212,14 @@ export const postRecurringDue = async (req, res, next) => {
     const posted = [];
     for (const tpl of templates) {
       let guard = 0;
-      while (isDueOnOrBefore(tpl.nextRunDate) && guard < 24) {
+      while (isDueOnOrBefore(tpl.nextRunDate) && guard < 3) {
+        const due = tpl.nextRunDate;
+        // The template row is already the first occurrence — do not post a copy for that same day.
+        if (isSameCalendarDay(tpl.date, due) || await alreadyPostedSource(req.user._id, 'recurring', tpl._id, due)) {
+          tpl.nextRunDate = addFrequency(due, tpl.frequency);
+          guard += 1;
+          continue;
+        }
         const copy = await createUserTransaction(req.user._id, {
           account: tpl.account,
           toAccount: tpl.toAccount,
@@ -220,14 +227,14 @@ export const postRecurringDue = async (req, res, next) => {
           amount: tpl.amount,
           category: tpl.category,
           description: tpl.description,
-          date: tpl.nextRunDate,
+          date: due,
           notes: tpl.notes,
           splits: tpl.splits,
           source: 'recurring',
           sourceId: String(tpl._id),
         });
         posted.push(copy);
-        tpl.nextRunDate = addFrequency(tpl.nextRunDate, tpl.frequency);
+        tpl.nextRunDate = addFrequency(due, tpl.frequency);
         guard += 1;
       }
       await tpl.save();

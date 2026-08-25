@@ -2,7 +2,7 @@ import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { runDebtReminderJob } from '../services/debtReminderJob.js';
 import Subscription from '../models/Subscription.js';
 import Transaction from '../models/Transaction.js';
-import { createUserTransaction } from '../utils/money.js';
+import { createUserTransaction, alreadyPostedSource, isSameCalendarDay } from '../utils/money.js';
 import { addFrequency, isDueOnOrBefore } from '../utils/recurrence.js';
 import Account from '../models/Account.js';
 
@@ -18,7 +18,13 @@ async function postAllDueSubscriptions() {
     }
     if (!accountId) continue;
     let guard = 0;
-    while (isDueOnOrBefore(sub.nextBillingDate) && guard < 24) {
+    while (isDueOnOrBefore(sub.nextBillingDate) && guard < 3) {
+      const due = sub.nextBillingDate;
+      if (await alreadyPostedSource(sub.user, 'subscription', sub._id, due)) {
+        sub.nextBillingDate = addFrequency(due, sub.frequency);
+        guard += 1;
+        continue;
+      }
       await createUserTransaction(sub.user, {
         account: accountId,
         type: 'expense',
@@ -51,7 +57,13 @@ async function postAllRecurring() {
   let count = 0;
   for (const tpl of templates) {
     let guard = 0;
-    while (isDueOnOrBefore(tpl.nextRunDate) && guard < 24) {
+    while (isDueOnOrBefore(tpl.nextRunDate) && guard < 3) {
+      const due = tpl.nextRunDate;
+      if (isSameCalendarDay(tpl.date, due) || await alreadyPostedSource(tpl.user, 'recurring', tpl._id, due)) {
+        tpl.nextRunDate = addFrequency(due, tpl.frequency);
+        guard += 1;
+        continue;
+      }
       await createUserTransaction(tpl.user, {
         account: tpl.account,
         toAccount: tpl.toAccount,
@@ -59,13 +71,13 @@ async function postAllRecurring() {
         amount: tpl.amount,
         category: tpl.category,
         description: tpl.description,
-        date: tpl.nextRunDate,
+        date: due,
         notes: tpl.notes,
         splits: tpl.splits,
         source: 'recurring',
         sourceId: String(tpl._id),
       });
-      tpl.nextRunDate = addFrequency(tpl.nextRunDate, tpl.frequency);
+      tpl.nextRunDate = addFrequency(due, tpl.frequency);
       count += 1;
       guard += 1;
     }

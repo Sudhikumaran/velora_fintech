@@ -14,30 +14,61 @@ export function normalizeSplits(splits) {
 
 export async function applyBalanceChange({ account, toAccount, type, amount, reverse = false }) {
   const sign = reverse ? -1 : 1;
+  const delta = Number(amount);
+  if (!Number.isFinite(delta)) return;
+
   const acc = await Account.findById(account);
   if (!acc) return;
 
   if (type === 'income') {
-    acc.balance += sign * amount;
+    acc.balance += sign * delta;
     await acc.save();
     return;
   }
   if (type === 'expense') {
-    acc.balance -= sign * amount;
+    acc.balance -= sign * delta;
     await acc.save();
     return;
   }
   if (type === 'transfer') {
-    acc.balance -= sign * amount;
+    acc.balance -= sign * delta;
     await acc.save();
     if (toAccount) {
       const to = await Account.findById(toAccount);
       if (to) {
-        to.balance += sign * amount;
+        to.balance += sign * delta;
         await to.save();
       }
     }
   }
+}
+
+function dayRange(date) {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+export function isSameCalendarDay(a, b) {
+  if (!a || !b) return false;
+  const x = new Date(a);
+  const y = new Date(b);
+  return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate();
+}
+
+export async function alreadyPostedSource(userId, source, sourceId, date) {
+  if (!sourceId || !date) return false;
+  const { start, end } = dayRange(date);
+  const found = await Transaction.findOne({
+    user: userId,
+    source,
+    sourceId: String(sourceId),
+    date: { $gte: start, $lte: end },
+    isArchived: false,
+  }).select('_id');
+  return Boolean(found);
 }
 
 export async function createUserTransaction(userId, payload) {
@@ -110,14 +141,15 @@ export async function attachRunningBalances(userId, pageTxs) {
   const afterById = {};
   for (const tx of allTxs) {
     const accId = String(tx.account);
+    const amt = Number(tx.amount);
     afterById[String(tx._id)] = balances[accId] ?? 0;
-    if (tx.type === 'income') balances[accId] = (balances[accId] ?? 0) - tx.amount;
-    else if (tx.type === 'expense') balances[accId] = (balances[accId] ?? 0) + tx.amount;
+    if (tx.type === 'income') balances[accId] = (balances[accId] ?? 0) - amt;
+    else if (tx.type === 'expense') balances[accId] = (balances[accId] ?? 0) + amt;
     else if (tx.type === 'transfer') {
-      balances[accId] = (balances[accId] ?? 0) + tx.amount;
+      balances[accId] = (balances[accId] ?? 0) + amt;
       if (tx.toAccount) {
         const toId = String(tx.toAccount);
-        balances[toId] = (balances[toId] ?? 0) - tx.amount;
+        balances[toId] = (balances[toId] ?? 0) - amt;
       }
     }
   }

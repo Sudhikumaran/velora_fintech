@@ -1,7 +1,7 @@
 import Subscription from '../models/Subscription.js';
 import Account from '../models/Account.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
-import { createUserTransaction } from '../utils/money.js';
+import { createUserTransaction, alreadyPostedSource } from '../utils/money.js';
 import { addFrequency, isDueOnOrBefore } from '../utils/recurrence.js';
 
 export const getSubscriptions = async (req, res, next) => {
@@ -95,22 +95,28 @@ async function postOneSubscription(userId, subscription) {
 
   const posted = [];
   let guard = 0;
-  while (isDueOnOrBefore(subscription.nextBillingDate) && guard < 24) {
+  while (isDueOnOrBefore(subscription.nextBillingDate) && guard < 3) {
+    const due = subscription.nextBillingDate;
+    if (await alreadyPostedSource(userId, 'subscription', subscription._id, due)) {
+      subscription.nextBillingDate = addFrequency(due, subscription.frequency);
+      guard += 1;
+      continue;
+    }
     const tx = await createUserTransaction(userId, {
       account: accountId,
       type: 'expense',
       amount: subscription.amount,
       category: subscription.category || 'Subscriptions',
       description: subscription.name,
-      date: subscription.nextBillingDate,
+      date: due,
       notes: 'Auto-posted from subscription',
       source: 'subscription',
       sourceId: String(subscription._id),
       recurringId: subscription._id,
     });
     posted.push(tx);
-    subscription.lastPostedDate = subscription.nextBillingDate;
-    subscription.nextBillingDate = addFrequency(subscription.nextBillingDate, subscription.frequency);
+    subscription.lastPostedDate = due;
+    subscription.nextBillingDate = addFrequency(due, subscription.frequency);
     guard += 1;
   }
   await subscription.save();
