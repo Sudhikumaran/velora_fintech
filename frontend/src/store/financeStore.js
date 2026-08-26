@@ -132,7 +132,7 @@ export const useDebtStore = create((set) => ({
     try {
       const { data } = await api.post(`/debts/${id}/repayments`, repaymentData);
       set((state) => ({ debts: sortDebtsByDueDate(state.debts.map((d) => (d._id === id ? data.data : d))) }));
-      toast.success('Repayment added successfully');
+      toast.success(data.message || 'Repayment added successfully');
       return data.data;
     } catch (error) {
       toast.error('Failed to add repayment');

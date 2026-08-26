@@ -52,6 +52,10 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    lastDailySpendEmailOn: {
+      type: String,
+      default: '',
+    },
   },
   { timestamps: true }
 );

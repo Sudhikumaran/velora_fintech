@@ -1,5 +1,6 @@
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { runDebtReminderJob } from '../services/debtReminderJob.js';
+import { runDailySpendJob } from '../services/dailySpendJob.js';
 import Subscription from '../models/Subscription.js';
 import Transaction from '../models/Transaction.js';
 import { createUserTransaction, alreadyPostedSource, isSameCalendarDay } from '../utils/money.js';
@@ -104,6 +105,26 @@ export const runJobs = async (req, res, next) => {
     const recurring = await postAllRecurring();
 
     successResponse(res, { subscriptions, recurring }, 'Jobs completed.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const runDailySpend = async (req, res, next) => {
+  try {
+    const secret = process.env.CRON_SECRET;
+    const auth = req.headers.authorization || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : req.query.secret;
+    if (process.env.NODE_ENV === 'production') {
+      if (!secret || token !== secret) {
+        return errorResponse(res, 'Unauthorized job request.', 401);
+      }
+    } else if (secret && token !== secret) {
+      return errorResponse(res, 'Unauthorized job request.', 401);
+    }
+
+    const result = await runDailySpendJob();
+    successResponse(res, result, 'Daily spend emails completed.');
   } catch (error) {
     next(error);
   }

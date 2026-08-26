@@ -1,7 +1,8 @@
 import Debt from '../models/Debt.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
-import { sortDebtsByDueDate } from '../utils/debtHelpers.js';
+import { sortDebtsByDueDate, getPaidEmiCount } from '../utils/debtHelpers.js';
 import { createUserTransaction } from '../utils/money.js';
+import { sendDebtRepaymentReceipt } from '../services/emailService.js';
 
 export const getDebts = async (req, res, next) => {
   try {
@@ -119,7 +120,41 @@ export const addRepayment = async (req, res, next) => {
       });
     }
 
-    successResponse(res, { ...debt.toObject(), transaction }, 'Repayment added successfully.');
+    let emailed = false;
+    if (req.user?.email) {
+      try {
+        emailed = await sendDebtRepaymentReceipt({
+          to: req.user.email,
+          userName: req.user.name,
+          currency: req.user.currency || 'INR',
+          timeZone: req.user.timezone || 'Asia/Kolkata',
+          debt: {
+            person: debt.person,
+            description: debt.description,
+            type: debt.type,
+            amount: debt.amount,
+            remainingAmount: debt.remainingAmount,
+            status: debt.status,
+            isEMI: debt.isEMI,
+            tenure: debt.tenure,
+          },
+          payment: {
+            amount: parsed,
+            date: date || Date.now(),
+            note,
+            installment: debt.isEMI ? getPaidEmiCount(debt) : undefined,
+          },
+        });
+      } catch (mailError) {
+        console.error('[Email] Failed to send repayment receipt:', mailError.message);
+      }
+    }
+
+    successResponse(
+      res,
+      { ...debt.toObject(), transaction, emailed },
+      emailed ? 'Repayment added. A confirmation email was sent.' : 'Repayment added successfully.',
+    );
   } catch (error) {
     next(error);
   }
