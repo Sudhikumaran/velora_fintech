@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { FloatingOrbs } from './Motion';
+import BrandMark from './BrandMark';
 import { easeOut, stagger, fadeUp } from '../../utils/motion';
 
 export default function AuthShell({ headline, subhead, features = [], stats = [], children }) {
@@ -17,13 +18,7 @@ export default function AuthShell({ headline, subhead, features = [], stats = []
           transition={{ duration: 0.5, ease: easeOut }}
           className="relative z-10 flex items-center gap-3"
         >
-          <motion.div
-            animate={{ rotate: [0, 6, -4, 0] }}
-            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-            className="w-10 h-10 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center"
-          >
-            <span className="text-white font-bold text-lg">V</span>
-          </motion.div>
+          <BrandMark className="w-10 h-10" rounded="rounded-2xl" />
           <span className="text-white font-bold text-xl tracking-tight">Velora</span>
         </motion.div>
 

@@ -4,9 +4,10 @@ import {
   LayoutDashboard, CreditCard, ArrowLeftRight, BarChart3,
   Target, TrendingDown, RefreshCw, Flag,
   CalendarDays, Settings, LogOut, ChevronLeft,
-  X, TrendingUp, BookOpen, ClipboardList, FileText,
+  X, TrendingUp, BookOpen, ClipboardList, FileText, Inbox,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import BrandMark from '../ui/BrandMark';
 
 const navGroups = [
   {
@@ -23,6 +24,7 @@ const navGroups = [
     items: [
       { to: '/accounts', icon: CreditCard, label: 'Accounts' },
       { to: '/transactions', icon: ArrowLeftRight, label: 'Transactions' },
+      { to: '/payments', icon: Inbox, label: 'Waiting payments' },
       { to: '/ledger', icon: BookOpen, label: 'Ledger' },
     ],
   },
@@ -101,19 +103,13 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
       {/* Logo */}
       <div className={`flex items-center h-16 px-4 shrink-0 ${collapsed ? 'justify-center' : 'justify-between'}`}>
         {!collapsed && (
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
-              <span className="text-white font-bold text-sm">V</span>
+            <div className="flex items-center gap-2.5">
+              <BrandMark className="w-8 h-8" />
+              <span className="font-bold text-lg text-gray-900 dark:text-white tracking-tight">Velora</span>
             </div>
-            <span className="font-bold text-lg text-gray-900 dark:text-white tracking-tight">Velora</span>
-          </div>
         )}
         {collapsed && (
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
-            <span className="text-white font-bold text-sm">V</span>
-          </div>
+          <BrandMark className="w-8 h-8" />
         )}
         <button
           onClick={onToggle}
@@ -198,10 +194,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             >
               <div className="flex items-center justify-between h-16 px-4 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-                    style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
-                    <span className="text-white font-bold text-sm">V</span>
-                  </div>
+                  <BrandMark className="w-8 h-8" />
                   <span className="font-bold text-lg text-gray-900 dark:text-white">Velora</span>
                 </div>
                 <button onClick={onMobileClose} className="p-1.5 hover:bg-gray-100 rounded-lg">

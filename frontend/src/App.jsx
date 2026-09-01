@@ -21,6 +21,7 @@ import Settings from './pages/Settings';
 import Ledger from './pages/Ledger';
 import IncomePlanner from './pages/IncomePlanner';
 import Reports from './pages/Reports';
+import PaymentsInbox from './pages/PaymentsInbox';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="accounts" element={<Accounts />} />
           <Route path="transactions" element={<Transactions />} />
+          <Route path="payments" element={<PaymentsInbox />} />
           <Route path="ledger" element={<Ledger />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="budgets" element={<Budgets />} />

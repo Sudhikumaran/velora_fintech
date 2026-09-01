@@ -11,9 +11,11 @@ import {
 } from 'lucide-react';
 import { useAnalyticsStore } from '../store/financeStore';
 import { useAuthStore } from '../store/authStore';
+import { usePaymentReviewStore } from '../store/paymentReviewStore';
 import { formatCurrency, formatDate, getTrend } from '../utils/formatters';
 import StatCard from '../components/ui/StatCard';
 import { SkeletonDashboard } from '../components/ui/Skeleton';
+import VoiceAddButton from '../components/ui/VoiceAddButton';
 
 const PIE_COLORS = ['#6366f1','#8b5cf6','#ec4899','#f97316','#eab308','#22c55e','#14b8a6','#3b82f6'];
 
@@ -33,6 +35,7 @@ const ChartTip = ({ active, payload, label, currency = 'USD' }) => {
 
 export default function Dashboard() {
   const { user } = useAuthStore();
+  const waiting = usePaymentReviewStore((s) => s.queue.length);
   const { dashboard, monthlyTrend, spendingByCategory, netWorth, fetchDashboard, fetchMonthlyTrend, fetchSpendingByCategory, fetchNetWorth } = useAnalyticsStore();
   const currSymbol = user?.currency === 'INR' ? '₹' : user?.currency === 'EUR' ? '€' : user?.currency === 'GBP' ? '£' : '$';
   const fmtK = (v) => `${currSymbol}${(v / 1000).toFixed(0)}k`;
@@ -81,10 +84,23 @@ export default function Dashboard() {
           </h1>
           <p className="text-sm text-gray-400 mt-0.5">Here's your financial snapshot for today.</p>
         </div>
-        <Link to="/transactions" className="btn-primary text-xs hidden sm:inline-flex">
-          <Plus size={14} /> Add Transaction
-        </Link>
+        <div className="hidden sm:flex items-center gap-2">
+          <VoiceAddButton className="btn-secondary text-xs" />
+          <Link to="/transactions" className="btn-primary text-xs inline-flex">
+            <Plus size={14} /> Add Transaction
+          </Link>
+        </div>
       </motion.div>
+
+      {waiting > 0 && (
+        <Link to="/payments" className="card p-4 flex items-center justify-between border-indigo-200 dark:border-indigo-800">
+          <div>
+            <p className="font-semibold text-gray-900 dark:text-white">{waiting} payment{waiting === 1 ? '' : 's'} waiting</p>
+            <p className="text-sm text-gray-500">Pick a category and save — amount and date are already filled.</p>
+          </div>
+          <span className="text-indigo-600 text-sm font-semibold">Open inbox</span>
+        </Link>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger-in">

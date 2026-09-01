@@ -97,6 +97,16 @@ export async function createUserTransaction(userId, payload) {
     }
   }
 
+  if (payload.sourceId && String(payload.sourceId).startsWith('pay:')) {
+    const existingAlert = await Transaction.findOne({
+      user: userId,
+      sourceId: String(payload.sourceId),
+    }).select('_id');
+    if (existingAlert) {
+      throw Object.assign(new Error('Already recorded.'), { status: 409 });
+    }
+  }
+
   const transaction = await Transaction.create({
     user: userId,
     account: payload.account,

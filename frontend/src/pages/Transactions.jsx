@@ -302,11 +302,11 @@ export default function Transactions() {
             <button
               onClick={() => fileRef.current?.click()}
               className="btn-secondary px-3"
-              title="Import CSV"
+              title="Import bank statement CSV"
             >
               <Upload size={16} />
             </button>
-            <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
+            <input ref={fileRef} type="file" accept=".csv,text/csv,.txt" className="hidden"
               onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;

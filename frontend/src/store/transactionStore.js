@@ -43,6 +43,7 @@ export const useTransactionStore = create((set, get) => ({
       if (!silent) toast.success('Transaction added successfully');
       return data.data;
     } catch (error) {
+      if (error.response?.status === 409) return { skipped: true };
       toast.error(error.response?.data?.message || 'Failed to create transaction');
       return null;
     }

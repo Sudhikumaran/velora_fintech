@@ -9,6 +9,11 @@ import Onboarding from '../ui/Onboarding';
 import { useOnboarding } from '../../hooks/useOnboarding';
 import { useAccountStore } from '../../store/accountStore';
 import { pageTransition } from '../../utils/motion';
+import { startPaymentAutoCapture } from '../../utils/paymentCapture';
+import PaymentReviewModal from '../ui/PaymentReviewModal';
+import { checkDueReminders } from '../../utils/dueReminders';
+import { refreshTodaySpendFromTransactions } from '../../utils/todaySpend';
+import { useTransactionStore } from '../../store/transactionStore';
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -25,6 +30,13 @@ export default function AppLayout() {
   const { fetchAccounts } = useAccountStore();
   const [showOnboarding, completeOnboarding] = useOnboarding();
   useEffect(() => { fetchAccounts(); }, []);
+  useEffect(() => { startPaymentAutoCapture(); }, []);
+  useEffect(() => {
+    checkDueReminders();
+    useTransactionStore.getState().fetchTransactions({ page: 1, limit: 50 }).then(() => {
+      refreshTodaySpendFromTransactions(useTransactionStore.getState().transactions);
+    });
+  }, []);
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-gray-950 overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
@@ -54,6 +66,7 @@ export default function AppLayout() {
         </main>
         <MobileTabBar onMore={() => setMobileOpen(true)} />
         <GlobalSearch />
+        <PaymentReviewModal />
         {showOnboarding && <Onboarding onComplete={completeOnboarding} />}
       </div>
     </div>

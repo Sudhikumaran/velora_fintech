@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, Palette, Globe, Download, LogOut, Check, RefreshCw, RotateCcw } from 'lucide-react';
+import { User, Lock, Palette, Globe, Download, LogOut, Check, RefreshCw, RotateCcw, Smartphone } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { CURRENCIES } from '../utils/constants';
@@ -11,6 +11,15 @@ import AvatarUpload from '../components/ui/AvatarUpload';
 import { isNativeApp } from '../utils/native';
 import { useAccountStore } from '../store/accountStore';
 import { useTransactionStore } from '../store/transactionStore';
+import PaymentCapture from '../plugins/paymentCapture';
+import {
+  isAutoPayEnabled,
+  setAutoPayEnabled,
+  getAutoPayAccountId,
+  setAutoPayAccountId,
+  flushPendingPayments,
+  enableBankSmsCapture,
+} from '../utils/paymentCapture';
 
 const sections = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -27,9 +36,30 @@ export default function Settings() {
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [deletePassword, setDeletePassword] = useState('');
   const [saved, setSaved] = useState(false);
-  const { fetchAccounts } = useAccountStore();
+  const { fetchAccounts, accounts } = useAccountStore();
   const { fetchTransactions, repairBalances } = useTransactionStore();
   const [repairing, setRepairing] = useState(false);
+  const [autoPay, setAutoPay] = useState(() => isAutoPayEnabled());
+  const [autoPayAccount, setAutoPayAccount] = useState(() => getAutoPayAccountId());
+  const [notifyAccess, setNotifyAccess] = useState(false);
+  const [smsAccess, setSmsAccess] = useState(false);
+
+  useEffect(() => {
+    if (!isNativeApp()) return undefined;
+    const sync = async () => {
+      try {
+        const { enabled, sms } = await PaymentCapture.isAccessEnabled();
+        setNotifyAccess(!!enabled);
+        setSmsAccess(!!sms);
+      } catch {
+        setNotifyAccess(false);
+        setSmsAccess(false);
+      }
+    };
+    sync();
+    const t = setInterval(sync, 2500);
+    return () => clearInterval(t);
+  }, []);
 
   const handleImport = async (e) => {
     const file = e.target.files?.[0];
@@ -214,16 +244,87 @@ export default function Settings() {
                   </div>
                   {isNativeApp() && (
                     <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                      <p className="font-medium text-gray-900 dark:text-white">Prompt after bank & UPI payments</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        When you pay, Velora opens a form with amount, date, and description already filled. You pick the category (or split one payment into two categories) and save. The next time that merchant appears, the last category is pre-selected. Bank statement CSVs can be imported from Transactions if an SMS was missed.
+                      </p>
+                      <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={autoPay}
+                          onChange={async (e) => {
+                            const on = e.target.checked;
+                            setAutoPay(on);
+                            setAutoPayEnabled(on);
+                            if (!on) return;
+                            if (!notifyAccess) {
+                              toast('Turn on notification access for Velora, then return here.');
+                              try { await PaymentCapture.openAccessSettings(); } catch { /* ignore */ }
+                            }
+                            const smsOk = await enableBankSmsCapture();
+                            setSmsAccess(smsOk);
+                            if (!smsOk) toast('Allow SMS so bank debit messages can open the add-payment form.');
+                            flushPendingPayments();
+                          }}
+                        />
+                        Open add-payment popup when I pay
+                      </label>
+                      <div className="mt-3">
+                        <p className="text-xs text-gray-500 mb-1">Default bank / account</p>
+                        <select
+                          className="input-field text-sm"
+                          value={autoPayAccount}
+                          onChange={(e) => {
+                            setAutoPayAccount(e.target.value);
+                            setAutoPayAccountId(e.target.value);
+                          }}
+                        >
+                          <option value="">Prefer a bank account automatically</option>
+                          {accounts.filter((a) => !a.isArchived).map((a) => (
+                            <option key={a._id} value={a._id}>{a.name}{a.type === 'bank' || a.type === 'savings' ? ' (bank)' : ''}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <p className={`text-xs mt-2 ${notifyAccess ? 'text-green-600' : 'text-amber-600'}`}>
+                        {notifyAccess ? 'Notification access is on.' : 'Notification access is off — UPI app alerts cannot be read yet.'}
+                      </p>
+                      <p className={`text-xs mt-1 ${smsAccess ? 'text-green-600' : 'text-amber-600'}`}>
+                        {smsAccess ? 'SMS access is on — bank debit messages will open the add form.' : 'SMS access is off — bank SMS will not open the form until you allow it.'}
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <button
+                          type="button"
+                          className="btn-secondary text-sm inline-flex items-center gap-2"
+                          onClick={() => PaymentCapture.openAccessSettings()}
+                        >
+                          <Smartphone size={14} /> Notification access
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary text-sm inline-flex items-center gap-2"
+                          onClick={async () => {
+                            const smsOk = await enableBankSmsCapture();
+                            setSmsAccess(smsOk);
+                            toast[smsOk ? 'success' : 'error'](smsOk ? 'Bank SMS capture is on' : 'SMS permission was not granted');
+                          }}
+                        >
+                          Allow bank SMS
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {isNativeApp() && (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                       <p className="font-medium text-gray-900 dark:text-white">App updates</p>
                       <p className="text-sm text-gray-500 mt-0.5">
-                        The app loads the live website. After you push a change, reopen Velora or tap below.
+                        This APK includes the app UI. Reinstall a new APK after icon or native changes.
                       </p>
                       <button
                         type="button"
                         onClick={() => window.location.reload()}
                         className="btn-secondary mt-3"
                       >
-                        <RefreshCw size={15} /> Reload latest version
+                        <RefreshCw size={15} /> Reload
                       </button>
                     </div>
                   )}

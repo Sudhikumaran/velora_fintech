@@ -5,6 +5,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { CURRENCIES } from '../../utils/constants';
 import AuthShell from '../../components/ui/AuthShell';
+import BrandMark from '../../components/ui/BrandMark';
 import { fadeUp, stagger } from '../../utils/motion';
 
 export default function Register() {
@@ -26,10 +27,7 @@ export default function Register() {
       features={['Track every rupee you earn & spend', 'Set budgets that actually work', 'Visualize your financial growth']}
     >
       <div className="flex items-center justify-center gap-2.5 mb-8 lg:hidden">
-        <div className="w-9 h-9 rounded-2xl flex items-center justify-center"
-          style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
-          <span className="text-white font-bold">V</span>
-        </div>
+        <BrandMark className="w-9 h-9" rounded="rounded-2xl" />
         <span className="font-bold text-xl text-gray-900 dark:text-white">Velora</span>
       </div>
 

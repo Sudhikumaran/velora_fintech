@@ -83,7 +83,7 @@ const transactionSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ['manual', 'import', 'subscription', 'planner', 'goal', 'debt', 'recurring'],
+      enum: ['manual', 'import', 'subscription', 'planner', 'goal', 'debt', 'recurring', 'payment-alert'],
       default: 'manual',
     },
     sourceId: {
