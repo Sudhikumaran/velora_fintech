@@ -450,3 +450,25 @@ export const useAnalyticsStore = create((set) => ({
     } catch (error) {}
   },
 }));
+
+export const useExtrasStore = create((set) => ({
+  insights: null,
+  household: null,
+  fetchInsights: async () => {
+    try {
+      const { data } = await api.get('/extras/insights');
+      set({ insights: data.data });
+    } catch {
+      /* optional extras */
+    }
+  },
+  fetchHousehold: async () => {
+    try {
+      const { data } = await api.get('/extras/household');
+      set({ household: data.data });
+      return data.data;
+    } catch {
+      return null;
+    }
+  },
+}));

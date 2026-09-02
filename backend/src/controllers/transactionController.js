@@ -33,6 +33,7 @@ export const getTransactions = async (req, res, next) => {
         { 'splits.description': { $regex: search, $options: 'i' } },
         { 'splits.notes': { $regex: search, $options: 'i' } },
         { 'splits.category': { $regex: search, $options: 'i' } },
+        { gstin: { $regex: search, $options: 'i' } },
       ];
     }
 
@@ -89,6 +90,9 @@ export const updateTransaction = async (req, res, next) => {
     Object.assign(existing, {
       account, toAccount, type, amount, category, subcategory, description, date, tags, notes, receiptUrl,
       splits, isRecurring, frequency, nextRunDate,
+      isBusiness: Boolean(req.body.isBusiness),
+      gstin: req.body.isBusiness ? String(req.body.gstin || '').trim() : '',
+      gstAmount: req.body.isBusiness ? (parseFloat(req.body.gstAmount) || 0) : 0,
     });
     await existing.save();
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Printer, Search } from 'lucide-react';
+import { Printer, Search, Download } from 'lucide-react';
 import api from '../utils/api';
 import { useAuthStore } from '../store/authStore';
 import { useAccountStore } from '../store/accountStore';
@@ -67,8 +67,9 @@ export default function Reports() {
       if (type !== 'all' && t.type !== type) return false;
       if (account && accountId(t) !== account && String(t.toAccount?._id || t.toAccount || '') !== account) return false;
       if (category && (t.category || '') !== category) return false;
-      if (q) {
-        const hay = `${t.description || ''} ${t.category || ''} ${t.notes || ''} ${t.account?.name || ''}`.toLowerCase();
+        if (q) {
+        const splitHay = (t.splits || []).map((s) => `${s.description || ''} ${s.notes || ''} ${s.category || ''}`).join(' ');
+        const hay = `${t.description || ''} ${t.category || ''} ${t.notes || ''} ${t.account?.name || ''} ${t.gstin || ''} ${splitHay}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -124,9 +125,26 @@ export default function Reports() {
         title="Monthly report"
         subtitle="Filter by type, account, and category — then print or save as PDF"
         action={
-          <button onClick={() => window.print()} className="btn-primary print:hidden">
-            <Printer size={16} /> Print / PDF
-          </button>
+          <div className="flex gap-2 print:hidden">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={async () => {
+                const { data } = await api.get('/extras/ca-export', { params: { month, year }, responseType: 'blob' });
+                const url = URL.createObjectURL(data);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `velora-ca-${year}-${String(month).padStart(2, '0')}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              <Download size={16} /> CA CSV
+            </button>
+            <button onClick={() => window.print()} className="btn-primary">
+              <Printer size={16} /> Print / PDF
+            </button>
+          </div>
         }
       />
 
@@ -170,7 +188,7 @@ export default function Reports() {
           <input
             className="input-field"
             style={{ paddingLeft: '2.25rem' }}
-            placeholder="Search description, category, notes…"
+            placeholder="Search description, splits, GSTIN, notes…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

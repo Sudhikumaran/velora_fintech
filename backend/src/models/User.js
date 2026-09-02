@@ -56,6 +56,19 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    merchantRules: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    household: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Household',
+      default: null,
+    },
+    aaWaitlist: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

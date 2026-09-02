@@ -1,5 +1,6 @@
 import PaymentCapture from '../plugins/paymentCapture';
 import { isNativeApp } from './native';
+import api from './api';
 
 const KEY = 'velora_merchant_cats';
 
@@ -40,6 +41,26 @@ export async function rememberMerchantCategory(merchant, category) {
 }
 
 export async function syncMerchantMemory(map = getMerchantMemory()) {
+  try {
+    await api.put('/extras/merchant-rules', { rules: map });
+  } catch { /* offline */ }
   if (!isNativeApp()) return;
   try { await PaymentCapture.setMerchantMemory({ map }); } catch { /* old APK */ }
+}
+
+export async function forgetMerchantCategory(key) {
+  const map = getMerchantMemory();
+  delete map[key];
+  localStorage.setItem(KEY, JSON.stringify(map));
+  await syncMerchantMemory(map);
+}
+
+export function hydrateMerchantMemory(rules) {
+  if (!rules || typeof rules !== 'object') return;
+  const current = getMerchantMemory();
+  const merged = { ...rules, ...current };
+  localStorage.setItem(KEY, JSON.stringify(merged));
+  if (isNativeApp()) {
+    PaymentCapture.setMerchantMemory({ map: merged }).catch(() => {});
+  }
 }

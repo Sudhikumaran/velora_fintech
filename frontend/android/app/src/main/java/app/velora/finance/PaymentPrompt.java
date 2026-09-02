@@ -80,6 +80,43 @@ final class PaymentPrompt {
     } catch (Exception ignored) { /* permission or OEM limits */ }
   }
 
+  static final int LOGGER_ID = 4090;
+
+  static void showLogger(Context context) {
+    if (context == null) return;
+    try {
+      NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+      if (Build.VERSION.SDK_INT >= 26 && manager != null) {
+        NotificationChannel channel = new NotificationChannel("velora_logger", "Log a payment", NotificationManager.IMPORTANCE_LOW);
+        channel.setDescription("Tap after you pay to add it in Velora");
+        manager.createNotificationChannel(channel);
+      }
+      Intent open = new Intent(context, MainActivity.class);
+      open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+      open.putExtra("velora_action", "log");
+      PendingIntent openPi = PendingIntent.getActivity(
+        context,
+        LOGGER_ID,
+        open,
+        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+      );
+      NotificationCompat.Builder builder = new NotificationCompat.Builder(context, "velora_logger")
+        .setSmallIcon(R.drawable.ic_stat_velora)
+        .setContentTitle("Log a payment")
+        .setContentText("Tap after you pay — no SMS needed")
+        .setContentIntent(openPi)
+        .setOngoing(true)
+        .setSilent(true)
+        .setPriority(NotificationCompat.PRIORITY_LOW);
+      NotificationManagerCompat.from(context).notify(LOGGER_ID, builder.build());
+    } catch (Exception ignored) { /* permission */ }
+  }
+
+  static void hideLogger(Context context) {
+    if (context == null) return;
+    try { NotificationManagerCompat.from(context).cancel(LOGGER_ID); } catch (Exception ignored) { /* ignore */ }
+  }
+
   static void showDue(Context context, String id, String title, String text) {
     if (context == null) return;
     try {

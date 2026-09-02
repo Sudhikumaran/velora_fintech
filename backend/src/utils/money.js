@@ -131,6 +131,9 @@ export async function createUserTransaction(userId, payload) {
     source: payload.source || 'manual',
     sourceId: payload.sourceId || undefined,
     recurringId: payload.recurringId || undefined,
+    isBusiness: Boolean(payload.isBusiness),
+    gstin: payload.isBusiness ? String(payload.gstin || '').trim() : '',
+    gstAmount: payload.isBusiness ? (parseFloat(payload.gstAmount) || 0) : 0,
   });
 
   await applyBalanceChange({

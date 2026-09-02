@@ -1,10 +1,12 @@
 import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { isNativeApp } from './native';
 import PaymentCapture from '../plugins/paymentCapture';
 import { parsePaymentNotification, matchAccountId, matchToAccount } from './paymentAlertParser';
 import { useAccountStore } from '../store/accountStore';
 import { usePaymentReviewStore } from '../store/paymentReviewStore';
 import { recallMerchantCategory, syncMerchantMemory } from './merchantMemory';
+import { ocrReceipt } from './receiptOcr';
 import toast from 'react-hot-toast';
 
 export const AUTO_PAY_ENABLED_KEY = 'velora_auto_payments';
@@ -16,6 +18,7 @@ export function isAutoPayEnabled() {
 
 export function setAutoPayEnabled(on) {
   localStorage.setItem(AUTO_PAY_ENABLED_KEY, on ? '1' : '0');
+  syncAssistantTools(on);
 }
 
 export function getAutoPayAccountId() {
@@ -115,7 +118,9 @@ export async function ingestNotifications(notes = []) {
 
 export async function flushPendingPayments() {
   if (!isNativeApp()) return 0;
-  try { await PaymentCapture.scanRecentSms(); } catch { /* no SMS permission */ }
+  try { await PaymentCapture.scanRecentAlerts(); } catch {
+    try { await PaymentCapture.scanRecentSms(); } catch { /* old APK */ }
+  }
   try {
     const { notifications } = await PaymentCapture.getPending();
     return ingestNotifications(notifications || []);
@@ -141,12 +146,58 @@ export function openTestPaymentReview() {
   }, 'test', `test-${now}`);
 }
 
+export function openBlankPaymentReview(extra = {}) {
+  const now = Date.now();
+  queueForReview({
+    id: extra.id || `manual-${now}`,
+    sourceId: extra.sourceId || `pay:manual|${now}`,
+    type: 'expense',
+    amount: extra.amount || '',
+    merchant: extra.merchant || '',
+    category: extra.category || '',
+    description: extra.description || '',
+    date: extra.date || new Date().toISOString(),
+    notes: extra.notes || 'Added after payment',
+    source: 'import',
+  }, extra.notes || 'manual', extra.id || `manual-${now}`);
+}
+
+async function importScreenshot(path) {
+  if (!path) {
+    openBlankPaymentReview({ notes: 'From screenshot' });
+    return;
+  }
+  try {
+    const src = Capacitor.convertFileSrc(path);
+    const blob = await fetch(src).then((r) => r.blob());
+    const file = new File([blob], 'payment.jpg', { type: blob.type || 'image/jpeg' });
+    const parsed = await ocrReceipt(file);
+    openBlankPaymentReview({
+      amount: parsed.amount || '',
+      date: parsed.date ? new Date(parsed.date).toISOString() : undefined,
+      description: parsed.description || 'Payment screenshot',
+      notes: 'From screenshot',
+    });
+  } catch {
+    openBlankPaymentReview({ notes: 'From screenshot' });
+  }
+}
+
 async function applyLaunchAction() {
   if (!isNativeApp()) return;
   let launch = null;
   try { launch = await PaymentCapture.consumeLaunchAction(); } catch { return; }
   const action = launch?.action;
   if (!action) return;
+
+  if (action === 'log') {
+    openBlankPaymentReview();
+    return;
+  }
+  if (action === 'ocr') {
+    await importScreenshot(launch.path || '');
+    return;
+  }
 
   await flushPendingPayments();
   const noteId = launch.noteId || '';
@@ -164,6 +215,11 @@ async function applyLaunchAction() {
     store.openAt(item.sourceId);
     toast('Review this payment, then save');
   }
+}
+
+function syncAssistantTools(on = isAutoPayEnabled()) {
+  if (!isNativeApp()) return;
+  PaymentCapture.setAssistantTools({ bubble: !!on, logger: !!on }).catch(() => {});
 }
 
 export async function startPaymentAutoCapture() {
@@ -188,17 +244,32 @@ export async function startPaymentAutoCapture() {
 
   await applyLaunchAction();
   flushPendingPayments();
+  syncAssistantTools();
+}
+
+export async function enablePaymentCapture() {
+  if (!isNativeApp()) return { notify: false, overlay: false };
+  try { await PaymentCapture.requestNotifyPermission(); } catch { /* older Android */ }
+  let notify = false;
+  let overlay = false;
+  try {
+    const access = await PaymentCapture.isAccessEnabled();
+    notify = !!access?.enabled;
+    overlay = !!access?.overlay;
+    if (!notify) {
+      try { await PaymentCapture.openAccessSettings(); } catch { /* ignore */ }
+    }
+    if (!overlay) {
+      try { await PaymentCapture.openOverlaySettings(); } catch { /* ignore */ }
+    }
+  } catch { /* old APK */ }
+  syncAssistantTools(true);
+  return { notify, overlay };
 }
 
 export async function enableBankSmsCapture() {
-  if (!isNativeApp()) return false;
-  try {
-    try { await PaymentCapture.requestNotifyPermission(); } catch { /* older Android */ }
-    const { granted } = await PaymentCapture.requestSmsPermission();
-    return !!granted;
-  } catch {
-    return false;
-  }
+  const { notify } = await enablePaymentCapture();
+  return notify;
 }
 
 export async function stopPaymentAutoCapture() {

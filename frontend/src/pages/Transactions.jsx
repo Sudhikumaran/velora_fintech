@@ -27,10 +27,83 @@ const defaultForm = {
   account: '', toAccount: '', type: 'expense', amount: '',
   category: '', description: '', date: new Date().toISOString().split('T')[0], tags: '', notes: '', receiptUrl: '',
   splits: [], isRecurring: false, frequency: 'monthly', nextRunDate: '',
+  isBusiness: false, gstin: '', gstAmount: '',
 };
 
 function splitText(split) {
   return (split?.description || split?.notes || '').trim();
+}
+
+function isSplitTx(tx) {
+  return Array.isArray(tx?.splits) && tx.splits.length > 0;
+}
+
+function SplitDetails({ tx, currency, onEdit, onClose }) {
+  const amountClass = tx.type === 'income' ? 'text-green-600' : tx.type === 'expense' ? 'text-red-600' : 'text-indigo-600';
+  const sign = tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : '';
+  const parts = tx.splits || [];
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-lg font-semibold text-gray-900 dark:text-white">
+          {tx.description || 'Split transaction'}
+        </p>
+        <p className="text-sm text-gray-500 mt-1">
+          {formatDate(tx.date, 'long')}
+          {tx.account?.name ? ` · ${tx.account.name}` : ''}
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="hidden sm:grid grid-cols-[1fr_1fr_auto] gap-3 px-4 py-2 bg-gray-50 dark:bg-gray-800/60 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+          <span>Category</span>
+          <span>Description</span>
+          <span className="text-right w-24">Amount</span>
+        </div>
+        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+          {parts.map((s, i) => (
+            <div key={i} className="px-4 py-3 sm:grid sm:grid-cols-[1fr_1fr_auto] sm:items-center sm:gap-3">
+              <div className="flex items-start justify-between gap-3 sm:block">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{s.category || '—'}</p>
+                  <p className="sm:hidden text-xs text-gray-500 mt-0.5">{splitText(s) || 'No description'}</p>
+                </div>
+                <p className={`sm:hidden text-sm font-semibold tabular-nums shrink-0 ${amountClass}`}>
+                  {sign}{formatCurrency(s.amount, currency)}
+                </p>
+              </div>
+              <p className="hidden sm:block text-sm text-gray-600 dark:text-gray-300 truncate">
+                {splitText(s) || '—'}
+              </p>
+              <p className={`hidden sm:block text-sm font-semibold tabular-nums text-right w-24 ${amountClass}`}>
+                {sign}{formatCurrency(s.amount, currency)}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/60 border-t border-gray-200 dark:border-gray-700">
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Total</span>
+          <span className={`text-base font-bold tabular-nums ${amountClass}`}>
+            {sign}{formatCurrency(tx.amount, currency)}
+          </span>
+        </div>
+      </div>
+
+      {tx.notes && (
+        <p className="text-sm text-gray-500">{tx.notes}</p>
+      )}
+
+      <div className="flex gap-2">
+        <button type="button" onClick={onEdit} className="btn-primary flex-1 min-h-12">
+          <Edit3 size={15} /> Edit split
+        </button>
+        <button type="button" onClick={onClose} className="btn-secondary flex-1 min-h-12">
+          Close
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
@@ -158,6 +231,32 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
           <label className="label">Notes (optional)</label>
           <textarea className="input-field resize-none" rows={2} placeholder="Additional notes..." value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+          {form.type !== 'transfer' && (
+            <div className="mt-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 space-y-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                <input
+                  type="checkbox"
+                  checked={!!form.isBusiness}
+                  onChange={(e) => setForm({ ...form, isBusiness: e.target.checked })}
+                />
+                Business / GST invoice
+              </label>
+              {form.isBusiness && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">GSTIN</label>
+                    <input className="input-field" placeholder="22AAAAA0000A1Z5" value={form.gstin}
+                      onChange={(e) => setForm({ ...form, gstin: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="label">GST amount</label>
+                    <input type="number" step="0.01" className="input-field" placeholder="0.00" value={form.gstAmount}
+                      onChange={(e) => setForm({ ...form, gstAmount: e.target.value })} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <ReceiptUpload
             transactionId={isEdit ? form._id : null}
             currentUrl={form.receiptUrl}
@@ -273,7 +372,7 @@ export default function Transactions() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editTx, setEditTx] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
+  const [viewTx, setViewTx] = useState(null);
   const [form, setForm] = useState(defaultForm);
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
@@ -294,8 +393,9 @@ export default function Transactions() {
     fetchTransactions({ page });
   }, [page, filters]);
 
-  const openCreate = () => { setForm({ ...defaultForm, account: accounts[0]?._id || '' }); setEditTx(null); setModalOpen(true); };
+  const openCreate = () => { setForm({ ...defaultForm, account: accounts[0]?._id || '' }); setEditTx(null); setViewTx(null); setModalOpen(true); };
   const openEdit = (tx) => {
+    setViewTx(null);
     setForm({
       account: tx.account?._id || tx.account,
       toAccount: tx.toAccount?._id || tx.toAccount || '',
@@ -310,9 +410,20 @@ export default function Transactions() {
       })),
       isRecurring: !!tx.isRecurring, frequency: tx.frequency || 'monthly',
       nextRunDate: tx.nextRunDate ? new Date(tx.nextRunDate).toISOString().split('T')[0] : '',
+      isBusiness: !!tx.isBusiness, gstin: tx.gstin || '', gstAmount: tx.gstAmount || '',
     });
     setEditTx(tx);
     setModalOpen(true);
+  };
+
+  const openTx = (tx) => {
+    if (isSplitTx(tx)) {
+      setModalOpen(false);
+      setEditTx(null);
+      setViewTx(tx);
+      return;
+    }
+    openEdit(tx);
   };
 
   const handleSubmit = async (e) => {
@@ -343,6 +454,7 @@ export default function Transactions() {
       await createTransaction(data);
     }
     setModalOpen(false);
+    setViewTx(null);
     await fetchTransactions({ page });
     fetchAccounts();
   };
@@ -511,8 +623,8 @@ export default function Transactions() {
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => openEdit(tx)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openEdit(tx); }}
+                  onClick={() => openTx(tx)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openTx(tx); }}
                   className="lg:hidden w-full text-left flex items-start gap-3 px-4 py-3 cursor-pointer"
                 >
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${iconWrap}`}>
@@ -535,15 +647,10 @@ export default function Transactions() {
                       <p className="text-xs text-gray-400 shrink-0 tabular-nums">Bal {balanceLabel}</p>
                     </div>
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      {tx.splits?.length > 0 ? (
-                        tx.splits.map((s, si) => (
-                          <span key={si} className="inline-flex items-center gap-1 max-w-full">
-                            <Badge variant={typeColors[tx.type]} size="xs">{s.category}</Badge>
-                            {splitText(s) && (
-                              <span className="text-[11px] text-gray-500 truncate">{splitText(s)}</span>
-                            )}
-                          </span>
-                        ))
+                      {isSplitTx(tx) ? (
+                        <Badge variant={typeColors[tx.type]} size="xs">
+                          Split · {tx.splits.length} {tx.splits.length === 1 ? 'part' : 'parts'}
+                        </Badge>
                       ) : (
                         tx.category && <Badge variant={typeColors[tx.type]} size="xs">{tx.category}</Badge>
                       )}
@@ -572,8 +679,8 @@ export default function Transactions() {
                   className="hidden lg:flex items-center gap-4 px-6 py-4 cursor-pointer"
                   role="button"
                   tabIndex={0}
-                  onClick={() => openEdit(tx)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openEdit(tx); }}
+                  onClick={() => openTx(tx)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openTx(tx); }}
                 >
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconWrap}`}>
                     {typeIcons[tx.type]}
@@ -586,13 +693,14 @@ export default function Transactions() {
                       <span className="text-xs text-gray-500 shrink-0">{formatDate(tx.date, 'short')}</span>
                       <span className="text-xs text-gray-400">•</span>
                       <span className="text-xs text-gray-500 truncate">{tx.account?.name}</span>
-                      {tx.splits?.length > 0 ? tx.splits.map((s, si) => (
-                        <span key={si} className="inline-flex items-center gap-1 min-w-0">
+                      {isSplitTx(tx) ? (
+                        <>
                           <span className="text-xs text-gray-400">•</span>
-                          <Badge variant={typeColors[tx.type]} size="xs">{s.category}</Badge>
-                          {splitText(s) && <span className="text-xs text-gray-500 truncate max-w-[10rem]">{splitText(s)}</span>}
-                        </span>
-                      )) : tx.category && (
+                          <Badge variant={typeColors[tx.type]} size="xs">
+                            Split · {tx.splits.length} {tx.splits.length === 1 ? 'part' : 'parts'}
+                          </Badge>
+                        </>
+                      ) : tx.category && (
                         <>
                           <span className="text-xs text-gray-400">•</span>
                           <Badge variant={typeColors[tx.type]} size="xs">{tx.category}</Badge>
@@ -615,7 +723,7 @@ export default function Transactions() {
                     <p className="text-xs text-gray-400 truncate">{tx.account?.name}</p>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => { e.stopPropagation(); openEdit(tx); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                    <button onClick={(e) => { e.stopPropagation(); openTx(tx); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg" title="View">
                       <Edit3 size={13} className="text-gray-500" />
                     </button>
                     <button onClick={async (e) => { e.stopPropagation(); await archiveTransaction(tx._id); fetchAccounts(); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
@@ -651,9 +759,24 @@ export default function Transactions() {
       </div>
 
       <Modal
+        isOpen={!!viewTx}
+        onClose={() => setViewTx(null)}
+        title="Split details"
+      >
+        {viewTx && (
+          <SplitDetails
+            tx={viewTx}
+            currency={user?.currency}
+            onEdit={() => openEdit(viewTx)}
+            onClose={() => setViewTx(null)}
+          />
+        )}
+      </Modal>
+
+      <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editTx ? (editTx.splits?.length ? 'Split transaction' : 'Edit Transaction') : 'Add Transaction'}
+        title={editTx ? 'Edit Transaction' : 'Add Transaction'}
         headerAction={
           <button type="submit" form="transaction-form" className="btn-primary w-full min-h-12 text-base">
             {editTx ? 'Update Transaction' : 'Add Transaction'}

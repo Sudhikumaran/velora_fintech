@@ -4,6 +4,7 @@ import { useAuthStore } from './store/authStore';
 import { isNativeApp, usesHashRouter } from './utils/native';
 
 import AppLayout from './components/layout/AppLayout';
+import AppLock from './components/ui/AppLock';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Dashboard from './pages/Dashboard';
@@ -63,7 +64,7 @@ export default function App() {
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
         <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route path="/" element={<ProtectedRoute><AppLock><AppLayout /></AppLock></ProtectedRoute>}>
           <Route index element={<Dashboard />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="accounts" element={<Accounts />} />

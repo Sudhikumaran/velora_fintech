@@ -7,7 +7,8 @@ import { useInvestmentStore } from '../store/financeStore';
 import { useLedgerStore } from '../store/ledgerStore';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency, formatDate } from '../utils/formatters';
-import { ACCOUNT_TYPES, COLORS } from '../utils/constants';
+import { toUserCurrency } from '../utils/fx';
+import { ACCOUNT_TYPES, COLORS, CURRENCIES } from '../utils/constants';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import EmptyState from '../components/ui/EmptyState';
@@ -15,7 +16,7 @@ import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
-const getDefaultForm = (userCurrency = 'INR') => ({ name: '', type: 'bank', balance: '', currency: userCurrency, color: '#6366f1', description: '', creditLimit: '' });
+const getDefaultForm = (userCurrency = 'INR') => ({ name: '', type: 'bank', balance: '', currency: userCurrency, color: '#6366f1', description: '', creditLimit: '', upiId: '' });
 
 function AccountForm({ form, setForm, onSubmit, isEdit }) {
   return (
@@ -38,6 +39,18 @@ function AccountForm({ form, setForm, onSubmit, isEdit }) {
           <label className="label">Balance</label>
           <input type="number" step="0.01" className="input-field" placeholder="0.00" value={form.balance}
             onChange={(e) => setForm({ ...form, balance: e.target.value })} required />
+        </div>
+        <div>
+          <label className="label">Currency</label>
+          <select className="input-field" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })}>
+            {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>)}
+          </select>
+        </div>
+        <div className="col-span-2">
+          <label className="label">UPI ID (optional)</label>
+          <input className="input-field" placeholder="name@oksbi" value={form.upiId}
+            onChange={(e) => setForm({ ...form, upiId: e.target.value })} />
+          <p className="text-xs text-gray-400 mt-1">Used to treat payments to your own handle as transfers.</p>
         </div>
         {form.type === 'credit' && (
           <div>
@@ -89,7 +102,7 @@ export default function Accounts() {
 
   const openCreate = () => { setForm(getDefaultForm(user?.currency)); setEditAccount(null); setModalOpen(true); };
   const openEdit = (account) => {
-    setForm({ name: account.name, type: account.type, balance: account.balance, currency: account.currency, color: account.color, description: account.description || '', creditLimit: account.creditLimit || '' });
+    setForm({ name: account.name, type: account.type, balance: account.balance, currency: account.currency, color: account.color, description: account.description || '', creditLimit: account.creditLimit || '', upiId: account.upiId || '' });
     setEditAccount(account);
     setModalOpen(true);
   };
@@ -104,12 +117,12 @@ export default function Accounts() {
     setModalOpen(false);
   };
 
-  const totalBalance = accounts.filter((a) => !a.isArchived).reduce((sum, a) => sum + a.balance, 0);
-  const bankAccounts = accounts.filter((a) => !a.isArchived && ['bank', 'savings', 'cash', 'wallet'].includes(a.type));
+  const displayCurrency = user?.currency || 'INR';
+  const totalBalance = accounts.filter((a) => !a.isArchived).reduce((sum, a) => sum + toUserCurrency(a.balance, a.currency || displayCurrency, displayCurrency), 0);
   const creditAccounts = accounts.filter((a) => !a.isArchived && a.type === 'credit');
   const investmentAccounts = accounts.filter((a) => !a.isArchived && a.type === 'investment');
   const portfolioValue = investments.reduce((s, inv) => s + inv.units * (inv.currentPrice || inv.buyPrice), 0);
-  const investmentAccountsValue = investmentAccounts.reduce((s, a) => s + a.balance, 0);
+  const investmentAccountsValue = investmentAccounts.reduce((s, a) => s + toUserCurrency(a.balance, a.currency || displayCurrency, displayCurrency), 0);
   const totalInvestments = portfolioValue + investmentAccountsValue;
 
   return (
@@ -182,7 +195,7 @@ export default function Accounts() {
                     </div>
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">{account.name}</p>
-                      <p className="text-xs text-gray-500 capitalize">{account.type}</p>
+                      <p className="text-xs text-gray-500 capitalize">{account.type}{account.currency ? ` · ${account.currency}` : ''}{account.upiId ? ` · ${account.upiId}` : ''}</p>
                     </div>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -210,7 +223,7 @@ export default function Accounts() {
 
                 <div className="mb-1">
                   <p className="text-2xl font-bold" style={{ color: account.balance < 0 ? '#ef4444' : account.color }}>
-                    {formatCurrency(account.balance, user?.currency)}
+                    {formatCurrency(toUserCurrency(account.balance, account.currency || displayCurrency, displayCurrency), user?.currency)}
                   </p>
                 </div>
 

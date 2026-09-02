@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, Palette, Globe, Download, LogOut, Check, RefreshCw, RotateCcw, Smartphone } from 'lucide-react';
+import { User, Lock, Palette, Globe, Download, LogOut, Check, RefreshCw, RotateCcw, Smartphone, Users, Landmark } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { CURRENCIES } from '../utils/constants';
+import { formatCurrency } from '../utils/formatters';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import PageHeader from '../components/ui/PageHeader';
@@ -18,9 +19,12 @@ import {
   getAutoPayAccountId,
   setAutoPayAccountId,
   flushPendingPayments,
-  enableBankSmsCapture,
+  enablePaymentCapture,
   openTestPaymentReview,
 } from '../utils/paymentCapture';
+import { hasAppPin, setAppPin, clearAppPin } from '../utils/appLock';
+import { getMerchantMemory, forgetMerchantCategory } from '../utils/merchantMemory';
+import { useExtrasStore } from '../store/financeStore';
 
 const sections = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -43,20 +47,26 @@ export default function Settings() {
   const [autoPay, setAutoPay] = useState(() => isAutoPayEnabled());
   const [autoPayAccount, setAutoPayAccount] = useState(() => getAutoPayAccountId());
   const [notifyAccess, setNotifyAccess] = useState(false);
-  const [smsAccess, setSmsAccess] = useState(false);
   const [overlayAccess, setOverlayAccess] = useState(false);
+  const [pinValue, setPinValue] = useState('');
+  const [pinEnabled, setPinEnabled] = useState(() => hasAppPin());
+  const [joinCode, setJoinCode] = useState('');
+  const [houseName, setHouseName] = useState('');
+  const [caBusy, setCaBusy] = useState(false);
+  const { household, fetchHousehold } = useExtrasStore();
+  const [rules, setRules] = useState(() => getMerchantMemory());
+
+  useEffect(() => { fetchHousehold(); }, []);
 
   useEffect(() => {
     if (!isNativeApp()) return undefined;
     const sync = async () => {
       try {
-        const { enabled, sms, overlay } = await PaymentCapture.isAccessEnabled();
+        const { enabled, overlay } = await PaymentCapture.isAccessEnabled();
         setNotifyAccess(!!enabled);
-        setSmsAccess(!!sms);
         setOverlayAccess(!!overlay);
       } catch {
         setNotifyAccess(false);
-        setSmsAccess(false);
         setOverlayAccess(false);
       }
     };
@@ -225,6 +235,42 @@ export default function Settings() {
                   </div>
                   <button type="submit" className="btn-primary">Update Password</button>
                 </form>
+                <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 max-w-md space-y-3">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">App lock PIN</h3>
+                  <p className="text-sm text-gray-500">Locks this device after you close the app. PIN stays on the phone, not on the server.</p>
+                  {pinEnabled ? (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => { clearAppPin(); setPinEnabled(false); toast.success('PIN removed'); }}
+                    >
+                      Turn off PIN
+                    </button>
+                  ) : (
+                    <form
+                      className="flex gap-2"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (pinValue.length < 4) return toast.error('Use 4–6 digits');
+                        await setAppPin(pinValue);
+                        setPinEnabled(true);
+                        setPinValue('');
+                        toast.success('PIN saved on this device');
+                      }}
+                    >
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={6}
+                        className="input-field"
+                        placeholder="4–6 digit PIN"
+                        value={pinValue}
+                        onChange={(e) => setPinValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      />
+                      <button type="submit" className="btn-primary shrink-0">Save PIN</button>
+                    </form>
+                  )}
+                </div>
               </div>
             )}
 
@@ -248,10 +294,17 @@ export default function Settings() {
                   </div>
                   {isNativeApp() && (
                     <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                      <p className="font-medium text-gray-900 dark:text-white">Prompt after bank & UPI payments</p>
+                      <p className="font-medium text-gray-900 dark:text-white">Add a payment after you pay</p>
                       <p className="text-sm text-gray-500 mt-1">
-                        After you pay in GPay, PhonePe, or a bank app, a popup appears on top so you can pick a category. Nothing is saved until you tap Save. Turn on “Display over other apps” or the popup cannot appear while you are still in GPay.
+                        SMS is not used. Pick any of these:
                       </p>
+                      <ul className="text-sm text-gray-500 mt-2 list-disc pl-5 space-y-1">
+                        <li>Purple floating button — tap it right after GPay</li>
+                        <li>“Log a payment” in the notification shade</li>
+                        <li>Share the GPay success screen or a screenshot to Velora</li>
+                        <li>Quick Settings tile: Add payment</li>
+                        <li>Voice add on the home screen</li>
+                      </ul>
                       <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                         <input
                           type="checkbox"
@@ -261,25 +314,14 @@ export default function Settings() {
                             setAutoPay(on);
                             setAutoPayEnabled(on);
                             if (!on) return;
-                            if (!notifyAccess) {
-                              toast('Turn on notification access for Velora, then return here.');
-                              try { await PaymentCapture.openAccessSettings(); } catch { /* ignore */ }
-                            }
-                            const smsOk = await enableBankSmsCapture();
-                            setSmsAccess(smsOk);
-                            if (!smsOk) toast('Allow SMS so bank debit messages can open the add-payment form.');
-                            try {
-                              const access = await PaymentCapture.isAccessEnabled();
-                              setOverlayAccess(!!access?.overlay);
-                              if (!access?.overlay) {
-                                toast('Allow Display over other apps so the popup can appear on top of GPay.');
-                                await PaymentCapture.openOverlaySettings();
-                              }
-                            } catch { /* old APK */ }
+                            toast('Allow Display over other apps so the floating button can sit over GPay.');
+                            const access = await enablePaymentCapture();
+                            setNotifyAccess(!!access.notify);
+                            setOverlayAccess(!!access.overlay);
                             flushPendingPayments();
                           }}
                         />
-                        Open add-payment popup when I pay
+                        Show floating button and shade shortcut
                       </label>
                       <div className="mt-3">
                         <p className="text-xs text-gray-500 mb-1">Default bank / account</p>
@@ -298,13 +340,10 @@ export default function Settings() {
                         </select>
                       </div>
                       <p className={`text-xs mt-2 ${notifyAccess ? 'text-green-600' : 'text-amber-600'}`}>
-                        {notifyAccess ? 'Notification access is on.' : 'Notification access is off — UPI app alerts cannot be read yet.'}
-                      </p>
-                      <p className={`text-xs mt-1 ${smsAccess ? 'text-green-600' : 'text-amber-600'}`}>
-                        {smsAccess ? 'SMS access is on — bank debit messages will open the add form.' : 'SMS access is off — bank SMS will not open the form until you allow it.'}
+                        {notifyAccess ? 'Notification access is on — UPI and bank-app alerts can open the assistant.' : 'Notification access is off — turn this on so Velora can see you paid.'}
                       </p>
                       <p className={`text-xs mt-1 ${overlayAccess ? 'text-green-600' : 'text-amber-600'}`}>
-                        {overlayAccess ? 'Display over other apps is on — the popup can appear on top of GPay.' : 'Display over other apps is off — the popup cannot appear while GPay is open.'}
+                        {overlayAccess ? 'Display over other apps is on — the assistant card can appear over GPay.' : 'Display over other apps is off — the card cannot appear while GPay is open.'}
                       </p>
                       <div className="flex flex-wrap gap-2 mt-3">
                         <button
@@ -313,17 +352,6 @@ export default function Settings() {
                           onClick={() => PaymentCapture.openAccessSettings()}
                         >
                           <Smartphone size={14} /> Notification access
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-secondary text-sm inline-flex items-center gap-2"
-                          onClick={async () => {
-                            const smsOk = await enableBankSmsCapture();
-                            setSmsAccess(smsOk);
-                            toast[smsOk ? 'success' : 'error'](smsOk ? 'Bank SMS capture is on' : 'SMS permission was not granted');
-                          }}
-                        >
-                          Allow bank SMS
                         </button>
                         <button
                           type="button"
@@ -342,7 +370,7 @@ export default function Settings() {
                             openTestPaymentReview();
                           }}
                         >
-                          Test popup
+                          Test assistant
                         </button>
                         <button
                           type="button"
@@ -351,7 +379,7 @@ export default function Settings() {
                             setAutoPay(true);
                             setAutoPayEnabled(true);
                             const n = await flushPendingPayments();
-                            toast[n ? 'success' : 'error'](n ? `Found ${n} payment(s) to review` : 'No recent bank SMS or UPI alert found. Pay once, then tap this again.');
+                            toast[n ? 'success' : 'error'](n ? `Found ${n} payment(s) to review` : 'No recent UPI or bank-app alert found. Pay once, or share the success screen to Velora.');
                           }}
                         >
                           Scan recent payments
@@ -374,6 +402,111 @@ export default function Settings() {
                       </button>
                     </div>
                   )}
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Users size={18} className="text-indigo-600" />
+                      <p className="font-medium text-gray-900 dark:text-white">Shared household</p>
+                    </div>
+                    <p className="text-sm text-gray-500">Share a join code so family net worth shows together on Home. Each person still keeps their own books.</p>
+                    {household ? (
+                      <div className="text-sm space-y-2">
+                        <p className="font-semibold text-gray-900 dark:text-white">{household.name} · code {household.code}</p>
+                        {(household.memberWorth || []).map((m) => (
+                          <p key={m.id} className="text-gray-600 dark:text-gray-300">
+                            {m.name} · {formatCurrency(m.netWorth, user?.currency)}
+                          </p>
+                        ))}
+                        {household.sharedNetWorth != null && (
+                          <p className="font-semibold text-indigo-600">Together: {formatCurrency(household.sharedNetWorth, user?.currency)}</p>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-secondary text-sm"
+                          onClick={async () => {
+                            await api.post('/extras/household/leave');
+                            await fetchHousehold();
+                            toast.success('Left household');
+                          }}
+                        >
+                          Leave household
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <input className="input-field" placeholder="Household name" value={houseName} onChange={(e) => setHouseName(e.target.value)} />
+                          <button
+                            type="button"
+                            className="btn-primary shrink-0"
+                            onClick={async () => {
+                              await api.post('/extras/household', { name: houseName });
+                              await fetchHousehold();
+                              toast.success('Household created');
+                            }}
+                          >
+                            Create
+                          </button>
+                        </div>
+                        <div className="flex gap-2">
+                          <input className="input-field uppercase" placeholder="Join code" value={joinCode} onChange={(e) => setJoinCode(e.target.value)} />
+                          <button
+                            type="button"
+                            className="btn-secondary shrink-0"
+                            onClick={async () => {
+                              await api.post('/extras/household/join', { code: joinCode });
+                              await fetchHousehold();
+                              toast.success('Joined household');
+                            }}
+                          >
+                            Join
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Landmark size={18} className="text-indigo-600" />
+                      <p className="font-medium text-gray-900 dark:text-white">Account Aggregator</p>
+                    </div>
+                    <p className="text-sm text-gray-500">RBI Account Aggregator bank linking is coming later. Join the waitlist — Velora will never ask you to type bank passwords here.</p>
+                    {user?.aaWaitlist ? (
+                      <p className="text-sm text-emerald-600">You are on the waitlist.</p>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn-secondary text-sm"
+                        onClick={async () => {
+                          await api.post('/extras/aa-waitlist');
+                          await updateProfile({ aaWaitlist: true });
+                          toast.success('Added to waitlist');
+                        }}
+                      >
+                        Join waitlist
+                      </button>
+                    )}
+                  </div>
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl space-y-2">
+                    <p className="font-medium text-gray-900 dark:text-white">Recurring merchant categories</p>
+                    <p className="text-sm text-gray-500">Swiggy → Food, etc. Remembered when you save a payment.</p>
+                    {Object.keys(rules).length === 0 ? (
+                      <p className="text-sm text-gray-400">No saved merchants yet.</p>
+                    ) : Object.entries(rules).map(([k, v]) => (
+                      <div key={k} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700 dark:text-gray-300">{k} → {v}</span>
+                        <button
+                          type="button"
+                          className="text-red-500"
+                          onClick={async () => {
+                            await forgetMerchantCategory(k);
+                            setRules(getMerchantMemory());
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -392,6 +525,34 @@ export default function Settings() {
                     </div>
                     <button onClick={handleExport} className="btn-primary text-sm flex items-center gap-2 mt-3">
                       <Download size={14} /> Export JSON
+                    </button>
+                    <button
+                      type="button"
+                      disabled={caBusy}
+                      className="btn-secondary text-sm flex items-center gap-2 mt-3 ml-2"
+                      onClick={async () => {
+                        setCaBusy(true);
+                        try {
+                          const now = new Date();
+                          const { data } = await api.get('/extras/ca-export', {
+                            params: { month: now.getMonth() + 1, year: now.getFullYear() },
+                            responseType: 'blob',
+                          });
+                          const url = URL.createObjectURL(data);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `velora-ca-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.csv`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          toast.success('CA CSV downloaded');
+                        } catch {
+                          toast.error('CA export failed');
+                        } finally {
+                          setCaBusy(false);
+                        }
+                      }}
+                    >
+                      <Download size={14} /> {caBusy ? 'Exporting…' : 'CA monthly CSV'}
                     </button>
                     <label className="btn-secondary text-sm mt-3 inline-flex cursor-pointer">
                       Import JSON

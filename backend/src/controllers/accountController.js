@@ -17,7 +17,7 @@ export const getAccounts = async (req, res, next) => {
 
 export const createAccount = async (req, res, next) => {
   try {
-    const { name, type, balance, currency, color, icon, description, creditLimit } = req.body;
+    const { name, type, balance, currency, color, icon, description, creditLimit, upiId } = req.body;
 
     if (!name || !type) {
       return errorResponse(res, 'Name and type are required.', 400);
@@ -27,6 +27,7 @@ export const createAccount = async (req, res, next) => {
       user: req.user._id,
       name, type, balance: balance || 0, currency: currency || 'USD',
       color: color || '#6366f1', icon: icon || 'wallet', description, creditLimit,
+      upiId: String(upiId || '').trim(),
     });
 
     successResponse(res, account, 'Account created successfully.', 201);
@@ -40,8 +41,8 @@ export const updateAccount = async (req, res, next) => {
     const account = await Account.findOne({ _id: req.params.id, user: req.user._id });
     if (!account) return errorResponse(res, 'Account not found.', 404);
 
-    const { name, type, balance, currency, color, icon, description, creditLimit } = req.body;
-    Object.assign(account, { name, type, balance, currency, color, icon, description, creditLimit });
+    const { name, type, balance, currency, color, icon, description, creditLimit, upiId } = req.body;
+    Object.assign(account, { name, type, balance, currency, color, icon, description, creditLimit, upiId });
     await account.save();
 
     successResponse(res, account, 'Account updated successfully.');

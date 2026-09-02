@@ -45,12 +45,17 @@ final class MerchantMemory {
   }
 
   static void setLaunch(Context context, String action, String noteId, String category) {
+    setLaunch(context, action, noteId, category, "");
+  }
+
+  static void setLaunch(Context context, String action, String noteId, String category, String path) {
     if (context == null) return;
     try {
       JSONObject obj = new JSONObject();
       obj.put("action", action == null ? "" : action);
       obj.put("noteId", noteId == null ? "" : noteId);
       obj.put("category", category == null ? "" : category);
+      obj.put("path", path == null ? "" : path);
       context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         .edit()
         .putString(KEY_LAUNCH, obj.toString())

@@ -14,6 +14,8 @@ import PaymentReviewModal from '../ui/PaymentReviewModal';
 import { checkDueReminders } from '../../utils/dueReminders';
 import { refreshTodaySpendFromTransactions } from '../../utils/todaySpend';
 import { useTransactionStore } from '../../store/transactionStore';
+import { useAuthStore } from '../../store/authStore';
+import { hydrateMerchantMemory } from '../../utils/merchantMemory';
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -30,6 +32,10 @@ export default function AppLayout() {
   const { fetchAccounts } = useAccountStore();
   const [showOnboarding, completeOnboarding] = useOnboarding();
   useEffect(() => { fetchAccounts(); }, []);
+  useEffect(() => {
+    const rules = useAuthStore.getState().user?.merchantRules;
+    if (rules) hydrateMerchantMemory(rules);
+  }, []);
   useEffect(() => { startPaymentAutoCapture(); }, []);
   useEffect(() => {
     checkDueReminders();

@@ -5,9 +5,7 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.database.Cursor;
 import android.provider.Settings;
-import android.provider.Telephony;
 import android.speech.RecognizerIntent;
 
 import androidx.activity.result.ActivityResult;
@@ -167,6 +165,17 @@ public class PaymentCapturePlugin extends Plugin {
   }
 
   @PluginMethod
+  public void setAssistantTools(PluginCall call) {
+    boolean bubble = Boolean.TRUE.equals(call.getBoolean("bubble", false));
+    boolean logger = Boolean.TRUE.equals(call.getBoolean("logger", false));
+    if (bubble) PaymentBubble.show(getContext());
+    else PaymentBubble.hide();
+    if (logger) PaymentPrompt.showLogger(getContext());
+    else PaymentPrompt.hideLogger(getContext());
+    call.resolve();
+  }
+
+  @PluginMethod
   public void updateTodaySpend(PluginCall call) {
     Double amount = call.getDouble("amount");
     String label = call.getString("label", "Today");
@@ -218,7 +227,14 @@ public class PaymentCapturePlugin extends Plugin {
   @PluginMethod
   public void scanRecentSms(PluginCall call) {
     JSObject ret = new JSObject();
-    ret.put("scanned", scanInbox(1));
+    ret.put("scanned", PaymentNotificationService.scanActive());
+    call.resolve(ret);
+  }
+
+  @PluginMethod
+  public void scanRecentAlerts(PluginCall call) {
+    JSObject ret = new JSObject();
+    ret.put("scanned", PaymentNotificationService.scanActive());
     call.resolve(ret);
   }
 
@@ -268,40 +284,6 @@ public class PaymentCapturePlugin extends Plugin {
     } catch (Exception e) {
       call.reject(e.getMessage());
     }
-  }
-
-  private int scanInbox(int hours) {
-    if (getPermissionState("sms") != PermissionState.GRANTED) return 0;
-    int added = 0;
-    long since = System.currentTimeMillis() - hours * 3600L * 1000L;
-    try (Cursor cursor = getContext().getContentResolver().query(
-      Telephony.Sms.Inbox.CONTENT_URI,
-      new String[]{ Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE },
-      Telephony.Sms.DATE + " >= ?",
-      new String[]{ String.valueOf(since) },
-      Telephony.Sms.DATE + " DESC"
-    )) {
-      if (cursor == null) return 0;
-      while (cursor.moveToNext()) {
-        String from = cursor.getString(1);
-        String text = cursor.getString(2);
-        long when = cursor.getLong(3);
-        if (!PaymentQueue.looksFinancial(text)) continue;
-        JSONObject item = new JSONObject();
-        item.put("id", "sms|" + from + "|" + when + "|" + (text == null ? 0 : text.hashCode()));
-        item.put("packageName", "sms");
-        item.put("title", from == null || from.isEmpty() ? "Bank SMS" : from);
-        item.put("text", text == null ? "" : text);
-        item.put("bigText", "");
-        item.put("subText", "");
-        item.put("when", when);
-        PaymentQueue.enqueue(getContext(), item);
-        added += 1;
-      }
-    } catch (Exception ignored) {
-      return added;
-    }
-    return added;
   }
 
   private boolean isListenerEnabled() {

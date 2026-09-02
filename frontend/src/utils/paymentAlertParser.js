@@ -116,6 +116,7 @@ export function parsePaymentNotification(note) {
 function packageLabel(pkg) {
   if (!pkg) return 'a payment alert';
   if (pkg === 'sms') return 'a bank SMS';
+  if (pkg === 'share') return 'a shared payment';
   if (pkg.includes('paisa.user')) return 'Google Pay';
   if (pkg.includes('phonepe')) return 'PhonePe';
   if (pkg.includes('paytm')) return 'Paytm';
@@ -158,6 +159,12 @@ export function matchToAccount(accounts, merchant, fromAccountId) {
     return name.length >= 3 && (hay.includes(name) || name.includes(hay));
   });
   if (byName) return byName._id;
+
+  const byUpi = list.find((a) => {
+    const upi = String(a.upiId || '').toLowerCase();
+    return upi.length >= 3 && (hay.includes(upi) || upi.includes(hay));
+  });
+  if (byUpi) return byUpi._id;
 
   const bank = BANKS.find((row) => row.test.test(hay));
   if (bank) {

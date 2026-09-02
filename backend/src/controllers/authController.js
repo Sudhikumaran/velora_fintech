@@ -63,10 +63,18 @@ export const getMe = async (req, res, next) => {
 
 export const updateProfile = async (req, res, next) => {
   try {
-    const { name, currency, theme, timezone, avatar } = req.body;
+    const { name, currency, theme, timezone, avatar, merchantRules, aaWaitlist } = req.body;
+    const patch = {};
+    if (name !== undefined) patch.name = name;
+    if (currency !== undefined) patch.currency = currency;
+    if (theme !== undefined) patch.theme = theme;
+    if (timezone !== undefined) patch.timezone = timezone;
+    if (avatar !== undefined) patch.avatar = avatar;
+    if (merchantRules !== undefined) patch.merchantRules = merchantRules;
+    if (aaWaitlist !== undefined) patch.aaWaitlist = Boolean(aaWaitlist);
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { name, currency, theme, timezone, avatar },
+      patch,
       { new: true, runValidators: true }
     );
     successResponse(res, user, 'Profile updated successfully.');

@@ -16,6 +16,7 @@ import { formatCurrency, formatDate, getTrend } from '../utils/formatters';
 import StatCard from '../components/ui/StatCard';
 import { SkeletonDashboard } from '../components/ui/Skeleton';
 import VoiceAddButton from '../components/ui/VoiceAddButton';
+import InsightsExtras from '../components/ui/InsightsExtras';
 
 const PIE_COLORS = ['#6366f1','#8b5cf6','#ec4899','#f97316','#eab308','#22c55e','#14b8a6','#3b82f6'];
 
@@ -205,6 +206,16 @@ export default function Dashboard() {
             </p>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Cash & bank</span>
+                <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(netWorth.cash ?? netWorth.assets, user?.currency)}</span>
+              </div>
+              {netWorth.portfolio != null && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Investments</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(netWorth.portfolio, user?.currency)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Assets</span>
                 <span className="font-semibold text-emerald-600">{formatCurrency(netWorth.assets, user?.currency)}</span>
               </div>
@@ -263,6 +274,8 @@ export default function Dashboard() {
           </div>
         </motion.div>
       </div>
+
+      <InsightsExtras />
 
       {/* Accounts + Transactions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

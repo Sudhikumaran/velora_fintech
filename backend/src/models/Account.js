@@ -47,6 +47,11 @@ const accountSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    upiId: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
   { timestamps: true }
 );

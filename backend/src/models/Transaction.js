@@ -91,6 +91,19 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    isBusiness: {
+      type: Boolean,
+      default: false,
+    },
+    gstin: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    gstAmount: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );

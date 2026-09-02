@@ -26,6 +26,7 @@ import ledgerRoutes from './routes/ledgerRoutes.js';
 import incomePlanRoutes from './routes/incomePlanRoutes.js';
 import searchRoutes from './routes/searchRoutes.js';
 import jobRoutes from './routes/jobRoutes.js';
+import extrasRoutes from './routes/extrasRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
@@ -77,7 +78,7 @@ app.use(cookieParser());
 // Clients that call https://api-host/auth/... instead of https://api-host/api/auth/...
 const API_FIRST_SEGMENTS = new Set([
   'auth', 'accounts', 'transactions', 'budgets', 'debts', 'investments',
-  'subscriptions', 'goals', 'analytics', 'calendar-events', 'ledger', 'income-plans', 'search', 'jobs', 'health',
+  'subscriptions', 'goals', 'analytics', 'calendar-events', 'ledger', 'income-plans', 'search', 'jobs', 'extras', 'health',
 ]);
 app.use((req, res, next) => {
   if (req.path.startsWith('/api')) return next();
@@ -128,6 +129,7 @@ app.use('/api/ledger', ledgerRoutes);
 app.use('/api/income-plans', incomePlanRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/extras', extrasRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Velora API is running.', timestamp: new Date() });

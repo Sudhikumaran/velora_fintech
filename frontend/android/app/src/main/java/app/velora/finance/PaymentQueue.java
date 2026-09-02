@@ -32,6 +32,9 @@ final class PaymentQueue {
         || lower.contains("withdrawn")
         || lower.contains("paid")
         || lower.contains("spent")
+        || lower.contains("successful")
+        || lower.contains("completed")
+        || lower.contains("sent to")
         || lower.contains("a/c")
         || lower.contains("acct");
   }
@@ -54,8 +57,9 @@ final class PaymentQueue {
       Context app = context.getApplicationContext();
       String payload = item.toString();
       new Handler(Looper.getMainLooper()).post(() -> {
-        if (PaymentOverlay.show(app, item)) return;
+        boolean overlay = PaymentOverlay.show(app, item);
         PaymentPrompt.show(app, item);
+        if (overlay) return;
         try {
           Intent wake = new Intent(app, PaymentWakeService.class);
           wake.putExtra("payload", payload);
@@ -70,7 +74,7 @@ final class PaymentQueue {
             popup.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             popup.putExtra("payload", payload);
             app.startActivity(popup);
-          } catch (Exception ignored2) { /* last resort is the notification */ }
+          } catch (Exception ignored2) { /* heads-up notification is the fallback */ }
         }
       });
     } catch (Exception ignored) { /* keep capturing */ }

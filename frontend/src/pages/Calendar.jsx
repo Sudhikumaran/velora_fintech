@@ -5,7 +5,7 @@ import {
   Plus, Trash2, Edit3, Bell, DollarSign, Flag, StickyNote, X,
 } from 'lucide-react';
 import { useTransactionStore } from '../store/transactionStore';
-import { useSubscriptionStore } from '../store/financeStore';
+import { useSubscriptionStore, useDebtStore } from '../store/financeStore';
 import { useCalendarStore } from '../store/calendarStore';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency } from '../utils/formatters';
@@ -40,6 +40,7 @@ export default function Calendar() {
   const { user } = useAuthStore();
   const { transactions, fetchTransactions } = useTransactionStore();
   const { subscriptions, fetchSubscriptions } = useSubscriptionStore();
+  const { debts, fetchDebts } = useDebtStore();
   const { events, fetchEvents, createEvent, updateEvent, deleteEvent } = useCalendarStore();
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -59,6 +60,7 @@ export default function Calendar() {
       limit: 200,
     });
     fetchSubscriptions();
+    fetchDebts();
     fetchEvents({
       startDate: new Date(year, month, 1).toISOString(),
       endDate: new Date(year, month + 1, 0, 23, 59, 59).toISOString(),
@@ -83,10 +85,19 @@ export default function Calendar() {
     const subs = subscriptions
       .filter((s) => s.nextBillingDate && new Date(s.nextBillingDate).toISOString().split('T')[0] === ds)
       .map((s) => ({ ...s, _source: 'subscription', type: 'expense' }));
+    const debtItems = (debts || [])
+      .filter((d) => d.status !== 'paid')
+      .map((d) => {
+        const date = d.isEMI && d.emiDay
+          ? `${year}-${String(month + 1).padStart(2, '0')}-${String(Math.min(d.emiDay, daysInMonth)).padStart(2, '0')}`
+          : (d.dueDate ? toLocalDateStr(d.dueDate) : '');
+        return { ...d, _source: 'debt', type: 'expense', _date: date, amount: d.isEMI ? d.emiAmount : (d.remainingAmount ?? d.amount) };
+      })
+      .filter((d) => d._date === ds);
     const custom = events
       .filter((e) => toLocalDateStr(e.date) === ds)
       .map((e) => ({ ...e, _source: 'custom' }));
-    return [...txs, ...subs, ...custom];
+    return [...txs, ...subs, ...debtItems, ...custom];
   };
 
   const selectedEvents = selectedDate ? getEventsForDay(selectedDate) : [];
@@ -205,6 +216,15 @@ export default function Calendar() {
               const hasIncome  = dayEvents.some((e) => e.type === 'income');
               const hasExpense = dayEvents.some((e) => e.type === 'expense');
               const hasCustom  = dayEvents.some((e) => e._source === 'custom');
+              const hasBill    = dayEvents.some((e) => e._source === 'subscription' || e._source === 'debt');
+              const dueSoon    = hasBill && (() => {
+                const ds = dateStr(day);
+                const due = new Date(year, month, day);
+                due.setHours(0, 0, 0, 0);
+                const t = new Date(); t.setHours(0, 0, 0, 0);
+                const days = Math.round((due - t) / 86400000);
+                return days >= 0 && days <= 3;
+              })();
 
               return (
                 <motion.button
@@ -216,6 +236,7 @@ export default function Calendar() {
                   title="Click to view · Double-click to add event"
                   className={`aspect-square flex flex-col items-center justify-start pt-1.5 rounded-xl transition-all text-sm relative
                     ${isToday    ? 'bg-indigo-600 text-white font-bold shadow-md' :
+                      dueSoon    ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 font-semibold ring-1 ring-amber-400' :
                       isSelected ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-semibold ring-2 ring-indigo-400' :
                       'hover:bg-gray-50 dark:hover:bg-gray-800/60 text-gray-700 dark:text-gray-300'}`}
                 >
@@ -242,6 +263,9 @@ export default function Calendar() {
             </div>
             <div className="flex items-center gap-1.5 text-xs text-gray-400">
               <div className="w-2 h-2 rounded-full bg-indigo-400" /> Custom event
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-gray-400">
+              <div className="w-2 h-2 rounded-full bg-amber-400" /> Due in 3 days
             </div>
             <span className="text-xs text-gray-300 dark:text-gray-600 ml-auto">Double-click a date to add</span>
           </div>
@@ -296,11 +320,13 @@ export default function Calendar() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                             {event._source === 'subscription' ? event.name :
+                             event._source === 'debt'         ? (event.isEMI ? `${event.person} EMI` : event.person) :
                              event._source === 'custom'       ? event.title :
                              event.description || event.category}
                           </p>
                           <p className="text-xs text-gray-400 capitalize">
                             {event._source === 'subscription' ? 'Subscription due' :
+                             event._source === 'debt'         ? (event.isEMI ? 'EMI due' : 'Debt due') :
                              event._source === 'custom'       ? event.type :
                              event.category}
                           </p>
@@ -360,20 +386,41 @@ export default function Calendar() {
           <div className="card p-5">
             <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Upcoming Bills</h4>
             <div className="space-y-2.5">
-              {subscriptions
-                .filter((s) => s.status === 'active' && s.nextBillingDate)
-                .sort((a, b) => new Date(a.nextBillingDate) - new Date(b.nextBillingDate))
-                .slice(0, 5)
-                .map((sub) => {
-                  const daysUntil = Math.ceil((new Date(sub.nextBillingDate) - today) / (1000 * 60 * 60 * 24));
+              {[
+                ...subscriptions
+                  .filter((s) => s.status === 'active' && s.nextBillingDate)
+                  .map((s) => ({
+                    id: s._id,
+                    name: s.name,
+                    amount: s.amount,
+                    date: s.nextBillingDate,
+                    color: s.color || '#ef4444',
+                  })),
+                ...(debts || [])
+                  .filter((d) => d.status !== 'paid')
+                  .map((d) => ({
+                    id: d._id,
+                    name: d.isEMI ? `${d.person} EMI` : d.person,
+                    amount: d.isEMI ? d.emiAmount : (d.remainingAmount ?? d.amount),
+                    date: d.isEMI && d.emiDay
+                      ? new Date(year, month, Math.min(d.emiDay, daysInMonth))
+                      : d.dueDate,
+                    color: '#f59e0b',
+                  })),
+              ]
+                .filter((row) => row.date)
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .slice(0, 6)
+                .map((row) => {
+                  const daysUntil = Math.ceil((new Date(row.date) - today) / (1000 * 60 * 60 * 24));
                   return (
-                    <div key={sub._id} className="flex items-center justify-between text-sm">
+                    <div key={row.id} className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: sub.color || '#ef4444' }} />
-                        <span className="text-gray-700 dark:text-gray-300 truncate max-w-[110px]">{sub.name}</span>
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: row.color }} />
+                        <span className="text-gray-700 dark:text-gray-300 truncate max-w-[110px]">{row.name}</span>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-gray-900 dark:text-white">{formatCurrency(sub.amount, user?.currency)}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white">{formatCurrency(row.amount, user?.currency)}</p>
                         <p className={`text-xs ${daysUntil <= 3 ? 'text-red-500' : 'text-gray-400'}`}>
                           {daysUntil <= 0 ? 'Due now' : `${daysUntil}d`}
                         </p>
@@ -381,8 +428,8 @@ export default function Calendar() {
                     </div>
                   );
                 })}
-              {subscriptions.filter((s) => s.status === 'active').length === 0 && (
-                <p className="text-xs text-gray-400">No active subscriptions</p>
+              {subscriptions.filter((s) => s.status === 'active').length === 0 && !(debts || []).some((d) => d.status !== 'paid') && (
+                <p className="text-xs text-gray-400">No active bills</p>
               )}
             </div>
           </div>

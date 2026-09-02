@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.provider.Settings;
+import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -40,12 +41,12 @@ final class PaymentOverlay {
     hide();
 
     String amount = "Payment";
-    String detail = "Pick a category and save in Velora.";
+    String detail = "Tap to add this in Velora.";
     String noteId = item.optString("id");
     String text = (item.optString("title") + " " + item.optString("text") + " " + item.optString("bigText")).trim();
     Matcher matcher = AMOUNT.matcher(text);
     if (matcher.find()) amount = "₹" + matcher.group(1);
-    if (text.length() > 140) text = text.substring(0, 140);
+    if (text.length() > 120) text = text.substring(0, 120);
     if (!text.isEmpty()) detail = text;
 
     Context themed = new ContextThemeWrapper(app, R.style.AppTheme);
@@ -67,17 +68,21 @@ final class PaymentOverlay {
     int type = Build.VERSION.SDK_INT >= 26
       ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
       : WindowManager.LayoutParams.TYPE_PHONE;
+    int margin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, app.getResources().getDisplayMetrics());
     WindowManager.LayoutParams params = new WindowManager.LayoutParams(
       WindowManager.LayoutParams.MATCH_PARENT,
       WindowManager.LayoutParams.WRAP_CONTENT,
       type,
-      WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
         | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED,
       PixelFormat.TRANSLUCENT
     );
-    params.gravity = Gravity.CENTER;
-    params.dimAmount = 0.45f;
+    params.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+    params.x = 0;
+    params.y = margin;
+    params.dimAmount = 0.25f;
     params.flags |= WindowManager.LayoutParams.FLAG_DIM_BEHIND;
 
     try {

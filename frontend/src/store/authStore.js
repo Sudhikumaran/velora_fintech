@@ -43,6 +43,7 @@ export const useAuthStore = create(
       logout: async () => {
         try { await api.post('/auth/logout'); } catch { /* cookie may already be gone */ }
         localStorage.removeItem('velora_token');
+        sessionStorage.removeItem('velora_unlocked');
         set({ user: null, token: null });
         toast.success('Logged out successfully');
       },

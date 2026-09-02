@@ -17,7 +17,19 @@ export const globalSearch = async (req, res, next) => {
     const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
 
     const [transactions, accounts, budgets, debts, goals, investments, subscriptions, plans] = await Promise.all([
-      Transaction.find({ user, isArchived: false, $or: [{ description: rx }, { category: rx }, { notes: rx }] }).limit(5).populate('account', 'name'),
+      Transaction.find({
+        user,
+        isArchived: false,
+        $or: [
+          { description: rx },
+          { category: rx },
+          { notes: rx },
+          { gstin: rx },
+          { 'splits.description': rx },
+          { 'splits.notes': rx },
+          { 'splits.category': rx },
+        ],
+      }).limit(5).populate('account', 'name'),
       Account.find({ user, isArchived: false, name: rx }).limit(5),
       Budget.find({ user, $or: [{ name: rx }, { category: rx }] }).limit(5),
       Debt.find({ user, $or: [{ person: rx }, { description: rx }] }).limit(5),

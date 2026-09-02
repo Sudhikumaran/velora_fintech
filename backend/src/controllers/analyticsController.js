@@ -3,6 +3,7 @@ import Transaction from '../models/Transaction.js';
 import Account from '../models/Account.js';
 import Budget from '../models/Budget.js';
 import { successResponse } from '../utils/apiResponse.js';
+import { netWorthForUser } from '../utils/netWorth.js';
 
 function startOfWeekMonday(d) {
   const x = new Date(d);
@@ -603,16 +604,8 @@ export const getIncomeVsExpense = async (req, res, next) => {
 
 export const getNetWorth = async (req, res, next) => {
   try {
-    const userId = req.user._id;
-    const accounts = await Account.find({ user: userId, isArchived: false });
-
-    const assets = accounts.filter((a) => !['credit'].includes(a.type) && a.balance > 0).reduce((s, a) => s + a.balance, 0);
-    const liabilities = accounts.filter((a) => a.type === 'credit' || a.balance < 0).reduce((s, a) => s + Math.abs(a.balance), 0);
-    const netWorth = assets - liabilities;
-
-    const breakdown = accounts.map((a) => ({ name: a.name, type: a.type, balance: a.balance, color: a.color }));
-
-    successResponse(res, { netWorth, assets, liabilities, breakdown }, 'Net worth fetched.');
+    const worth = await netWorthForUser(req.user._id, req.user.currency || 'INR');
+    successResponse(res, worth, 'Net worth fetched.');
   } catch (error) {
     next(error);
   }
