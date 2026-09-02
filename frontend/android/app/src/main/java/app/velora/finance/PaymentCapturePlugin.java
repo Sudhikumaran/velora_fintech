@@ -75,12 +75,21 @@ public class PaymentCapturePlugin extends Plugin {
     JSObject ret = new JSObject();
     ret.put("enabled", isListenerEnabled());
     ret.put("sms", getPermissionState("sms") == PermissionState.GRANTED);
+    ret.put("overlay", android.provider.Settings.canDrawOverlays(getContext()));
     call.resolve(ret);
   }
 
   @PluginMethod
   public void openAccessSettings(PluginCall call) {
     Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    getContext().startActivity(intent);
+    call.resolve();
+  }
+
+  @PluginMethod
+  public void openOverlaySettings(PluginCall call) {
+    Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + getContext().getPackageName()));
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
     getContext().startActivity(intent);
     call.resolve();
@@ -102,7 +111,6 @@ public class PaymentCapturePlugin extends Plugin {
     JSObject ret = new JSObject();
     boolean granted = getPermissionState("sms") == PermissionState.GRANTED;
     ret.put("granted", granted);
-    if (granted) scanInbox(2);
     call.resolve(ret);
   }
 
@@ -140,6 +148,22 @@ public class PaymentCapturePlugin extends Plugin {
       ret.put("action", "");
       call.resolve(ret);
     }
+  }
+
+  @PluginMethod
+  public void showNativePopup(PluginCall call) {
+    try {
+      JSONObject item = new JSONObject();
+      item.put("id", "test|" + System.currentTimeMillis());
+      item.put("packageName", "test");
+      item.put("title", "Test merchant");
+      item.put("text", "INR 50.00 paid to Test merchant via UPI");
+      item.put("bigText", "");
+      item.put("subText", "");
+      item.put("when", System.currentTimeMillis());
+      PaymentQueue.enqueue(getContext(), item);
+    } catch (Exception ignored) { /* keep UI usable */ }
+    call.resolve();
   }
 
   @PluginMethod
@@ -194,7 +218,7 @@ public class PaymentCapturePlugin extends Plugin {
   @PluginMethod
   public void scanRecentSms(PluginCall call) {
     JSObject ret = new JSObject();
-    ret.put("scanned", scanInbox(2));
+    ret.put("scanned", scanInbox(1));
     call.resolve(ret);
   }
 

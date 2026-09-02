@@ -14,6 +14,7 @@ import { tapHaptic } from '../../utils/native';
 import { ocrReceipt } from '../../utils/receiptOcr';
 import Modal from './Modal';
 import ReceiptUpload from './ReceiptUpload';
+import CategorySelect from './CategorySelect';
 
 function toDateInput(value) {
   const d = value ? new Date(value) : new Date();
@@ -79,13 +80,11 @@ export default function PaymentReviewModal() {
   const item = queue[0] || null;
   const [form, setForm] = useState(() => draftFromItem(item, accounts));
   const [saving, setSaving] = useState(false);
-  const [newCategory, setNewCategory] = useState('');
 
   useEffect(() => { fetchBudgets(); }, []);
 
   useEffect(() => {
     setForm(draftFromItem(item, accounts));
-    setNewCategory('');
     if (open && item) tapHaptic();
   }, [item?.sourceId, open]);
 
@@ -131,7 +130,8 @@ export default function PaymentReviewModal() {
         ? form.splits.map((row) => ({
           category: row.category,
           amount: parseFloat(row.amount),
-          notes: row.description.trim(),
+          description: (row.description || '').trim(),
+          notes: (row.description || '').trim(),
         }))
         : [];
       const created = await useTransactionStore.getState().createTransaction({
@@ -178,15 +178,15 @@ export default function PaymentReviewModal() {
     removeCurrent();
   };
 
-  const addCustomCategory = () => {
-    const trimmed = newCategory.trim();
+  const rememberCategory = (name) => {
+    const trimmed = (name || '').trim();
     if (!trimmed) return;
     const storageKey = `velora_custom_categories_${form.type === 'transfer' ? 'expense' : form.type}`;
     let custom = [];
     try { custom = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch { custom = []; }
-    if (!custom.includes(trimmed)) localStorage.setItem(storageKey, JSON.stringify([...custom, trimmed]));
-    setForm((f) => ({ ...f, category: trimmed }));
-    setNewCategory('');
+    if (!custom.includes(trimmed) && !(TRANSACTION_CATEGORIES[form.type === 'transfer' ? 'expense' : form.type] || []).includes(trimmed)) {
+      localStorage.setItem(storageKey, JSON.stringify([...custom, trimmed]));
+    }
   };
 
   const startSplit = () => {
@@ -306,16 +306,14 @@ export default function PaymentReviewModal() {
                   </button>
                 ))}
               </div>
-              <select className="input-field" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} required={!usingSplits}>
-                <option value="">Select category</option>
-                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <div className="flex gap-2 mt-2">
-                <input className="input-field flex-1" placeholder="Or type a new category" value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomCategory())} />
-                <button type="button" className="btn-secondary" onClick={addCustomCategory}>Add</button>
-              </div>
+              <CategorySelect
+                value={form.category}
+                categories={categories}
+                onChange={(name) => {
+                  rememberCategory(name);
+                  setForm((f) => ({ ...f, category: name }));
+                }}
+              />
             </div>
           )}
 
@@ -335,28 +333,46 @@ export default function PaymentReviewModal() {
                     Example: ₹50 at the same shop → ₹30 Food (lunch) and ₹20 Other (parking).
                   </p>
                   {form.splits.map((row, i) => (
-                    <div key={i} className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800/60">
-                      <input type="number" step="0.01" min="0.01" className="input-field" placeholder="Amount" value={row.amount}
-                        onChange={(e) => {
-                          const splits = [...form.splits];
-                          splits[i] = { ...splits[i], amount: e.target.value };
-                          setForm((f) => ({ ...f, splits }));
-                        }} />
-                      <select className="input-field" value={row.category}
-                        onChange={(e) => {
-                          const splits = [...form.splits];
-                          splits[i] = { ...splits[i], category: e.target.value };
-                          setForm((f) => ({ ...f, splits }));
-                        }}>
-                        <option value="">Category</option>
-                        {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                      <input className="input-field" placeholder="Description for this part" value={row.description}
-                        onChange={(e) => {
-                          const splits = [...form.splits];
-                          splits[i] = { ...splits[i], description: e.target.value };
-                          setForm((f) => ({ ...f, splits }));
-                        }} />
+                    <div key={i} className="rounded-xl border border-gray-200 dark:border-gray-700 p-3 space-y-2 bg-gray-50 dark:bg-gray-800/50">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Part {i + 1}</p>
+                        {form.splits.length > 1 && (
+                          <button type="button" className="text-red-500 text-sm" onClick={() => setForm((f) => ({ ...f, splits: f.splits.filter((_, j) => j !== i) }))}>✕</button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="label">Category</label>
+                          <CategorySelect
+                            value={row.category}
+                            categories={categories}
+                            onChange={(name) => {
+                              rememberCategory(name);
+                              const splits = [...form.splits];
+                              splits[i] = { ...splits[i], category: name };
+                              setForm((f) => ({ ...f, splits }));
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="label">Amount</label>
+                          <input type="number" step="0.01" min="0.01" className="input-field" placeholder="0.00" value={row.amount}
+                            onChange={(e) => {
+                              const splits = [...form.splits];
+                              splits[i] = { ...splits[i], amount: e.target.value };
+                              setForm((f) => ({ ...f, splits }));
+                            }} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="label">Description</label>
+                        <input className="input-field" placeholder="What was this part for?" value={row.description}
+                          onChange={(e) => {
+                            const splits = [...form.splits];
+                            splits[i] = { ...splits[i], description: e.target.value };
+                            setForm((f) => ({ ...f, splits }));
+                          }} />
+                      </div>
                     </div>
                   ))}
                   <div className="flex items-center justify-between text-xs">

@@ -16,10 +16,12 @@ import { TRANSACTION_CATEGORIES, FREQUENCIES } from '../utils/constants';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import EmptyState from '../components/ui/EmptyState';
+import toast from 'react-hot-toast';
 import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ReceiptUpload from '../components/ui/ReceiptUpload';
+import CategorySelect from '../components/ui/CategorySelect';
 
 const defaultForm = {
   account: '', toAccount: '', type: 'expense', amount: '',
@@ -27,25 +29,56 @@ const defaultForm = {
   splits: [], isRecurring: false, frequency: 'monthly', nextRunDate: '',
 };
 
+function splitText(split) {
+  return (split?.description || split?.notes || '').trim();
+}
+
 function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
   const baseCategories = TRANSACTION_CATEGORIES[form.type === 'transfer' ? 'expense' : form.type] || [];
   const storageKey = `velora_custom_categories_${form.type === 'transfer' ? 'expense' : form.type}`;
   const [customCategories, setCustomCategories] = useState(() => {
     try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch { return []; }
   });
-  const [showNewCategory, setShowNewCategory] = useState(false);
-  const [newCategory, setNewCategory] = useState('');
+  useEffect(() => {
+    try { setCustomCategories(JSON.parse(localStorage.getItem(storageKey) || '[]')); } catch { setCustomCategories([]); }
+  }, [storageKey]);
   const categories = [...baseCategories, ...customCategories];
+  const usingSplits = form.type !== 'transfer' && (form.splits || []).length > 0;
+  const splitTotal = (form.splits || []).reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
 
-  const handleAddCategory = () => {
-    const trimmed = newCategory.trim();
+  const rememberCategory = (name) => {
+    const trimmed = (name || '').trim();
     if (!trimmed || categories.includes(trimmed)) return;
     const updated = [...customCategories, trimmed];
     setCustomCategories(updated);
     localStorage.setItem(storageKey, JSON.stringify(updated));
-    setForm({ ...form, category: trimmed });
-    setNewCategory('');
-    setShowNewCategory(false);
+  };
+
+  const updateSplit = (i, patch) => {
+    const splits = [...form.splits];
+    splits[i] = { ...splits[i], ...patch };
+    const total = splits.reduce((s, x) => s + parseFloat(x.amount || 0), 0);
+    setForm({
+      ...form,
+      splits,
+      amount: total ? String(total) : form.amount,
+      category: splits[0]?.category || form.category,
+    });
+  };
+
+  const addSplit = () => {
+    const existing = form.splits || [];
+    if (!existing.length) {
+      setForm({
+        ...form,
+        splits: [
+          { category: form.category || '', amount: form.amount || '', description: form.description || '' },
+          { category: '', amount: '', description: '' },
+        ],
+      });
+      return;
+    }
+    setForm({ ...form, splits: [...existing, { category: '', amount: '', description: '' }] });
   };
 
   return (
@@ -56,7 +89,7 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
           <button
             key={t}
             type="button"
-            onClick={() => setForm({ ...form, type: t, category: t === 'transfer' ? 'Transfer' : '' })}
+            onClick={() => setForm({ ...form, type: t, category: t === 'transfer' ? 'Transfer' : '', splits: t === 'transfer' ? [] : form.splits })}
             className={`flex-1 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
               form.type === t
                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
@@ -72,7 +105,8 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
         <div>
           <label className="label">Amount</label>
           <input type="number" step="0.01" min="0.01" className="input-field" placeholder="0.00"
-            value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
+            value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required={!usingSplits} readOnly={usingSplits} />
+          {usingSplits && <p className="text-xs text-gray-400 mt-1">Total from splits: {splitTotal ? splitTotal.toFixed(2) : '0.00'}</p>}
         </div>
         <div>
           <label className="label">Date</label>
@@ -98,50 +132,29 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
               ))}
             </select>
           </div>
-        ) : (
+        ) : !usingSplits ? (
           <div>
             <label className="label">Category</label>
-            <select
-              className="input-field"
-              value={showNewCategory ? '__new__' : form.category}
-              onChange={(e) => {
-                if (e.target.value === '__new__') { setShowNewCategory(true); }
-                else { setShowNewCategory(false); setForm({ ...form, category: e.target.value }); }
+            <CategorySelect
+              value={form.category}
+              categories={categories}
+              onChange={(name) => {
+                rememberCategory(name);
+                setForm({ ...form, category: name });
               }}
-              required={!showNewCategory}
-            >
-              <option value="">Select category</option>
-              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-              <option value="__new__">+ Create new category</option>
-            </select>
-            {showNewCategory && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                <input
-                  className="input-field flex-1 min-w-[10rem]"
-                  placeholder="New category name..."
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
-                  autoFocus
-                />
-                <button type="button" onClick={handleAddCategory}
-                  className="px-3 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700">
-                  Add
-                </button>
-                <button type="button" onClick={() => { setShowNewCategory(false); setNewCategory(''); }}
-                  className="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800">
-                  Cancel
-                </button>
-              </div>
-            )}
+            />
+          </div>
+        ) : (
+          <div className="flex items-end">
+            <p className="text-sm text-gray-500 pb-2">Each split has its own category below.</p>
           </div>
         )}
-        <div className="col-span-2">
-          <label className="label">Description</label>
+        <div className="col-span-1 sm:col-span-2">
+          <label className="label">{usingSplits ? 'Overall description' : 'Description'}</label>
           <input className="input-field" placeholder="What was this for?" value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })} />
         </div>
-        <div className="col-span-2">
+        <div className="col-span-1 sm:col-span-2">
           <label className="label">Notes (optional)</label>
           <textarea className="input-field resize-none" rows={2} placeholder="Additional notes..." value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })} />
@@ -163,35 +176,60 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
           />
         </div>
         {form.type !== 'transfer' && (
-          <div className="col-span-2">
+          <div className="col-span-1 sm:col-span-2">
             <div className="flex items-center justify-between mb-2">
-              <label className="label mb-0">Split across categories</label>
-              <button type="button" className="text-xs text-indigo-600 font-semibold"
-                onClick={() => setForm({ ...form, splits: [...(form.splits || []), { category: '', amount: '' }] })}>
-                + Add split
-              </button>
+              <label className="label mb-0">Split into multiple categories</label>
+              {usingSplits ? (
+                <button type="button" className="text-xs text-gray-500" onClick={() => setForm({ ...form, splits: [] })}>
+                  Remove split
+                </button>
+              ) : (
+                <button type="button" className="text-xs text-indigo-600 font-semibold" onClick={addSplit}>
+                  + Add split
+                </button>
+              )}
             </div>
-            {(form.splits || []).map((split, i) => (
-              <div key={i} className="flex gap-2 mb-2">
-                <select className="input-field flex-1" value={split.category}
-                  onChange={(e) => {
-                    const splits = [...form.splits];
-                    splits[i] = { ...splits[i], category: e.target.value };
-                    setForm({ ...form, splits, category: splits[0]?.category || form.category });
-                  }}>
-                  <option value="">Category</option>
-                  {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <input type="number" step="0.01" className="input-field w-28" placeholder="0.00" value={split.amount}
-                  onChange={(e) => {
-                    const splits = [...form.splits];
-                    splits[i] = { ...splits[i], amount: e.target.value };
-                    const total = splits.reduce((s, x) => s + parseFloat(x.amount || 0), 0);
-                    setForm({ ...form, splits, amount: total ? String(total) : form.amount });
-                  }} />
-                <button type="button" className="text-red-500 text-sm" onClick={() => setForm({ ...form, splits: form.splits.filter((_, j) => j !== i) })}>✕</button>
+            {usingSplits && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">
+                  Each part gets its own category, amount, and description. Example: ₹30 Food (lunch) and ₹20 Other (parking).
+                </p>
+                {(form.splits || []).map((split, i) => (
+                  <div key={i} className="rounded-xl border border-gray-200 dark:border-gray-700 p-3 space-y-2 bg-gray-50 dark:bg-gray-800/50">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Part {i + 1}</p>
+                      <button type="button" className="text-red-500 text-sm px-1" onClick={() => setForm({ ...form, splits: form.splits.filter((_, j) => j !== i) })}>✕</button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="label">Category</label>
+                        <CategorySelect
+                          value={split.category}
+                          categories={categories}
+                          onChange={(name) => {
+                            rememberCategory(name);
+                            updateSplit(i, { category: name });
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Amount</label>
+                        <input type="number" step="0.01" className="input-field" placeholder="0.00" value={split.amount}
+                          onChange={(e) => updateSplit(i, { amount: e.target.value })} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="label">Description</label>
+                      <input className="input-field" placeholder="What was this part for?" value={split.description || ''}
+                        onChange={(e) => updateSplit(i, { description: e.target.value })} />
+                    </div>
+                  </div>
+                ))}
+                <button type="button" className="text-xs text-indigo-600 font-semibold" onClick={addSplit}>
+                  + Add another part
+                </button>
               </div>
-            ))}
+            )}
           </div>
         )}
         <div className="col-span-1 sm:col-span-2 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -265,7 +303,12 @@ export default function Transactions() {
       description: tx.description || '', date: new Date(tx.date).toISOString().split('T')[0],
       receiptUrl: tx.receiptUrl || '',
       tags: tx.tags?.join(', ') || '', notes: tx.notes || '',
-      splits: tx.splits || [], isRecurring: !!tx.isRecurring, frequency: tx.frequency || 'monthly',
+      splits: (tx.splits || []).map((s) => ({
+        category: s.category || '',
+        amount: s.amount ?? '',
+        description: splitText(s),
+      })),
+      isRecurring: !!tx.isRecurring, frequency: tx.frequency || 'monthly',
       nextRunDate: tx.nextRunDate ? new Date(tx.nextRunDate).toISOString().split('T')[0] : '',
     });
     setEditTx(tx);
@@ -274,7 +317,26 @@ export default function Transactions() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const data = { ...form, tags: form.tags ? form.tags.split(',').map((t) => t.trim()) : [] };
+    const rawSplits = form.splits || [];
+    if (rawSplits.length && rawSplits.some((s) => !s.category || !(parseFloat(s.amount) > 0))) {
+      toast.error('Each split needs a category and amount');
+      return;
+    }
+    const splits = rawSplits
+      .map((s) => ({
+        category: s.category,
+        amount: parseFloat(s.amount),
+        description: (s.description || '').trim(),
+        notes: (s.description || '').trim(),
+      }))
+      .filter((s) => s.category && Number.isFinite(s.amount) && s.amount > 0);
+    const data = {
+      ...form,
+      tags: form.tags ? form.tags.split(',').map((t) => t.trim()) : [],
+      splits,
+      category: splits[0]?.category || form.category,
+      amount: splits.length ? splits.reduce((n, s) => n + s.amount, 0) : form.amount,
+    };
     if (editTx) {
       await updateTransaction(editTx._id, data);
     } else {
@@ -282,7 +344,7 @@ export default function Transactions() {
     }
     setModalOpen(false);
     await fetchTransactions({ page });
-    fetchAccounts(); // refresh balances immediately after transaction
+    fetchAccounts();
   };
 
   return (
@@ -472,8 +534,19 @@ export default function Transactions() {
                       </p>
                       <p className="text-xs text-gray-400 shrink-0 tabular-nums">Bal {balanceLabel}</p>
                     </div>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      {tx.category && <Badge variant={typeColors[tx.type]} size="xs">{tx.category}</Badge>}
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      {tx.splits?.length > 0 ? (
+                        tx.splits.map((s, si) => (
+                          <span key={si} className="inline-flex items-center gap-1 max-w-full">
+                            <Badge variant={typeColors[tx.type]} size="xs">{s.category}</Badge>
+                            {splitText(s) && (
+                              <span className="text-[11px] text-gray-500 truncate">{splitText(s)}</span>
+                            )}
+                          </span>
+                        ))
+                      ) : (
+                        tx.category && <Badge variant={typeColors[tx.type]} size="xs">{tx.category}</Badge>
+                      )}
                       {tx.receiptUrl && (
                         <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer"
                           className="text-xs text-indigo-500 flex items-center gap-0.5"
@@ -495,7 +568,13 @@ export default function Transactions() {
                   </div>
                 </div>
 
-                <div className="hidden lg:flex items-center gap-4 px-6 py-4">
+                <div
+                  className="hidden lg:flex items-center gap-4 px-6 py-4 cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openEdit(tx)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openEdit(tx); }}
+                >
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconWrap}`}>
                     {typeIcons[tx.type]}
                   </div>
@@ -503,11 +582,17 @@ export default function Transactions() {
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                       {tx.description || tx.category}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5 min-w-0">
+                    <div className="flex items-center gap-2 mt-0.5 min-w-0 flex-wrap">
                       <span className="text-xs text-gray-500 shrink-0">{formatDate(tx.date, 'short')}</span>
                       <span className="text-xs text-gray-400">•</span>
                       <span className="text-xs text-gray-500 truncate">{tx.account?.name}</span>
-                      {tx.category && (
+                      {tx.splits?.length > 0 ? tx.splits.map((s, si) => (
+                        <span key={si} className="inline-flex items-center gap-1 min-w-0">
+                          <span className="text-xs text-gray-400">•</span>
+                          <Badge variant={typeColors[tx.type]} size="xs">{s.category}</Badge>
+                          {splitText(s) && <span className="text-xs text-gray-500 truncate max-w-[10rem]">{splitText(s)}</span>}
+                        </span>
+                      )) : tx.category && (
                         <>
                           <span className="text-xs text-gray-400">•</span>
                           <Badge variant={typeColors[tx.type]} size="xs">{tx.category}</Badge>
@@ -530,13 +615,13 @@ export default function Transactions() {
                     <p className="text-xs text-gray-400 truncate">{tx.account?.name}</p>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => openEdit(tx)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                    <button onClick={(e) => { e.stopPropagation(); openEdit(tx); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
                       <Edit3 size={13} className="text-gray-500" />
                     </button>
-                    <button onClick={async () => { await archiveTransaction(tx._id); fetchAccounts(); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                    <button onClick={async (e) => { e.stopPropagation(); await archiveTransaction(tx._id); fetchAccounts(); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
                       <Archive size={13} className="text-gray-500" />
                     </button>
-                    <button onClick={() => setDeleteId(tx._id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
+                    <button onClick={(e) => { e.stopPropagation(); setDeleteId(tx._id); }} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
                       <Trash2 size={13} className="text-red-500" />
                     </button>
                   </div>
@@ -568,7 +653,7 @@ export default function Transactions() {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editTx ? 'Edit Transaction' : 'Add Transaction'}
+        title={editTx ? (editTx.splits?.length ? 'Split transaction' : 'Edit Transaction') : 'Add Transaction'}
         headerAction={
           <button type="submit" form="transaction-form" className="btn-primary w-full min-h-12 text-base">
             {editTx ? 'Update Transaction' : 'Add Transaction'}

@@ -71,6 +71,7 @@ const transactionSchema = new mongoose.Schema(
       {
         category: { type: String, trim: true },
         amount: { type: Number, min: 0 },
+        description: { type: String, trim: true, default: '' },
         notes: { type: String, trim: true, default: '' },
       },
     ],

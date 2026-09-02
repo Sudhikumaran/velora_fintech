@@ -1,10 +1,12 @@
-const IGNORE = /otp|one[- ]time|verification code|failed|declined|unsuccessful|cancelled|canceled|expired|request(ed)? money|payment request|collect request|reminder to pay|is trying to pay|please pay|kyc|offer expires|limited time|do not share/i;
+const FAIL = /\b(failed|declined|unsuccessful|cancelled|canceled)\b/i;
+const COLLECT = /\b(request(ed)? money|payment request|collect request|is trying to pay|please pay ₹|please pay rs)\b/i;
+const OTP = /\b(otp|one[- ]time (password|code|pin)|verification code)\b/i;
 
 const CREDIT = /\b(credited|received|received from|refund(?:ed)?|cashback credited|money added|deposited|has been credited)\b/i;
-const DEBIT = /\b(paid|sent|debited|spent|withdrawn|purchase|payment of|you paid|successfully paid|has been debited|dr\.? amt|debit amt)\b/i;
+const DEBIT = /\b(paid|sent|debited|spent|withdrawn|purchase|payment of|you paid|successfully paid|has been debited|dr\.? amt|debit amt|payment successful|paid to)\b/i;
 const BANK_TXN = /\b(upi|imps|neft|rtgs|pos|atm|a\/c|acct|account xx|card xx)\b/i;
 
-const AMOUNT = /(?:₹|rs\.?|inr|dr\.? amt|debit amt|credit amt)\s*[:\-]?\s*([0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)/i;
+const AMOUNT = /(?:₹|rs\.?|inr|dr\.? amt|debit amt|credit amt)\s*[:\-]?\s*([0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)|([0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)\s*(?:inr|rs\.?)/i;
 
 const MERCHANT_MAP = [
   { test: /swiggy|zomato|eatclub|dominos|mcdonald|kfc|starbucks|cafe coffee/i, category: 'Food & Dining' },
@@ -35,7 +37,8 @@ const BANKS = [
 function parseAmount(text) {
   const match = String(text || '').match(AMOUNT);
   if (!match) return null;
-  const value = parseFloat(match[1].replace(/,/g, ''));
+  const raw = match[1] || match[2];
+  const value = parseFloat(String(raw).replace(/,/g, ''));
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
@@ -76,15 +79,16 @@ export function parsePaymentNotification(note) {
   const title = note?.title || '';
   const text = [note?.text, note?.bigText, note?.subText].filter(Boolean).join(' ');
   const blob = `${title} ${text}`.trim();
-  if (!blob || IGNORE.test(blob)) return null;
+  if (!blob) return null;
+  if (FAIL.test(blob) || COLLECT.test(blob)) return null;
+  if (OTP.test(blob) && !DEBIT.test(blob) && !CREDIT.test(blob) && !BANK_TXN.test(blob)) return null;
 
   const amount = parseAmount(blob);
   if (!amount) return null;
 
   const looksCredit = CREDIT.test(blob);
-  const looksDebit = DEBIT.test(blob) || /debited|spent|paid ₹|paid rs|withdrawn/i.test(blob) || (BANK_TXN.test(blob) && !looksCredit);
-  if (!looksCredit && !looksDebit) return null;
-
+  const looksDebit = DEBIT.test(blob) || /debited|spent|paid ₹|paid rs|withdrawn/i.test(blob)
+    || (BANK_TXN.test(blob) && !looksCredit);
   const type = looksCredit && !looksDebit ? 'income' : 'expense';
   const merchant = parseMerchant(blob);
   const description = merchant

@@ -1,7 +1,10 @@
 package app.velora.finance;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -48,9 +51,28 @@ final class PaymentQueue {
       next.put(item);
       prefs.edit().putString(KEY_QUEUE, next.toString()).apply();
       PaymentCapturePlugin.emit(item);
-      if (!PaymentCapturePlugin.isAppVisible()) {
-        PaymentPrompt.show(context, item);
-      }
+      Context app = context.getApplicationContext();
+      String payload = item.toString();
+      new Handler(Looper.getMainLooper()).post(() -> {
+        if (PaymentOverlay.show(app, item)) return;
+        PaymentPrompt.show(app, item);
+        try {
+          Intent wake = new Intent(app, PaymentWakeService.class);
+          wake.putExtra("payload", payload);
+          if (android.os.Build.VERSION.SDK_INT >= 26) {
+            app.startForegroundService(wake);
+          } else {
+            app.startService(wake);
+          }
+        } catch (Exception ignored) {
+          try {
+            Intent popup = new Intent(app, PaymentPopupActivity.class);
+            popup.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            popup.putExtra("payload", payload);
+            app.startActivity(popup);
+          } catch (Exception ignored2) { /* last resort is the notification */ }
+        }
+      });
     } catch (Exception ignored) { /* keep capturing */ }
   }
 

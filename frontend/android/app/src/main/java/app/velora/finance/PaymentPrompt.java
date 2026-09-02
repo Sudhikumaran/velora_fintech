@@ -31,10 +31,9 @@ final class PaymentPrompt {
       String text = item.optString("text");
       if (text.isEmpty()) text = item.optString("title");
       if (text.length() > 140) text = text.substring(0, 140);
-      String category = MerchantMemory.categoryFor(context, text + " " + item.optString("title"));
 
       Intent openIntent = new Intent(context, MainActivity.class);
-      openIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+      openIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
       openIntent.putExtra("velora_action", "open");
       openIntent.putExtra("velora_note_id", id);
       PendingIntent openPi = PendingIntent.getActivity(
@@ -44,14 +43,26 @@ final class PaymentPrompt {
         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
       );
 
+      Intent popupIntent = new Intent(context, PaymentPopupActivity.class);
+      popupIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+      popupIntent.putExtra("payload", item.toString());
+      PendingIntent popupPi = PendingIntent.getActivity(
+        context,
+        notifyIdFor(id) + 3,
+        popupIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+      );
+
       NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
         .setSmallIcon(R.drawable.ic_stat_velora)
-        .setContentTitle("Add this payment in Velora")
+        .setContentTitle("Review this payment")
         .setContentText(text)
         .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
-        .setContentIntent(openPi)
+        .setContentIntent(popupPi)
+        .setFullScreenIntent(popupPi, true)
         .setAutoCancel(true)
-        .setPriority(NotificationCompat.PRIORITY_HIGH);
+        .setCategory(NotificationCompat.CATEGORY_ALARM)
+        .setPriority(NotificationCompat.PRIORITY_MAX);
 
       Intent skip = new Intent(context, PaymentActionReceiver.class);
       skip.setAction(PaymentActionReceiver.ACTION_SKIP);
@@ -63,22 +74,7 @@ final class PaymentPrompt {
         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
       );
       builder.addAction(0, "Skip", skipPi);
-      builder.addAction(0, "Open", openPi);
-
-      if (!category.isEmpty()) {
-        Intent save = new Intent(context, PaymentActionReceiver.class);
-        save.setAction(PaymentActionReceiver.ACTION_SAVE);
-        save.putExtra("noteId", id);
-        save.putExtra("category", category);
-        PendingIntent savePi = PendingIntent.getBroadcast(
-          context,
-          notifyIdFor(id) + 2,
-          save,
-          PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-        String label = category.length() > 18 ? category.substring(0, 18) : category;
-        builder.addAction(0, "Save · " + label, savePi);
-      }
+      builder.addAction(0, "Review", openPi);
 
       NotificationManagerCompat.from(context).notify(notifyIdFor(id), builder.build());
     } catch (Exception ignored) { /* permission or OEM limits */ }
@@ -124,7 +120,8 @@ final class PaymentPrompt {
         "Payments to add",
         NotificationManager.IMPORTANCE_HIGH
       );
-      channel.setDescription("Opens Velora so you can add a payment you just made");
+      channel.setDescription("Opens Velora so you can review a payment before it is saved");
+      channel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
       manager.createNotificationChannel(channel);
     }
   }

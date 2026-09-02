@@ -31,7 +31,10 @@ export function transactionsToCSV(transactions) {
     Description: tx.description || '',
     Amount: tx.amount,
     Account: tx.account?.name || '',
-    Notes: tx.notes || '',
+    Splits: (tx.splits || []).map((s) => {
+      const detail = (s.description || s.notes || '').trim();
+      return `${s.category} ${s.amount}${detail ? ` (${detail})` : ''}`;
+    }).join(' | '),
   }));
 }
 

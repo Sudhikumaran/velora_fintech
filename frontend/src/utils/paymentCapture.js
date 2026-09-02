@@ -4,9 +4,7 @@ import PaymentCapture from '../plugins/paymentCapture';
 import { parsePaymentNotification, matchAccountId, matchToAccount } from './paymentAlertParser';
 import { useAccountStore } from '../store/accountStore';
 import { usePaymentReviewStore } from '../store/paymentReviewStore';
-import { useTransactionStore } from '../store/transactionStore';
-import { recallMerchantCategory, rememberMerchantCategory, syncMerchantMemory } from './merchantMemory';
-import { bumpTodaySpend } from './todaySpend';
+import { recallMerchantCategory, syncMerchantMemory } from './merchantMemory';
 import toast from 'react-hot-toast';
 
 export const AUTO_PAY_ENABLED_KEY = 'velora_auto_payments';
@@ -32,16 +30,18 @@ let started = false;
 let listenerHandle = null;
 let appHandle = null;
 
+const SEEN_KEY = 'velora_pay_seen_v2';
+
 function alreadySeen(fp) {
-  const seen = JSON.parse(localStorage.getItem('velora_pay_seen') || '[]');
+  const seen = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]');
   return seen.includes(fp);
 }
 
 function markSeen(fp) {
-  const seen = JSON.parse(localStorage.getItem('velora_pay_seen') || '[]');
+  const seen = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]');
   if (seen.includes(fp)) return;
   seen.push(fp);
-  localStorage.setItem('velora_pay_seen', JSON.stringify(seen.slice(-400)));
+  localStorage.setItem(SEEN_KEY, JSON.stringify(seen.slice(-400)));
 }
 
 export function queueForReview(parsed, rawText, noteId) {
@@ -70,6 +70,7 @@ export function queueForReview(parsed, rawText, noteId) {
     suggestedCategory: remembered || parsed.category,
     rememberedCategory: remembered,
   });
+  toast('Review this payment, then save');
   return false;
 }
 
@@ -85,13 +86,19 @@ export async function finishPaymentReview(sourceId, noteId) {
 }
 
 export async function ingestNotifications(notes = []) {
-  if (!isAutoPayEnabled() || !notes.length) return 0;
+  if (!notes.length) return 0;
+  if (!isAutoPayEnabled()) {
+    setAutoPayEnabled(true);
+  }
   const drop = [];
   let queued = 0;
   for (const note of notes) {
     const parsed = parsePaymentNotification(note);
     if (!parsed) {
-      if (note?.id) drop.push(note.id);
+      const blob = `${note?.title || ''} ${note?.text || ''} ${note?.bigText || ''}`;
+      if (note?.id && /otp|verification code|failed|declined/i.test(blob) && !/debited|paid|upi/i.test(blob)) {
+        drop.push(note.id);
+      }
       continue;
     }
     if (alreadySeen(parsed.sourceId)) {
@@ -107,13 +114,31 @@ export async function ingestNotifications(notes = []) {
 }
 
 export async function flushPendingPayments() {
-  if (!isNativeApp() || !isAutoPayEnabled()) return 0;
+  if (!isNativeApp()) return 0;
+  try { await PaymentCapture.scanRecentSms(); } catch { /* no SMS permission */ }
   try {
     const { notifications } = await PaymentCapture.getPending();
     return ingestNotifications(notifications || []);
   } catch {
     return 0;
   }
+}
+
+export function openTestPaymentReview() {
+  const now = Date.now();
+  queueForReview({
+    id: `test-${now}`,
+    sourceId: `pay:test|${now}`,
+    type: 'expense',
+    amount: 50,
+    merchant: 'Test merchant',
+    category: 'Food & Dining',
+    description: 'Paid to Test merchant',
+    date: new Date().toISOString(),
+    notes: 'Test popup',
+    source: 'import',
+    rememberedCategory: 'Food & Dining',
+  }, 'test', `test-${now}`);
 }
 
 async function applyLaunchAction() {
@@ -135,36 +160,10 @@ async function applyLaunchAction() {
     return;
   }
 
-  if (action === 'save' && item) {
-    const category = launch.category || item.rememberedCategory || item.suggestedCategory;
-    if (!category) {
-      store.openAt(item.sourceId);
-      return;
-    }
-    const created = await useTransactionStore.getState().createTransaction({
-      account: item.accountId,
-      toAccount: item.toAccountId || undefined,
-      type: item.type,
-      amount: item.amount,
-      category: item.type === 'transfer' ? 'Transfer' : category,
-      description: item.description,
-      date: item.date,
-      notes: item.notes,
-      source: item.source || 'import',
-      sourceId: item.sourceId,
-    }, { silent: true });
-    if (created && !created.skipped) {
-      await rememberMerchantCategory(item.merchant || item.description, category);
-      if (item.type === 'expense') bumpTodaySpend(item.amount);
-      toast.success(`Saved ${category}`);
-    }
-    await finishPaymentReview(item.sourceId, item.noteId);
-    store.removeBySourceId(item.sourceId);
-    useAccountStore.getState().fetchAccounts();
-    return;
+  if (item) {
+    store.openAt(item.sourceId);
+    toast('Review this payment, then save');
   }
-
-  if (item) store.openAt(item.sourceId);
 }
 
 export async function startPaymentAutoCapture() {
@@ -174,7 +173,6 @@ export async function startPaymentAutoCapture() {
 
   try {
     listenerHandle = await PaymentCapture.addListener('paymentNotification', async (note) => {
-      if (!isAutoPayEnabled()) return;
       await ingestNotifications([note]);
     });
   } catch { /* plugin missing on old APK */ }
@@ -197,10 +195,6 @@ export async function enableBankSmsCapture() {
   try {
     try { await PaymentCapture.requestNotifyPermission(); } catch { /* older Android */ }
     const { granted } = await PaymentCapture.requestSmsPermission();
-    if (granted) {
-      await PaymentCapture.scanRecentSms();
-      await flushPendingPayments();
-    }
     return !!granted;
   } catch {
     return false;

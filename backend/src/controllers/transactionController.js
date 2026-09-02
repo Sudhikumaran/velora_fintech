@@ -1,7 +1,7 @@
 import Transaction from '../models/Transaction.js';
 import Account from '../models/Account.js';
 import { successResponse, errorResponse, paginatedResponse } from '../utils/apiResponse.js';
-import { applyBalanceChange, createUserTransaction, attachRunningBalances, alreadyPostedSource, isSameCalendarDay, repairAutoPostedTransactions } from '../utils/money.js';
+import { applyBalanceChange, createUserTransaction, attachRunningBalances, alreadyPostedSource, isSameCalendarDay, repairAutoPostedTransactions, normalizeSplits } from '../utils/money.js';
 import { addFrequency, isDueOnOrBefore } from '../utils/recurrence.js';
 
 export const getTransactions = async (req, res, next) => {
@@ -30,6 +30,9 @@ export const getTransactions = async (req, res, next) => {
         { description: { $regex: search, $options: 'i' } },
         { category: { $regex: search, $options: 'i' } },
         { notes: { $regex: search, $options: 'i' } },
+        { 'splits.description': { $regex: search, $options: 'i' } },
+        { 'splits.notes': { $regex: search, $options: 'i' } },
+        { 'splits.category': { $regex: search, $options: 'i' } },
       ];
     }
 
@@ -75,12 +78,13 @@ export const updateTransaction = async (req, res, next) => {
       });
     }
 
-    const { account, type, category, subcategory, description, date, tags, notes, receiptUrl, isRecurring, frequency, nextRunDate } = req.body;
+    const { account, type, subcategory, description, date, tags, notes, receiptUrl, isRecurring, frequency, nextRunDate } = req.body;
     const toAccount = req.body.toAccount || null;
-    const splits = Array.isArray(req.body.splits) ? req.body.splits : existing.splits;
-    const amount = Array.isArray(req.body.splits) && req.body.splits.length
-      ? req.body.splits.reduce((s, x) => s + parseFloat(x.amount || 0), 0)
+    const splits = Array.isArray(req.body.splits) ? normalizeSplits(req.body.splits) : existing.splits;
+    const amount = splits.length
+      ? splits.reduce((s, x) => s + Number(x.amount || 0), 0)
       : parseFloat(req.body.amount);
+    const category = req.body.category || splits[0]?.category || existing.category;
 
     Object.assign(existing, {
       account, toAccount, type, amount, category, subcategory, description, date, tags, notes, receiptUrl,

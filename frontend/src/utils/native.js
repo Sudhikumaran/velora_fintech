@@ -57,6 +57,10 @@ export async function initNativeShell() {
       }
       const bgAt = Number(sessionStorage.getItem('velora_bg_at') || 0);
       if (bgAt && Date.now() - bgAt > 30_000) {
+        try {
+          const waiting = JSON.parse(localStorage.getItem('velora_pay_review') || '[]');
+          if (Array.isArray(waiting) && waiting.length) return;
+        } catch { /* ignore */ }
         window.location.reload();
       }
     });

@@ -19,6 +19,7 @@ import {
   setAutoPayAccountId,
   flushPendingPayments,
   enableBankSmsCapture,
+  openTestPaymentReview,
 } from '../utils/paymentCapture';
 
 const sections = [
@@ -43,17 +44,20 @@ export default function Settings() {
   const [autoPayAccount, setAutoPayAccount] = useState(() => getAutoPayAccountId());
   const [notifyAccess, setNotifyAccess] = useState(false);
   const [smsAccess, setSmsAccess] = useState(false);
+  const [overlayAccess, setOverlayAccess] = useState(false);
 
   useEffect(() => {
     if (!isNativeApp()) return undefined;
     const sync = async () => {
       try {
-        const { enabled, sms } = await PaymentCapture.isAccessEnabled();
+        const { enabled, sms, overlay } = await PaymentCapture.isAccessEnabled();
         setNotifyAccess(!!enabled);
         setSmsAccess(!!sms);
+        setOverlayAccess(!!overlay);
       } catch {
         setNotifyAccess(false);
         setSmsAccess(false);
+        setOverlayAccess(false);
       }
     };
     sync();
@@ -246,7 +250,7 @@ export default function Settings() {
                     <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                       <p className="font-medium text-gray-900 dark:text-white">Prompt after bank & UPI payments</p>
                       <p className="text-sm text-gray-500 mt-1">
-                        When you pay, Velora opens a form with amount, date, and description already filled. You pick the category (or split one payment into two categories) and save. The next time that merchant appears, the last category is pre-selected. Bank statement CSVs can be imported from Transactions if an SMS was missed.
+                        After you pay in GPay, PhonePe, or a bank app, a popup appears on top so you can pick a category. Nothing is saved until you tap Save. Turn on “Display over other apps” or the popup cannot appear while you are still in GPay.
                       </p>
                       <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                         <input
@@ -264,6 +268,14 @@ export default function Settings() {
                             const smsOk = await enableBankSmsCapture();
                             setSmsAccess(smsOk);
                             if (!smsOk) toast('Allow SMS so bank debit messages can open the add-payment form.');
+                            try {
+                              const access = await PaymentCapture.isAccessEnabled();
+                              setOverlayAccess(!!access?.overlay);
+                              if (!access?.overlay) {
+                                toast('Allow Display over other apps so the popup can appear on top of GPay.');
+                                await PaymentCapture.openOverlaySettings();
+                              }
+                            } catch { /* old APK */ }
                             flushPendingPayments();
                           }}
                         />
@@ -291,6 +303,9 @@ export default function Settings() {
                       <p className={`text-xs mt-1 ${smsAccess ? 'text-green-600' : 'text-amber-600'}`}>
                         {smsAccess ? 'SMS access is on — bank debit messages will open the add form.' : 'SMS access is off — bank SMS will not open the form until you allow it.'}
                       </p>
+                      <p className={`text-xs mt-1 ${overlayAccess ? 'text-green-600' : 'text-amber-600'}`}>
+                        {overlayAccess ? 'Display over other apps is on — the popup can appear on top of GPay.' : 'Display over other apps is off — the popup cannot appear while GPay is open.'}
+                      </p>
                       <div className="flex flex-wrap gap-2 mt-3">
                         <button
                           type="button"
@@ -309,6 +324,37 @@ export default function Settings() {
                           }}
                         >
                           Allow bank SMS
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary text-sm inline-flex items-center gap-2"
+                          onClick={() => PaymentCapture.openOverlaySettings()}
+                        >
+                          Display over other apps
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-primary text-sm"
+                          onClick={async () => {
+                            setAutoPay(true);
+                            setAutoPayEnabled(true);
+                            try { await PaymentCapture.showNativePopup(); } catch { /* old APK */ }
+                            openTestPaymentReview();
+                          }}
+                        >
+                          Test popup
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary text-sm"
+                          onClick={async () => {
+                            setAutoPay(true);
+                            setAutoPayEnabled(true);
+                            const n = await flushPendingPayments();
+                            toast[n ? 'success' : 'error'](n ? `Found ${n} payment(s) to review` : 'No recent bank SMS or UPI alert found. Pay once, then tap this again.');
+                          }}
+                        >
+                          Scan recent payments
                         </button>
                       </div>
                     </div>

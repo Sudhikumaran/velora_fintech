@@ -6,11 +6,15 @@ import { addFrequency, isDueOnOrBefore } from './recurrence.js';
 export function normalizeSplits(splits) {
   if (!Array.isArray(splits)) return [];
   return splits
-    .map((s) => ({
-      category: String(s.category || '').trim(),
-      amount: parseFloat(s.amount),
-      notes: s.notes || '',
-    }))
+    .map((s) => {
+      const text = String(s.description || s.notes || '').trim();
+      return {
+        category: String(s.category || '').trim(),
+        amount: parseFloat(s.amount),
+        description: text,
+        notes: text,
+      };
+    })
     .filter((s) => s.category && Number.isFinite(s.amount) && s.amount > 0);
 }
 

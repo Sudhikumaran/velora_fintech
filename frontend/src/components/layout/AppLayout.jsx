@@ -66,8 +66,8 @@ export default function AppLayout() {
         </main>
         <MobileTabBar onMore={() => setMobileOpen(true)} />
         <GlobalSearch />
-        <PaymentReviewModal />
         {showOnboarding && <Onboarding onComplete={completeOnboarding} />}
+        <PaymentReviewModal />
       </div>
     </div>
   );
