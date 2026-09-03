@@ -373,6 +373,7 @@ export default function Transactions() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editTx, setEditTx] = useState(null);
   const [viewTx, setViewTx] = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
   const [form, setForm] = useState(defaultForm);
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
