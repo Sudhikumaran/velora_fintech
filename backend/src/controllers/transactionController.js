@@ -93,6 +93,7 @@ export const updateTransaction = async (req, res, next) => {
       isBusiness: Boolean(req.body.isBusiness),
       gstin: req.body.isBusiness ? String(req.body.gstin || '').trim() : '',
       gstAmount: req.body.isBusiness ? (parseFloat(req.body.gstAmount) || 0) : 0,
+      excludeFromTotals: type !== 'transfer' && Boolean(req.body.excludeFromTotals),
     });
     await existing.save();
 

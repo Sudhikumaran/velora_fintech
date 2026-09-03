@@ -215,6 +215,12 @@ export default function Dashboard() {
                   <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(netWorth.portfolio, user?.currency)}</span>
                 </div>
               )}
+              {Number(netWorth.lent) > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Money lent</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{formatCurrency(netWorth.lent, user?.currency)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Assets</span>
                 <span className="font-semibold text-emerald-600">{formatCurrency(netWorth.assets, user?.currency)}</span>

@@ -28,6 +28,7 @@ const defaultForm = {
   category: '', description: '', date: new Date().toISOString().split('T')[0], tags: '', notes: '', receiptUrl: '',
   splits: [], isRecurring: false, frequency: 'monthly', nextRunDate: '',
   isBusiness: false, gstin: '', gstAmount: '',
+  excludeFromTotals: false,
 };
 
 function splitText(split) {
@@ -162,7 +163,7 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
           <button
             key={t}
             type="button"
-            onClick={() => setForm({ ...form, type: t, category: t === 'transfer' ? 'Transfer' : '', splits: t === 'transfer' ? [] : form.splits })}
+            onClick={() => setForm({ ...form, type: t, category: t === 'transfer' ? 'Transfer' : '', splits: t === 'transfer' ? [] : form.splits, excludeFromTotals: t === 'transfer' ? false : form.excludeFromTotals })}
             className={`flex-1 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
               form.type === t
                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
@@ -227,6 +228,38 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
           <input className="input-field" placeholder="What was this for?" value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })} />
         </div>
+        {form.type === 'income' && (
+          <div className="col-span-1 sm:col-span-2">
+            <label className="flex items-start gap-2 p-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={!!form.excludeFromTotals}
+                onChange={(e) => setForm({ ...form, excludeFromTotals: e.target.checked })}
+              />
+              <span>
+                <span className="font-medium">Don’t count as income</span>
+                <span className="block text-xs text-gray-500 mt-0.5">Still adds to the account. Use this when family returns money you already gave them.</span>
+              </span>
+            </label>
+          </div>
+        )}
+        {form.type === 'expense' && (
+          <div className="col-span-1 sm:col-span-2">
+            <label className="flex items-start gap-2 p-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={!!form.excludeFromTotals}
+                onChange={(e) => setForm({ ...form, excludeFromTotals: e.target.checked })}
+              />
+              <span>
+                <span className="font-medium">Don’t count as spending</span>
+                <span className="block text-xs text-gray-500 mt-0.5">Still leaves the account. Use this when you give salary to home and can take it back later.</span>
+              </span>
+            </label>
+          </div>
+        )}
         <div className="col-span-1 sm:col-span-2">
           <label className="label">Notes (optional)</label>
           <textarea className="input-field resize-none" rows={2} placeholder="Additional notes..." value={form.notes}
@@ -412,6 +445,7 @@ export default function Transactions() {
       isRecurring: !!tx.isRecurring, frequency: tx.frequency || 'monthly',
       nextRunDate: tx.nextRunDate ? new Date(tx.nextRunDate).toISOString().split('T')[0] : '',
       isBusiness: !!tx.isBusiness, gstin: tx.gstin || '', gstAmount: tx.gstAmount || '',
+      excludeFromTotals: !!tx.excludeFromTotals,
     });
     setEditTx(tx);
     setModalOpen(true);
@@ -448,6 +482,7 @@ export default function Transactions() {
       splits,
       category: splits[0]?.category || form.category,
       amount: splits.length ? splits.reduce((n, s) => n + s.amount, 0) : form.amount,
+      excludeFromTotals: form.type !== 'transfer' && !!form.excludeFromTotals,
     };
     if (editTx) {
       await updateTransaction(editTx._id, data);
@@ -655,6 +690,9 @@ export default function Transactions() {
                       ) : (
                         tx.category && <Badge variant={typeColors[tx.type]} size="xs">{tx.category}</Badge>
                       )}
+                      {tx.excludeFromTotals && (
+                        <Badge variant="default" size="xs">{tx.type === 'income' ? 'Not income' : 'Not spending'}</Badge>
+                      )}
                       {tx.receiptUrl && (
                         <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer"
                           className="text-xs text-indigo-500 flex items-center gap-0.5"
@@ -705,6 +743,12 @@ export default function Transactions() {
                         <>
                           <span className="text-xs text-gray-400">•</span>
                           <Badge variant={typeColors[tx.type]} size="xs">{tx.category}</Badge>
+                        </>
+                      )}
+                      {tx.excludeFromTotals && (
+                        <>
+                          <span className="text-xs text-gray-400">•</span>
+                          <Badge variant="default" size="xs">{tx.type === 'income' ? 'Not income' : 'Not spending'}</Badge>
                         </>
                       )}
                       {tx.receiptUrl && (

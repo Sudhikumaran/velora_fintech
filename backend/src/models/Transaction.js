@@ -104,6 +104,10 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    excludeFromTotals: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

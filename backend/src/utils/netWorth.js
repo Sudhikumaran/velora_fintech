@@ -1,9 +1,8 @@
 import Account from '../models/Account.js';
 import Debt from '../models/Debt.js';
 import Investment from '../models/Investment.js';
-import { toUserCurrency } from './fx.js';
 
-export async function netWorthForUser(userId, displayCurrency = 'INR') {
+export async function netWorthForUser(userId) {
   const [accounts, investments, debts] = await Promise.all([
     Account.find({ user: userId, isArchived: false }),
     Investment.find({ user: userId }),
@@ -11,10 +10,10 @@ export async function netWorthForUser(userId, displayCurrency = 'INR') {
   ]);
   const cash = accounts
     .filter((a) => a.type !== 'credit')
-    .reduce((s, a) => s + toUserCurrency(a.balance, a.currency || displayCurrency, displayCurrency), 0);
+    .reduce((s, a) => s + Number(a.balance || 0), 0);
   const credit = accounts
     .filter((a) => a.type === 'credit')
-    .reduce((s, a) => s + toUserCurrency(Math.abs(a.balance), a.currency || displayCurrency, displayCurrency), 0);
+    .reduce((s, a) => s + Math.abs(Number(a.balance || 0)), 0);
   const portfolio = investments.reduce((s, i) => s + i.units * (i.currentPrice || i.buyPrice || 0), 0);
   const borrowed = debts.filter((d) => d.type === 'borrowed').reduce((s, d) => s + (d.remainingAmount ?? d.amount), 0);
   const lent = debts.filter((d) => d.type === 'lent').reduce((s, d) => s + (d.remainingAmount ?? d.amount), 0);
@@ -33,8 +32,8 @@ export async function netWorthForUser(userId, displayCurrency = 'INR') {
       name: a.name,
       type: a.type,
       color: a.color,
-      currency: a.currency || displayCurrency,
-      balance: toUserCurrency(a.balance, a.currency || displayCurrency, displayCurrency),
+      currency: a.currency,
+      balance: Number(a.balance || 0),
     })),
   };
 }

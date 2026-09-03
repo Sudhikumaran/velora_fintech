@@ -25,7 +25,7 @@ export const createAccount = async (req, res, next) => {
 
     const account = await Account.create({
       user: req.user._id,
-      name, type, balance: balance || 0, currency: currency || 'USD',
+      name, type, balance: balance || 0, currency: currency || req.user.currency || 'INR',
       color: color || '#6366f1', icon: icon || 'wallet', description, creditLimit,
       upiId: String(upiId || '').trim(),
     });

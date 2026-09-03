@@ -35,7 +35,7 @@ export async function bumpTodaySpend(delta) {
 export async function refreshTodaySpendFromTransactions(transactions = []) {
   const today = dayStamp();
   const spent = (transactions || [])
-    .filter((t) => t.type === 'expense' && String(t.date || '').slice(0, 10) === today)
+    .filter((t) => t.type === 'expense' && !t.excludeFromTotals && String(t.date || '').slice(0, 10) === today)
     .reduce((sum, t) => sum + Number(t.amount || 0), 0);
   await setTodaySpend(spent);
 }

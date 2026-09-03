@@ -4,6 +4,7 @@ import Account from '../models/Account.js';
 import Budget from '../models/Budget.js';
 import { successResponse } from '../utils/apiResponse.js';
 import { netWorthForUser } from '../utils/netWorth.js';
+import { countedMatch } from '../utils/totals.js';
 
 function startOfWeekMonday(d) {
   const x = new Date(d);
@@ -152,11 +153,11 @@ export const getDashboardSummary = async (req, res, next) => {
     const [accounts, monthlyStats, lastMonthStats, recentTransactions] = await Promise.all([
       Account.find({ user: userId, isArchived: false }),
       Transaction.aggregate([
-        { $match: { user: userId, isArchived: false, date: { $gte: startOfMonth, $lte: endOfMonth } } },
+        { $match: { user: userId, isArchived: false, date: { $gte: startOfMonth, $lte: endOfMonth }, ...countedMatch } },
         { $group: { _id: '$type', total: { $sum: '$amount' } } },
       ]),
       Transaction.aggregate([
-        { $match: { user: userId, isArchived: false, date: { $gte: startOfLastMonth, $lte: endOfLastMonth } } },
+        { $match: { user: userId, isArchived: false, date: { $gte: startOfLastMonth, $lte: endOfLastMonth }, ...countedMatch } },
         { $group: { _id: '$type', total: { $sum: '$amount' } } },
       ]),
       Transaction.find({ user: userId, isArchived: false })
@@ -461,6 +462,7 @@ export const getMonthlyTrend = async (req, res, next) => {
           user: userId,
           isArchived: false,
           date: { $gte: startDate },
+          ...countedMatch,
         },
       },
       {
@@ -508,6 +510,7 @@ export const getCashFlow = async (req, res, next) => {
             $gte: new Date(targetYear, 0, 1),
             $lte: new Date(targetYear, 11, 31),
           },
+          ...countedMatch,
         },
       },
       {
@@ -562,6 +565,7 @@ export const getIncomeVsExpense = async (req, res, next) => {
       isArchived: false,
       type: typeClause,
       date: { $gte: start, $lte: end },
+      ...countedMatch,
     };
     if (account && mongoose.Types.ObjectId.isValid(account)) {
       match.account = new mongoose.Types.ObjectId(account);
@@ -716,8 +720,8 @@ export const getMonthlyReport = async (req, res, next) => {
       date: { $gte: start, $lte: end },
     }).populate('account', 'name');
 
-    const income = txs.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const expense = txs.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const income = txs.filter((t) => t.type === 'income' && !t.excludeFromTotals).reduce((s, t) => s + t.amount, 0);
+    const expense = txs.filter((t) => t.type === 'expense' && !t.excludeFromTotals).reduce((s, t) => s + t.amount, 0);
     const byCategory = {};
     txs.filter((t) => t.type === 'expense').forEach((t) => {
       byCategory[t.category] = (byCategory[t.category] || 0) + t.amount;

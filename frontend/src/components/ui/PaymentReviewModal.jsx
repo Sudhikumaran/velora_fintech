@@ -38,6 +38,7 @@ function draftFromItem(item, accounts) {
     category: remembered,
     receiptUrl: '',
     splits: [],
+    excludeFromTotals: false,
   };
 }
 
@@ -147,6 +148,7 @@ export default function PaymentReviewModal() {
         splits,
         source: item.source || 'import',
         sourceId: item.sourceId,
+        excludeFromTotals: form.type !== 'transfer' && !!form.excludeFromTotals,
       });
       if (!created || created.skipped) {
         if (created?.skipped) {
@@ -155,7 +157,7 @@ export default function PaymentReviewModal() {
         }
         return;
       }
-      if (form.type === 'expense') {
+      if (form.type === 'expense' && !form.excludeFromTotals) {
         const merchant = item.merchant || form.description;
         if (splits.length) {
           await rememberMerchantCategory(merchant, splits[0].category);
@@ -229,7 +231,7 @@ export default function PaymentReviewModal() {
               <button
                 key={t}
                 type="button"
-                onClick={() => setForm((f) => ({ ...f, type: t, category: t === 'transfer' ? 'Transfer' : (item?.rememberedCategory || ''), splits: t === 'transfer' ? [] : f.splits }))}
+                onClick={() => setForm((f) => ({ ...f, type: t, category: t === 'transfer' ? 'Transfer' : (item?.rememberedCategory || ''), splits: t === 'transfer' ? [] : f.splits, excludeFromTotals: t === 'transfer' ? false : f.excludeFromTotals }))}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium capitalize ${
                   form.type === t
                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
@@ -243,6 +245,19 @@ export default function PaymentReviewModal() {
 
           {item?.rememberedCategory && form.type !== 'transfer' && (
             <p className="text-xs text-indigo-600">Last time {item.merchant || 'this merchant'} was <strong>{item.rememberedCategory}</strong>.</p>
+          )}
+
+          {form.type === 'income' && (
+            <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200">
+              <input type="checkbox" className="mt-0.5" checked={!!form.excludeFromTotals} onChange={(e) => setForm((f) => ({ ...f, excludeFromTotals: e.target.checked }))} />
+              <span>Don’t count as income <span className="text-xs text-gray-500">(family return)</span></span>
+            </label>
+          )}
+          {form.type === 'expense' && (
+            <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200">
+              <input type="checkbox" className="mt-0.5" checked={!!form.excludeFromTotals} onChange={(e) => setForm((f) => ({ ...f, excludeFromTotals: e.target.checked }))} />
+              <span>Don’t count as spending <span className="text-xs text-gray-500">(given to home)</span></span>
+            </label>
           )}
 
           <div className="grid grid-cols-2 gap-3">

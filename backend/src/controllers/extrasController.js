@@ -7,6 +7,7 @@ import User from '../models/User.js';
 import Household from '../models/Household.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { netWorthForUser } from '../utils/netWorth.js';
+import { countedAmount } from '../utils/totals.js';
 
 function monthBounds(offset = 0, from = new Date()) {
   const start = new Date(from.getFullYear(), from.getMonth() + offset, 1);
@@ -48,9 +49,13 @@ export const getInsights = async (req, res, next) => {
       netWorthForUser(userId, currency),
     ]);
 
-    const sum = (rows, type) => rows.filter((t) => t.type === type).reduce((s, t) => s + Number(t.amount || 0), 0);
-    const income = sum(monthTx, 'income');
-    const expense = sum(monthTx, 'expense');
+    const cashNet = (rows) => (rows || []).reduce((s, t) => {
+      if (t.type === 'income') return s + Number(t.amount || 0);
+      if (t.type === 'expense') return s - Number(t.amount || 0);
+      return s;
+    }, 0);
+    const income = countedAmount(monthTx, 'income');
+    const expense = countedAmount(monthTx, 'expense');
     const savingsRate = income > 0 ? ((income - expense) / income) * 100 : 0;
 
     const weekSpend = weekTx.reduce((s, t) => s + Number(t.amount || 0), 0);
@@ -98,7 +103,7 @@ export const getInsights = async (req, res, next) => {
     for (let i = 0; i < 6; i += 1) {
       const { start, end } = monthBounds(-i, now);
       const txs = i === 0 ? monthTx : await Transaction.find({ user: userId, isArchived: false, date: { $gte: start, $lte: end } }).select('type amount');
-      const net = sum(txs, 'income') - sum(txs, 'expense');
+      const net = cashNet(txs);
       history.unshift({
         month: `${start.toLocaleString('en', { month: 'short' })} ${start.getFullYear()}`,
         netWorth: running,
@@ -228,8 +233,8 @@ export const spendCheck = async (req, res, next) => {
 async function getQuickLeftover(userId) {
   const { start, end } = monthBounds(0);
   const txs = await Transaction.find({ user: userId, isArchived: false, date: { $gte: start, $lte: end } }).select('type amount');
-  const income = txs.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const expense = txs.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const income = countedAmount(txs, 'income');
+  const expense = countedAmount(txs, 'expense');
   return { leftover: income - expense, income, expense };
 }
 

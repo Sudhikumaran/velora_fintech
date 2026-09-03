@@ -134,6 +134,7 @@ export async function createUserTransaction(userId, payload) {
     isBusiness: Boolean(payload.isBusiness),
     gstin: payload.isBusiness ? String(payload.gstin || '').trim() : '',
     gstAmount: payload.isBusiness ? (parseFloat(payload.gstAmount) || 0) : 0,
+    excludeFromTotals: type !== 'transfer' && Boolean(payload.excludeFromTotals),
   });
 
   await applyBalanceChange({

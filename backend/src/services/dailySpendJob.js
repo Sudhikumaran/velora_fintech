@@ -12,12 +12,12 @@ import {
 } from '../utils/zonedDate.js';
 
 function sumByType(txs, type) {
-  return txs.filter((t) => t.type === type).reduce((s, t) => s + Number(t.amount || 0), 0);
+  return txs.filter((t) => t.type === type && !t.excludeFromTotals).reduce((s, t) => s + Number(t.amount || 0), 0);
 }
 
 function categoryTotals(txs) {
   const byCategory = {};
-  txs.filter((t) => t.type === 'expense').forEach((t) => {
+  txs.filter((t) => t.type === 'expense' && !t.excludeFromTotals).forEach((t) => {
     const name = t.category || 'Other';
     byCategory[name] = (byCategory[name] || 0) + Number(t.amount || 0);
   });
@@ -72,7 +72,7 @@ export async function runDailySpendJob(now = new Date()) {
         totalsForRange(user._id, month.start, month.end),
       ]);
 
-      const expenses = todayStats.txs.filter((t) => t.type === 'expense');
+      const expenses = todayStats.txs.filter((t) => t.type === 'expense' && !t.excludeFromTotals);
       await sendDailySpendReport({
         to: user.email,
         userName: user.name,

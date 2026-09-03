@@ -7,7 +7,6 @@ import { useInvestmentStore } from '../store/financeStore';
 import { useLedgerStore } from '../store/ledgerStore';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency, formatDate } from '../utils/formatters';
-import { toUserCurrency } from '../utils/fx';
 import { ACCOUNT_TYPES, COLORS, CURRENCIES } from '../utils/constants';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -117,12 +116,11 @@ export default function Accounts() {
     setModalOpen(false);
   };
 
-  const displayCurrency = user?.currency || 'INR';
-  const totalBalance = accounts.filter((a) => !a.isArchived).reduce((sum, a) => sum + toUserCurrency(a.balance, a.currency || displayCurrency, displayCurrency), 0);
+  const totalBalance = accounts.filter((a) => !a.isArchived && a.type !== 'credit').reduce((sum, a) => sum + Number(a.balance || 0), 0);
   const creditAccounts = accounts.filter((a) => !a.isArchived && a.type === 'credit');
   const investmentAccounts = accounts.filter((a) => !a.isArchived && a.type === 'investment');
   const portfolioValue = investments.reduce((s, inv) => s + inv.units * (inv.currentPrice || inv.buyPrice), 0);
-  const investmentAccountsValue = investmentAccounts.reduce((s, a) => s + toUserCurrency(a.balance, a.currency || displayCurrency, displayCurrency), 0);
+  const investmentAccountsValue = investmentAccounts.reduce((s, a) => s + Number(a.balance || 0), 0);
   const totalInvestments = portfolioValue + investmentAccountsValue;
 
   return (
@@ -196,6 +194,9 @@ export default function Accounts() {
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">{account.name}</p>
                       <p className="text-xs text-gray-500 capitalize">{account.type}{account.currency ? ` · ${account.currency}` : ''}{account.upiId ? ` · ${account.upiId}` : ''}</p>
+                      {user?.currency && account.currency && account.currency !== user.currency && (
+                        <p className="text-[11px] text-amber-600 mt-0.5">Tagged {account.currency}. Edit the account if the balance is actually {user.currency}.</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -223,7 +224,7 @@ export default function Accounts() {
 
                 <div className="mb-1">
                   <p className="text-2xl font-bold" style={{ color: account.balance < 0 ? '#ef4444' : account.color }}>
-                    {formatCurrency(toUserCurrency(account.balance, account.currency || displayCurrency, displayCurrency), user?.currency)}
+                    {formatCurrency(account.balance, user?.currency)}
                   </p>
                 </div>
 

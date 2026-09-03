@@ -3,10 +3,11 @@ export const TRANSACTION_CATEGORIES = {
     'Food & Dining', 'Transportation', 'Shopping', 'Entertainment',
     'Healthcare', 'Housing', 'Utilities', 'Education', 'Travel',
     'Personal Care', 'Gifts & Donations', 'Insurance', 'Taxes',
-    'Subscriptions', 'Pets', 'Business', 'Other',
+    'Subscriptions', 'Pets', 'Business', 'Home / family', 'Other',
   ],
   income: [
     'Salary', 'Freelance', 'Business', 'Investment Returns', 'Rental Income',
+    'Home / family',
     'Dividends', 'Interest', 'Bonus', 'Gift', 'Refund', 'Other',
   ],
 };

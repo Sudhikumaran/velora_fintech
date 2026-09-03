@@ -76,8 +76,8 @@ export default function Reports() {
     });
   }, [allTxs, type, account, category, search]);
 
-  const income = filtered.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const expense = filtered.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const income = filtered.filter((t) => t.type === 'income' && !t.excludeFromTotals).reduce((s, t) => s + t.amount, 0);
+  const expense = filtered.filter((t) => t.type === 'expense' && !t.excludeFromTotals).reduce((s, t) => s + t.amount, 0);
   const transfer = filtered.filter((t) => t.type === 'transfer').reduce((s, t) => s + t.amount, 0);
   const net = income - expense;
   const savingsRate = income > 0 ? (net / income) * 100 : 0;
