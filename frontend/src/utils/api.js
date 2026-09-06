@@ -24,19 +24,49 @@ const api = axios.create({
   timeout: 20000,
 });
 
+/** Read JWT from either storage key (they can desync after a 401). */
+export function getAuthToken() {
+  const direct = localStorage.getItem('velora_token');
+  if (direct) return direct;
+  try {
+    const raw = localStorage.getItem('velora-auth');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const token = parsed?.state?.token;
+    if (typeof token === 'string' && token.length > 0) {
+      localStorage.setItem('velora_token', token);
+      return token;
+    }
+  } catch {
+    /* ignore corrupt persist blob */
+  }
+  return null;
+}
+
+export function clearAuthSession() {
+  localStorage.removeItem('velora_token');
+  localStorage.removeItem('velora_user');
+  localStorage.removeItem('velora-auth');
+  sessionStorage.removeItem('velora_unlocked');
+}
+
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
+
+let handlingUnauthorized = false;
+
 api.interceptors.request.use((config) => {
   config.baseURL = resolveApiBaseURL();
   if (isNativeApp() && !isHostedWebOrigin()) {
     config.withCredentials = false;
   }
-  const token = localStorage.getItem('velora_token');
+  const token = getAuthToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    delete config.headers.Authorization;
   }
   return config;
 });
-
-const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
 
 api.interceptors.response.use(
   (response) => response,
@@ -44,9 +74,22 @@ api.interceptors.response.use(
     const url = error.config?.url || '';
     const isAuthCall = AUTH_ENDPOINTS.some((e) => url.includes(e));
     if (error.response?.status === 401 && !isAuthCall) {
-      localStorage.removeItem('velora_token');
-      localStorage.removeItem('velora_user');
-      window.location.href = loginRedirectPath();
+      if (!handlingUnauthorized) {
+        handlingUnauthorized = true;
+        clearAuthSession();
+        const path = window.location.pathname;
+        const hash = window.location.hash || '';
+        const onLogin =
+          path === '/login' ||
+          path === '/register' ||
+          hash.includes('/login') ||
+          hash.includes('/register');
+        if (!onLogin) {
+          window.location.href = loginRedirectPath();
+        } else {
+          handlingUnauthorized = false;
+        }
+      }
     }
     return Promise.reject(error);
   }

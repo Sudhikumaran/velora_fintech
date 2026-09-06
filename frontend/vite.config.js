@@ -2,7 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-export default defineConfig({
+/** Capacitor loads bundled assets from the app filesystem — requires relative base. */
+export default defineConfig(({ mode }) => ({
+  base: mode === 'mobile' ? './' : '/',
   plugins: [
     react(),
     tailwindcss(),
@@ -31,4 +33,4 @@ export default defineConfig({
     },
     chunkSizeWarningLimit: 600,
   },
-})
+}))

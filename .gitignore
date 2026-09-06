@@ -11,6 +11,24 @@ backend/.env
 frontend/dist/
 frontend/build/
 
+# Built APKs (build locally or download from GitHub Actions)
+releases/*.apk
+releases/*.aab
+
+# Flutter
+flutter_app/build/
+flutter_app/.dart_tool/
+flutter_app/.flutter-plugins-dependencies
+
+# Capacitor / mobile native build artifacts
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/local.properties
+frontend/ios/App/build/
+frontend/ios/App/Pods/
+frontend/ios/DerivedData/
+
 # Logs
 *.log
 npm-debug.log*

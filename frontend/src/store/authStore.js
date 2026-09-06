@@ -1,7 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import api from '../utils/api';
+import api, { clearAuthSession } from '../utils/api';
 import toast from 'react-hot-toast';
+
+function syncTokenMirror(token) {
+  if (token) {
+    localStorage.setItem('velora_token', token);
+  } else {
+    localStorage.removeItem('velora_token');
+  }
+}
 
 export const useAuthStore = create(
   persist(
@@ -9,12 +17,15 @@ export const useAuthStore = create(
       user: null,
       token: null,
       isLoading: false,
+      _hasHydrated: false,
+
+      setHasHydrated: (value) => set({ _hasHydrated: value }),
 
       login: async (email, password) => {
         set({ isLoading: true });
         try {
           const { data } = await api.post('/auth/login', { email, password });
-          localStorage.setItem('velora_token', data.token);
+          syncTokenMirror(data.token);
           set({ user: data.user, token: data.token, isLoading: false });
           toast.success('Welcome back!');
           return true;
@@ -29,7 +40,7 @@ export const useAuthStore = create(
         set({ isLoading: true });
         try {
           const { data } = await api.post('/auth/register', { name, email, password, currency });
-          localStorage.setItem('velora_token', data.token);
+          syncTokenMirror(data.token);
           set({ user: data.user, token: data.token, isLoading: false });
           toast.success('Account created successfully!');
           return true;
@@ -40,12 +51,11 @@ export const useAuthStore = create(
         }
       },
 
-      logout: async () => {
+      logout: async (showToast = true) => {
         try { await api.post('/auth/logout'); } catch { /* cookie may already be gone */ }
-        localStorage.removeItem('velora_token');
-        sessionStorage.removeItem('velora_unlocked');
+        clearAuthSession();
         set({ user: null, token: null });
-        toast.success('Logged out successfully');
+        if (showToast) toast.success('Logged out successfully');
       },
 
       forgotPassword: async (email) => {
@@ -62,7 +72,7 @@ export const useAuthStore = create(
       resetPassword: async (token, password) => {
         try {
           const { data } = await api.post('/auth/reset-password', { token, password });
-          if (data.token) localStorage.setItem('velora_token', data.token);
+          if (data.token) syncTokenMirror(data.token);
           set({ user: data.user, token: data.token });
           toast.success('Password reset. You are signed in.');
           return true;
@@ -75,7 +85,7 @@ export const useAuthStore = create(
       deleteAccount: async (password) => {
         try {
           await api.delete('/auth/account', { data: { password } });
-          localStorage.removeItem('velora_token');
+          clearAuthSession();
           set({ user: null, token: null });
           toast.success('Account deleted');
           return true;
@@ -99,7 +109,12 @@ export const useAuthStore = create(
 
       updatePassword: async (currentPassword, newPassword) => {
         try {
-          await api.put('/auth/password', { currentPassword, newPassword });
+          const { data } = await api.put('/auth/password', { currentPassword, newPassword });
+          // Password change returns a fresh JWT — keep both storages in sync.
+          if (data?.token) {
+            syncTokenMirror(data.token);
+            set({ token: data.token, user: data.user || get().user });
+          }
           toast.success('Password updated successfully');
           return true;
         } catch (error) {
@@ -112,14 +127,23 @@ export const useAuthStore = create(
         try {
           const { data } = await api.get('/auth/me');
           set({ user: data.data });
-        } catch (error) {
-          get().logout();
+        } catch {
+          get().logout(false);
         }
       },
     }),
     {
       name: 'velora-auth',
       partialize: (state) => ({ user: state.user, token: state.token }),
+      onRehydrateStorage: () => (state) => {
+        // Keep Axios mirror token aligned with persisted Zustand session.
+        if (state?.token) {
+          localStorage.setItem('velora_token', state.token);
+        } else {
+          localStorage.removeItem('velora_token');
+        }
+        state?.setHasHydrated?.(true);
+      },
     }
   )
 );

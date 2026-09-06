@@ -74,6 +74,29 @@ CLIENT_URL=http://localhost:5173
 - 📅 **Calendar** — Financial event visualization
 - ⚙️ **Settings** — Profile, password, currency, data export
 
+## 📱 Mobile app (native Android)
+
+The **Flutter** app (`flutter_app/`) is the mobile product — native UI, full feature parity with the web app, installable APK.
+
+```bash
+cd flutter_app
+flutter pub get
+flutter run
+```
+
+### Download & install (APK)
+
+Install **`releases/Velora-Mobile-2.0.0.apk`** on your phone — see [releases/README.md](releases/README.md).
+
+Build locally:
+
+```powershell
+cd flutter_app
+flutter build apk --release --dart-define=API_URL=https://velora-fintech.onrender.com
+```
+
+More: [flutter_app/README.md](flutter_app/README.md)
+
 ## 🔐 Security
 
 - JWT-based authentication

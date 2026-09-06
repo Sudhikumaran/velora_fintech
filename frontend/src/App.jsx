@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
@@ -26,14 +27,46 @@ import PaymentsInbox from './pages/PaymentsInbox';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 
+function useAuthHydrated() {
+  const [hydrated, setHydrated] = useState(() => useAuthStore.persist.hasHydrated());
+
+  useEffect(() => {
+    const unsub = useAuthStore.persist.onFinishHydration(() => setHydrated(true));
+    setHydrated(useAuthStore.persist.hasHydrated());
+    return unsub;
+  }, []);
+
+  return hydrated;
+}
+
 function ProtectedRoute({ children }) {
-  const { token } = useAuthStore();
+  const hydrated = useAuthHydrated();
+  const token = useAuthStore((s) => s.token);
+
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+      </div>
+    );
+  }
+
   if (!token) return <Navigate to="/login" replace />;
   return children;
 }
 
 function PublicRoute({ children }) {
-  const { token } = useAuthStore();
+  const hydrated = useAuthHydrated();
+  const token = useAuthStore((s) => s.token);
+
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+      </div>
+    );
+  }
+
   if (token) return <Navigate to="/" replace />;
   return children;
 }
