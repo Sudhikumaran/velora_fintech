@@ -18,6 +18,26 @@
       if (t === 'dark') document.documentElement.classList.add('dark');
     })();
   </script>
+  <script>
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      var flag = 'velora_sw_cleared';
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        if (!regs.length) return;
+        return Promise.all(regs.map(function (r) { return r.unregister(); }))
+          .then(function () { return window.caches ? caches.keys() : []; })
+          .then(function (keys) {
+            return Promise.all((keys || []).map(function (k) { return caches.delete(k); }));
+          })
+          .then(function () {
+            if (!sessionStorage.getItem(flag)) {
+              sessionStorage.setItem(flag, '1');
+              location.reload();
+            }
+          });
+      }).catch(function () {});
+    })();
+  </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">

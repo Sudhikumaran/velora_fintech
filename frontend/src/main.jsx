@@ -14,6 +14,11 @@ createRoot(document.getElementById('root')).render(
 
 if ('serviceWorker' in navigator && !isNativeApp()) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((reg) => { reg.unregister(); });
+    }).catch(() => {});
+    if (window.caches) {
+      caches.keys().then((keys) => keys.forEach((key) => caches.delete(key))).catch(() => {});
+    }
   });
 }
