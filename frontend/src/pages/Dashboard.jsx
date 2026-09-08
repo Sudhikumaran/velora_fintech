@@ -17,6 +17,8 @@ import StatCard from '../components/ui/StatCard';
 import { SkeletonDashboard } from '../components/ui/Skeleton';
 import VoiceAddButton from '../components/ui/VoiceAddButton';
 import InsightsExtras from '../components/ui/InsightsExtras';
+import { UpgradeCard } from '../components/ui/UpgradePrompt';
+import { usePlan } from '../utils/plan';
 
 const PIE_COLORS = ['#6366f1','#8b5cf6','#ec4899','#f97316','#eab308','#22c55e','#14b8a6','#3b82f6'];
 
@@ -36,6 +38,7 @@ const ChartTip = ({ active, payload, label, currency = 'USD' }) => {
 
 export default function Dashboard() {
   const { user } = useAuthStore();
+  const { isPremium, isTrial, daysLeft } = usePlan();
   const waiting = usePaymentReviewStore((s) => s.queue.length);
   const { dashboard, monthlyTrend, spendingByCategory, netWorth, fetchDashboard, fetchMonthlyTrend, fetchSpendingByCategory, fetchNetWorth } = useAnalyticsStore();
   const currSymbol = user?.currency === 'INR' ? '₹' : user?.currency === 'EUR' ? '€' : user?.currency === 'GBP' ? '£' : '$';
@@ -45,8 +48,8 @@ export default function Dashboard() {
     fetchDashboard();
     fetchMonthlyTrend({ months: 6 });
     fetchSpendingByCategory({ period: 'month' });
-    fetchNetWorth();
-  }, []);
+    if (isPremium) fetchNetWorth();
+  }, [isPremium]);
 
   if (!dashboard) return <SkeletonDashboard />;
 
@@ -92,6 +95,15 @@ export default function Dashboard() {
           </Link>
         </div>
       </motion.div>
+
+      {isTrial && (
+        <div className="card p-4 flex items-center justify-between gap-3">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            Premium trial · {daysLeft} day{daysLeft === 1 ? '' : 's'} left. Capture, net worth extras, household, and CA export are included.
+          </p>
+          <Link to="/settings" className="text-sm font-semibold text-indigo-600 shrink-0">Plans</Link>
+        </div>
+      )}
 
       {waiting > 0 && (
         <Link to="/payments" className="card p-4 flex items-center justify-between border-indigo-200 dark:border-indigo-800">
@@ -194,7 +206,7 @@ export default function Dashboard() {
       {/* Net Worth + Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Net Worth Card */}
-        {netWorth && (
+        {isPremium && netWorth && (
           <motion.div
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}
             whileHover={{ y: -4 }}
@@ -245,10 +257,17 @@ export default function Dashboard() {
           </motion.div>
         )}
 
+        {!isPremium && (
+          <UpgradeCard
+            title="Net worth extras"
+            blurb="Cash, investments, money lent, credit cards, and EMI remaining — plus spend-check and weekly digest."
+          />
+        )}
+
         {/* Insights Panel */}
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
-          className={`card p-5 ${netWorth ? 'lg:col-span-2' : 'lg:col-span-3'}`}
+          className={`card p-5 ${!isPremium || netWorth ? 'lg:col-span-2' : 'lg:col-span-3'}`}
         >
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
@@ -281,7 +300,7 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      <InsightsExtras />
+      {isPremium && <InsightsExtras />}
 
       {/* Accounts + Transactions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

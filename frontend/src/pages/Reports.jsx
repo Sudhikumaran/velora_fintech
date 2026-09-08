@@ -8,6 +8,8 @@ import PageHeader from '../components/ui/PageHeader';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import EmptyState from '../components/ui/EmptyState';
 import Badge from '../components/ui/Badge';
+import UpgradeModal from '../components/ui/UpgradePrompt';
+import { usePlan } from '../utils/plan';
 
 const TYPE_FILTERS = [
   { id: 'all', label: 'All' },
@@ -33,6 +35,7 @@ function groupByCategory(txs) {
 
 export default function Reports() {
   const { user } = useAuthStore();
+  const { isPremium } = usePlan();
   const { accounts, fetchAccounts } = useAccountStore();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -43,6 +46,7 @@ export default function Reports() {
   const [account, setAccount] = useState('');
   const [category, setCategory] = useState('');
   const [search, setSearch] = useState('');
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   useEffect(() => { fetchAccounts(); }, []);
 
@@ -130,6 +134,10 @@ export default function Reports() {
               type="button"
               className="btn-secondary"
               onClick={async () => {
+                if (!isPremium) {
+                  setUpgradeOpen(true);
+                  return;
+                }
                 const { data } = await api.get('/extras/ca-export', { params: { month, year }, responseType: 'blob' });
                 const url = URL.createObjectURL(data);
                 const a = document.createElement('a');
@@ -261,6 +269,7 @@ export default function Reports() {
           </div>
         </div>
       )}
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} title="CA export is Premium" />
     </div>
   );
 }

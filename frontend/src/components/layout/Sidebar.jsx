@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import BrandMark from '../ui/BrandMark';
+import { usePlan } from '../../utils/plan';
 
 const navGroups = [
   {
@@ -32,7 +33,7 @@ const navGroups = [
     label: 'Planning',
     items: [
       { to: '/budgets', icon: Target, label: 'Budgets' },
-      { to: '/income-planner', icon: ClipboardList, label: 'Income Planner' },
+      { to: '/income-planner', icon: ClipboardList, label: 'Income Planner', premium: true },
       { to: '/goals', icon: Flag, label: 'Goals' },
       { to: '/debts', icon: TrendingDown, label: 'Debts' },
     ],
@@ -46,7 +47,8 @@ const navGroups = [
   },
 ];
 
-function NavItem({ to, icon: Icon, label, collapsed, onClick }) {
+function NavItem({ to, icon: Icon, label, collapsed, onClick, premium }) {
+  const isPremiumUser = usePlan().isPremium;
   return (
     <NavLink
       to={to}
@@ -79,9 +81,12 @@ function NavItem({ to, icon: Icon, label, collapsed, onClick }) {
             <Icon size={18} />
           </motion.span>
           {!collapsed && (
-            <motion.span layout className="relative z-10 truncate">
+            <motion.span layout className="relative z-10 truncate flex-1">
               {label}
             </motion.span>
+          )}
+          {!collapsed && premium && !isPremiumUser && (
+            <span className="relative z-10 text-[10px] font-bold uppercase tracking-wide text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded-md">Pro</span>
           )}
         </>
       )}
@@ -91,6 +96,7 @@ function NavItem({ to, icon: Icon, label, collapsed, onClick }) {
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
   const { logout, user } = useAuthStore();
+  const { isPremium } = usePlan();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -155,7 +161,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight">{user?.name}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{user?.currency}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{isPremium ? 'Premium' : 'Free'} · {user?.currency}</p>
             </div>
           </div>
         )}

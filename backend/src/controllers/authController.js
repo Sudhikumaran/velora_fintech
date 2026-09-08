@@ -12,6 +12,7 @@ import crypto from 'crypto';
 import { sendTokenResponse, clearAuthCookie } from '../utils/generateToken.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { sendPasswordReset } from '../services/emailService.js';
+import { startLaunchTrial } from '../utils/plan.js';
 
 export const register = async (req, res, next) => {
   try {
@@ -27,6 +28,7 @@ export const register = async (req, res, next) => {
     }
 
     const user = await User.create({ name, email, password, currency: currency || 'USD' });
+    await startLaunchTrial(user);
     sendTokenResponse(res, user, 201, 'Account created successfully.');
   } catch (error) {
     next(error);
@@ -46,6 +48,7 @@ export const login = async (req, res, next) => {
       return errorResponse(res, 'Invalid email or password.', 401);
     }
 
+    await startLaunchTrial(user);
     sendTokenResponse(res, user, 200, 'Login successful.');
   } catch (error) {
     next(error);
@@ -54,7 +57,7 @@ export const login = async (req, res, next) => {
 
 export const getMe = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await startLaunchTrial(await User.findById(req.user._id));
     successResponse(res, user, 'Profile fetched successfully.');
   } catch (error) {
     next(error);

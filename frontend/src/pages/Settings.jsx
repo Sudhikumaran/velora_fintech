@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, Palette, Globe, Download, LogOut, Check, RefreshCw, RotateCcw, Smartphone, Users, Landmark } from 'lucide-react';
+import { User, Lock, Palette, Globe, Download, LogOut, Check, RefreshCw, RotateCcw, Smartphone, Users, Landmark, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { CURRENCIES } from '../utils/constants';
@@ -25,9 +25,12 @@ import {
 import { hasAppPin, setAppPin, clearAppPin } from '../utils/appLock';
 import { getMerchantMemory, forgetMerchantCategory } from '../utils/merchantMemory';
 import { useExtrasStore } from '../store/financeStore';
+import { PlanCompare } from '../components/ui/UpgradePrompt';
+import { usePlan } from '../utils/plan';
 
 const sections = [
   { id: 'profile', label: 'Profile', icon: User },
+  { id: 'plan', label: 'Plan', icon: Sparkles },
   { id: 'security', label: 'Security', icon: Lock },
   { id: 'preferences', label: 'Preferences', icon: Palette },
   { id: 'data', label: 'Data', icon: Download },
@@ -35,6 +38,7 @@ const sections = [
 
 export default function Settings() {
   const { user, updateProfile, updatePassword, logout, deleteAccount } = useAuthStore();
+  const { isPremium } = usePlan();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('profile');
   const [profileForm, setProfileForm] = useState({ name: user?.name || '', email: user?.email || '', currency: user?.currency || 'USD', timezone: user?.timezone || 'UTC', avatar: user?.avatar || '' });
@@ -214,6 +218,16 @@ export default function Settings() {
               </div>
             )}
 
+            {activeSection === 'plan' && (
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Plan</h2>
+                <p className="text-sm text-gray-500 mb-6">
+                  Free keeps your books. Premium adds capture and extras. Checkout is not live yet — use a 7-day trial, then join the waitlist.
+                </p>
+                <PlanCompare />
+              </div>
+            )}
+
             {activeSection === 'security' && (
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Security</h2>
@@ -292,7 +306,7 @@ export default function Settings() {
                     </div>
                     <Globe size={20} className="text-gray-400" />
                   </div>
-                  {isNativeApp() && (
+                  {isNativeApp() && isPremium && (
                     <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                       <p className="font-medium text-gray-900 dark:text-white">Add a payment after you pay</p>
                       <p className="text-sm text-gray-500 mt-1">
@@ -387,6 +401,13 @@ export default function Settings() {
                       </div>
                     </div>
                   )}
+                  {isNativeApp() && !isPremium && (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl space-y-2">
+                      <p className="font-medium text-gray-900 dark:text-white">Add a payment after you pay</p>
+                      <p className="text-sm text-gray-500">Overlay, floating button, share + OCR, and Quick Settings are Premium.</p>
+                      <button type="button" className="btn-primary text-sm" onClick={() => setActiveSection('plan')}>See Premium</button>
+                    </div>
+                  )}
                   {isNativeApp() && (
                     <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                       <p className="font-medium text-gray-900 dark:text-white">App updates</p>
@@ -431,6 +452,8 @@ export default function Settings() {
                           Leave household
                         </button>
                       </div>
+                    ) : !isPremium ? (
+                      <button type="button" className="btn-primary text-sm" onClick={() => setActiveSection('plan')}>Unlock with Premium</button>
                     ) : (
                       <div className="space-y-2">
                         <div className="flex gap-2">
@@ -531,6 +554,10 @@ export default function Settings() {
                       disabled={caBusy}
                       className="btn-secondary text-sm flex items-center gap-2 mt-3 ml-2"
                       onClick={async () => {
+                        if (!isPremium) {
+                          setActiveSection('plan');
+                          return;
+                        }
                         setCaBusy(true);
                         try {
                           const now = new Date();

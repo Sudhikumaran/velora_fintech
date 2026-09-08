@@ -11,6 +11,8 @@ import EmptyState from '../components/ui/EmptyState';
 import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import UpgradeModal from '../components/ui/UpgradePrompt';
+import { usePlan } from '../utils/plan';
 
 const today = new Date().toISOString().split('T')[0];
 const defaultForm = {
@@ -81,7 +83,9 @@ function BudgetForm({ form, setForm, onSubmit, isEdit }) {
 export default function Budgets() {
   const { budgets, fetchBudgets, createBudget, updateBudget, deleteBudget, copyPeriod, isLoading } = useBudgetStore();
   const { user } = useAuthStore();
+  const { isPremium, maxBudgets } = usePlan();
   const [modalOpen, setModalOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [editBudget, setEditBudget] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [form, setForm] = useState(defaultForm);
@@ -93,7 +97,15 @@ export default function Budgets() {
     return () => window.removeEventListener('focus', onFocus);
   }, []);
 
-  const openCreate = () => { setForm(defaultForm); setEditBudget(null); setModalOpen(true); };
+  const openCreate = () => {
+    if (!isPremium && budgets.length >= maxBudgets) {
+      setUpgradeOpen(true);
+      return;
+    }
+    setForm(defaultForm);
+    setEditBudget(null);
+    setModalOpen(true);
+  };
   const openEdit = (b) => {
     setForm({ name: b.name, category: b.category, limit: b.limit, period: b.period, startDate: b.startDate?.split('T')[0] || today, endDate: b.endDate?.split('T')[0] || '', color: b.color, alertThreshold: b.alertThreshold });
     setEditBudget(b);
@@ -121,10 +133,16 @@ export default function Budgets() {
     <div className="space-y-6">
       <PageHeader
         title="Budgets"
-        subtitle="Track your spending limits"
+        subtitle={isPremium ? 'Track your spending limits' : `Free includes ${maxBudgets} budgets`}
         action={
           <div className="flex gap-2">
-            <button onClick={() => copyPeriod()} className="btn-secondary">Copy to this month</button>
+            <button onClick={() => {
+              if (!isPremium && budgets.length >= maxBudgets) {
+                setUpgradeOpen(true);
+                return;
+              }
+              copyPeriod();
+            }} className="btn-secondary">Copy to this month</button>
             <button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus size={18} /> New Budget</button>
           </div>
         }
@@ -234,6 +252,7 @@ export default function Budgets() {
         title="Delete Budget"
         message="Are you sure you want to delete this budget?"
       />
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} title="Unlimited budgets are Premium" />
     </div>
   );
 }

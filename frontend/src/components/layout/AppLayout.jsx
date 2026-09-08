@@ -9,13 +9,14 @@ import Onboarding from '../ui/Onboarding';
 import { useOnboarding } from '../../hooks/useOnboarding';
 import { useAccountStore } from '../../store/accountStore';
 import { pageTransition } from '../../utils/motion';
+import { useAuthStore } from '../../store/authStore';
 import { startPaymentAutoCapture } from '../../utils/paymentCapture';
 import PaymentReviewModal from '../ui/PaymentReviewModal';
 import { checkDueReminders } from '../../utils/dueReminders';
 import { refreshTodaySpendFromTransactions } from '../../utils/todaySpend';
 import { useTransactionStore } from '../../store/transactionStore';
-import { useAuthStore } from '../../store/authStore';
 import { hydrateMerchantMemory } from '../../utils/merchantMemory';
+import { usePlan } from '../../utils/plan';
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -31,12 +32,17 @@ export default function AppLayout() {
   const location = useLocation();
   const { fetchAccounts } = useAccountStore();
   const [showOnboarding, completeOnboarding] = useOnboarding();
+  const { fetchMe } = useAuthStore();
+  const { isPremium } = usePlan();
   useEffect(() => { fetchAccounts(); }, []);
+  useEffect(() => { fetchMe(); }, []);
   useEffect(() => {
     const rules = useAuthStore.getState().user?.merchantRules;
     if (rules) hydrateMerchantMemory(rules);
   }, []);
-  useEffect(() => { startPaymentAutoCapture(); }, []);
+  useEffect(() => {
+    if (isPremium) startPaymentAutoCapture();
+  }, [isPremium]);
   useEffect(() => {
     checkDueReminders();
     useTransactionStore.getState().fetchTransactions({ page: 1, limit: 50 }).then(() => {

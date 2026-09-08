@@ -127,8 +127,8 @@ export const useAuthStore = create(
         try {
           const { data } = await api.get('/auth/me');
           set({ user: data.data });
-        } catch {
-          get().logout(false);
+        } catch (error) {
+          if (error.response?.status === 401) get().logout(false);
         }
       },
     }),

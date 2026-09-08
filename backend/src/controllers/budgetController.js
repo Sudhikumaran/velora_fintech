@@ -1,6 +1,7 @@
 import Budget from '../models/Budget.js';
 import Transaction from '../models/Transaction.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
+import { isUserPremium, FREE_BUDGET_LIMIT } from '../utils/plan.js';
 
 function startOfWeekMonday(d) {
   const x = new Date(d);
@@ -107,6 +108,13 @@ export const createBudget = async (req, res, next) => {
       return errorResponse(res, 'Name, category, limit and start date are required.', 400);
     }
 
+    if (!isUserPremium(req.user)) {
+      const count = await Budget.countDocuments({ user: req.user._id });
+      if (count >= FREE_BUDGET_LIMIT) {
+        return errorResponse(res, `Free includes ${FREE_BUDGET_LIMIT} budgets. Upgrade to Premium for unlimited budgets.`, 403);
+      }
+    }
+
     const budget = await Budget.create({
       user: req.user._id,
       name,
@@ -182,7 +190,16 @@ export const copyBudgetsToCurrentPeriod = async (req, res, next) => {
     }
 
     const created = [];
+    let remainingSlots = Infinity;
+    if (!isUserPremium(req.user)) {
+      remainingSlots = FREE_BUDGET_LIMIT - existing.length;
+      if (remainingSlots <= 0) {
+        return errorResponse(res, `Free includes ${FREE_BUDGET_LIMIT} budgets. Upgrade to Premium for unlimited budgets.`, 403);
+      }
+    }
+
     for (const budget of latestByKey.values()) {
+      if (created.length >= remainingSlots) break;
       const copy = await Budget.create({
         user: req.user._id,
         name: budget.name,

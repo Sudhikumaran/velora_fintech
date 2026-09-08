@@ -4,19 +4,20 @@ import {
   addEntry, updateEntry, toggleEntryDone, deleteEntry, postEntry,
 } from '../controllers/incomePlanController.js';
 import { protect } from '../middleware/auth.js';
+import { requirePremium } from '../middleware/requirePremium.js';
 
 const router = express.Router();
 
 router.use(protect);
 router.get('/', getPlans);
-router.post('/', createPlan);
+router.post('/', requirePremium, createPlan);
 router.get('/:id', getPlan);
-router.put('/:id', updatePlan);
-router.delete('/:id', deletePlan);
-router.post('/:id/entries', addEntry);
-router.put('/:id/entries/:entryId', updateEntry);
-router.patch('/:id/entries/:entryId/done', toggleEntryDone);
-router.post('/:id/entries/:entryId/post', postEntry);
-router.delete('/:id/entries/:entryId', deleteEntry);
+router.put('/:id', requirePremium, updatePlan);
+router.delete('/:id', requirePremium, deletePlan);
+router.post('/:id/entries', requirePremium, addEntry);
+router.put('/:id/entries/:entryId', requirePremium, updateEntry);
+router.patch('/:id/entries/:entryId/done', requirePremium, toggleEntryDone);
+router.post('/:id/entries/:entryId/post', requirePremium, postEntry);
+router.delete('/:id/entries/:entryId', requirePremium, deleteEntry);
 
 export default router;

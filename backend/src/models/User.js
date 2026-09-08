@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { planPayload } from '../utils/plan.js';
 
 const userSchema = new mongoose.Schema(
   {
@@ -69,6 +70,23 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    plan: {
+      type: String,
+      enum: ['free', 'premium'],
+      default: 'free',
+    },
+    planExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    trialUsedAt: {
+      type: Date,
+      default: null,
+    },
+    premiumWaitlist: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
@@ -85,6 +103,7 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
+  Object.assign(obj, planPayload(this));
   return obj;
 };
 

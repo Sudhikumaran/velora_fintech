@@ -59,7 +59,7 @@ export const useBudgetStore = create((set, get) => ({
       toast.success(data.message || 'Budgets copied');
       return true;
     } catch (error) {
-      toast.error('Failed to copy budgets');
+      toast.error(error.response?.data?.message || 'Failed to copy budgets');
       return false;
     }
   },

@@ -16,6 +16,8 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Badge from '../components/ui/Badge';
+import UpgradeModal, { UpgradeCard } from '../components/ui/UpgradePrompt';
+import { usePlan } from '../utils/plan';
 
 const today = () => new Date().toISOString().split('T')[0];
 const defaultTitle = () =>
@@ -164,6 +166,7 @@ export default function IncomePlanner() {
   } = useIncomePlanStore();
   const { accounts, fetchAccounts } = useAccountStore();
   const { user } = useAuthStore();
+  const { isPremium } = usePlan();
   const currency = user?.currency;
   const plan = plans.find((p) => p._id === selectedId) || null;
 
@@ -177,10 +180,15 @@ export default function IncomePlanner() {
   const [deleteEntryId, setDeleteEntryId] = useState(null);
   const [postRow, setPostRow] = useState(null);
   const [postAccount, setPostAccount] = useState('');
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   useEffect(() => { fetchPlans(); fetchAccounts(); }, []);
 
   const openCreatePlan = () => {
+    if (!isPremium) {
+      setUpgradeOpen(true);
+      return;
+    }
     setPlanForm(emptyPlanForm());
     setEditPlan(null);
     setPlanModal(true);
@@ -239,15 +247,25 @@ export default function IncomePlanner() {
         title="Income Planner"
         subtitle="Plan what you receive and what you have to give — independent of accounts"
         action={
-          <button onClick={openCreatePlan} className="btn-primary">
-            <Plus size={16} /> New Plan
-          </button>
+          isPremium ? (
+            <button onClick={openCreatePlan} className="btn-primary">
+              <Plus size={16} /> New Plan
+            </button>
+          ) : null
         }
       />
 
-      {isLoading && plans.length === 0 ? (
+      {!isPremium && (
+        <UpgradeCard
+          title="Income planner is Premium"
+          blurb="Plan salary in and money out (family, EMI, bills) without mixing it into your live accounts until you post it."
+        />
+      )}
+
+      {isLoading && plans.length === 0 && isPremium ? (
         <div className="card"><LoadingSpinner center /></div>
       ) : plans.length === 0 ? (
+        isPremium ? (
         <div className="card">
           <EmptyState
             icon={ClipboardList}
@@ -256,6 +274,7 @@ export default function IncomePlanner() {
             action={<button onClick={openCreatePlan} className="btn-primary"><Plus size={16} /> Start a plan</button>}
           />
         </div>
+        ) : null
       ) : (
         <>
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -498,6 +517,7 @@ export default function IncomePlanner() {
         title="Delete Entry"
         message="Remove this line from the plan? Remaining balance will update."
       />
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} title="Income planner is Premium" />
     </div>
   );
 }
