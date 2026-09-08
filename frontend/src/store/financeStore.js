@@ -368,7 +368,7 @@ export const useGoalStore = create((set) => ({
   },
 }));
 
-export const useAnalyticsStore = create((set) => ({
+export const useAnalyticsStore = create((set, get) => ({
   dashboard: null,
   spendingByCategory: [],
   monthlyTrend: [],
@@ -379,7 +379,8 @@ export const useAnalyticsStore = create((set) => ({
   isLoading: false,
 
   fetchDashboard: async () => {
-    set({ isLoading: true });
+    const hasData = Boolean(get().dashboard);
+    if (!hasData) set({ isLoading: true });
     try {
       const { data } = await api.get('/analytics/dashboard');
       set({ dashboard: data.data, isLoading: false });

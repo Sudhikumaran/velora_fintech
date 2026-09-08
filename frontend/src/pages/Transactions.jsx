@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Search, Filter, ArrowUpRight, ArrowDownRight, ArrowLeftRight,
@@ -401,6 +401,7 @@ export default function Transactions() {
   const { accounts, fetchAccounts } = useAccountStore();
   const { user } = useAuthStore();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const fileRef = useRef();
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -414,14 +415,33 @@ export default function Transactions() {
   const needsBalanceRepair = accounts.some((a) => a.type !== 'credit' && Number(a.balance) < 0);
 
   useEffect(() => {
-    fetchAccounts();
-    postRecurring({ silent: true });
+    if (!accounts.length) fetchAccounts();
+    const last = Number(sessionStorage.getItem('velora_post_recurring_at') || 0);
+    if (Date.now() - last > 5 * 60 * 1000) {
+      sessionStorage.setItem('velora_post_recurring_at', String(Date.now()));
+      postRecurring({ silent: true });
+    }
   }, []);
 
   useEffect(() => {
     const type = searchParams.get('type') || '';
     setFilters({ type });
   }, [searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get('add') !== '1') return;
+    setForm({ ...defaultForm, account: accounts[0]?._id || '' });
+    setEditTx(null);
+    setViewTx(null);
+    setModalOpen(true);
+    navigate('/transactions', { replace: true });
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (modalOpen && !form.account && accounts[0]?._id) {
+      setForm((f) => ({ ...f, account: accounts[0]._id }));
+    }
+  }, [accounts, modalOpen]);
 
   useEffect(() => {
     fetchTransactions({ page });
@@ -484,15 +504,12 @@ export default function Transactions() {
       amount: splits.length ? splits.reduce((n, s) => n + s.amount, 0) : form.amount,
       excludeFromTotals: form.type !== 'transfer' && !!form.excludeFromTotals,
     };
-    if (editTx) {
-      await updateTransaction(editTx._id, data);
-    } else {
-      await createTransaction(data);
-    }
+    const ok = editTx
+      ? await updateTransaction(editTx._id, data)
+      : await createTransaction(data);
+    if (!ok || ok.skipped) return;
     setModalOpen(false);
     setViewTx(null);
-    await fetchTransactions({ page });
-    fetchAccounts();
   };
 
   return (
@@ -617,7 +634,7 @@ export default function Transactions() {
 
       {/* Transactions List */}
       <div className="card overflow-hidden">
-        {isLoading ? (
+        {isLoading && transactions.length === 0 ? (
           <LoadingSpinner center />
         ) : transactions.length === 0 ? (
           <EmptyState
@@ -653,7 +670,7 @@ export default function Transactions() {
                 key={tx._id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: i * 0.03 }}
+                transition={{ duration: 0.12 }}
                 className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group list-row"
               >
                 <div
@@ -771,7 +788,7 @@ export default function Transactions() {
                     <button onClick={(e) => { e.stopPropagation(); openTx(tx); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg" title="View">
                       <Edit3 size={13} className="text-gray-500" />
                     </button>
-                    <button onClick={async (e) => { e.stopPropagation(); await archiveTransaction(tx._id); fetchAccounts(); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                    <button onClick={async (e) => { e.stopPropagation(); await archiveTransaction(tx._id); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
                       <Archive size={13} className="text-gray-500" />
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); setDeleteId(tx._id); }} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
@@ -834,7 +851,7 @@ export default function Transactions() {
       <ConfirmDialog
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
-        onConfirm={async () => { await deleteTransaction(deleteId); setDeleteId(null); fetchAccounts(); fetchTransactions({ page }); }}
+        onConfirm={async () => { await deleteTransaction(deleteId); setDeleteId(null); }}
         title="Delete Transaction"
         message="Are you sure you want to delete this transaction? Account balances will be updated."
       />

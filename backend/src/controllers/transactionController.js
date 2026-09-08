@@ -9,6 +9,7 @@ export const getTransactions = async (req, res, next) => {
     const {
       page = 1, limit = 20, type, category, account,
       startDate, endDate, search, includeArchived, sortBy = 'date', sortOrder = 'desc',
+      lite,
     } = req.query;
 
     const filter = { user: req.user._id };
@@ -37,18 +38,26 @@ export const getTransactions = async (req, res, next) => {
       ];
     }
 
-    const total = await Transaction.countDocuments(filter);
     const sortDir = sortOrder === 'desc' ? -1 : 1;
     const sort = { [sortBy]: sortDir, createdAt: -1 };
-    const transactions = await Transaction.find(filter)
-      .populate('account', 'name type color icon')
-      .populate('toAccount', 'name type color icon')
-      .sort(sort)
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+    const pageSize = parseInt(limit, 10) || 20;
+    const skip = (parseInt(page, 10) - 1) * pageSize;
+    const skipBalances = lite === '1' || lite === 'true';
 
-    const withBalances = await attachRunningBalances(req.user._id, transactions);
-    paginatedResponse(res, withBalances, total, page, limit);
+    const [total, transactions] = await Promise.all([
+      Transaction.countDocuments(filter),
+      Transaction.find(filter)
+        .populate('account', 'name type color icon')
+        .populate('toAccount', 'name type color icon')
+        .sort(sort)
+        .skip(skip)
+        .limit(pageSize),
+    ]);
+
+    const withBalances = skipBalances
+      ? transactions.map((tx) => (tx.toObject ? tx.toObject() : tx))
+      : await attachRunningBalances(req.user._id, transactions);
+    paginatedResponse(res, withBalances, total, page, pageSize);
   } catch (error) {
     next(error);
   }

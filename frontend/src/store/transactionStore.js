@@ -3,9 +3,14 @@ import { createElement } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { useBudgetStore } from './financeStore';
+import { useAccountStore } from './accountStore';
 
 function refreshBudgets() {
   useBudgetStore.getState().fetchBudgets();
+}
+
+function refreshAccounts() {
+  useAccountStore.getState().fetchAccounts();
 }
 
 export const useTransactionStore = create((set, get) => ({
@@ -13,33 +18,47 @@ export const useTransactionStore = create((set, get) => ({
   pagination: { total: 0, page: 1, limit: 20, pages: 0 },
   isLoading: false,
   filters: { type: '', category: '', account: '', startDate: '', endDate: '', search: '' },
+  _fetchGen: 0,
 
   setFilters: (filters) => set((state) => ({ filters: { ...state.filters, ...filters } })),
 
   fetchTransactions: async (params = {}) => {
-    set({ isLoading: true });
+    const hasData = get().transactions.length > 0;
+    if (!hasData) set({ isLoading: true });
+    const gen = get()._fetchGen + 1;
+    set({ _fetchGen: gen });
     try {
       const { filters } = get();
       const queryParams = { ...filters, ...params };
       Object.keys(queryParams).forEach((k) => !queryParams[k] && delete queryParams[k]);
 
       const { data } = await api.get('/transactions', { params: queryParams });
+      if (get()._fetchGen !== gen) return;
       set({
         transactions: data.data,
         pagination: data.pagination,
         isLoading: false,
       });
     } catch (error) {
+      if (get()._fetchGen !== gen) return;
       set({ isLoading: false });
-      toast.error('Failed to fetch transactions');
+      if (!hasData) toast.error('Failed to fetch transactions');
     }
   },
 
   createTransaction: async (transactionData, { silent } = {}) => {
     try {
       const { data } = await api.post('/transactions', transactionData);
-      set((state) => ({ transactions: [data.data, ...state.transactions] }));
+      set((state) => ({
+        transactions: [data.data, ...state.transactions],
+        pagination: {
+          ...state.pagination,
+          total: (state.pagination?.total || 0) + 1,
+        },
+      }));
+      useAccountStore.getState().applyTxBalance(data.data);
       if (transactionData.type === 'expense') refreshBudgets();
+      refreshAccounts();
       if (!silent) toast.success('Transaction added successfully');
       return data.data;
     } catch (error) {
@@ -56,9 +75,12 @@ export const useTransactionStore = create((set, get) => ({
       set((state) => ({
         transactions: state.transactions.map((t) => (t._id === id ? data.data : t)),
       }));
+      if (existing) useAccountStore.getState().applyTxBalance(existing, true);
+      useAccountStore.getState().applyTxBalance(data.data);
       if (existing?.type === 'expense' || transactionData.type === 'expense' || data.data?.type === 'expense') {
         refreshBudgets();
       }
+      refreshAccounts();
       toast.success('Transaction updated successfully');
       return data.data;
     } catch (error) {
@@ -72,7 +94,9 @@ export const useTransactionStore = create((set, get) => ({
       const existing = get().transactions.find((t) => t._id === id);
       const { data } = await api.delete(`/transactions/${id}`);
       set((state) => ({ transactions: state.transactions.filter((t) => t._id !== id) }));
+      if (existing) useAccountStore.getState().applyTxBalance(existing, true);
       if (existing?.type === 'expense') refreshBudgets();
+      refreshAccounts();
       const snapshot = data.data;
       toast((t) => createElement(
         'span',
@@ -154,7 +178,9 @@ export const useTransactionStore = create((set, get) => ({
       set((state) => ({
         transactions: state.transactions.map((t) => (t._id === id ? data.data : t)),
       }));
+      if (existing && !existing.isArchived) useAccountStore.getState().applyTxBalance(existing, true);
       if (existing?.type === 'expense') refreshBudgets();
+      refreshAccounts();
       toast.success(data.message);
       return true;
     } catch (error) {

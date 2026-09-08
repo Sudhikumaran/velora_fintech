@@ -2,19 +2,47 @@ import { create } from 'zustand';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 
+function accountId(value) {
+  return String(value?._id || value || '');
+}
+
+export function applyTxToAccounts(accounts, tx, reverse = false) {
+  if (!tx) return accounts;
+  const sign = reverse ? -1 : 1;
+  const amt = Number(tx.amount) * sign;
+  if (!Number.isFinite(amt)) return accounts;
+  const fromId = accountId(tx.account);
+  const toId = accountId(tx.toAccount);
+  return accounts.map((a) => {
+    const id = String(a._id);
+    let next = a.balance;
+    if (id === fromId) {
+      if (tx.type === 'income') next += amt;
+      else if (tx.type === 'expense' || tx.type === 'transfer') next -= amt;
+    }
+    if (tx.type === 'transfer' && toId && id === toId) next += amt;
+    return next === a.balance ? a : { ...a, balance: next };
+  });
+}
+
 export const useAccountStore = create((set, get) => ({
   accounts: [],
   isLoading: false,
 
   fetchAccounts: async (includeArchived = false) => {
-    set({ isLoading: true });
+    const hasData = get().accounts.length > 0;
+    if (!hasData) set({ isLoading: true });
     try {
       const { data } = await api.get('/accounts', { params: { includeArchived } });
       set({ accounts: data.data, isLoading: false });
     } catch (error) {
       set({ isLoading: false });
-      toast.error('Failed to fetch accounts');
+      if (!hasData) toast.error('Failed to fetch accounts');
     }
+  },
+
+  applyTxBalance: (tx, reverse = false) => {
+    set((state) => ({ accounts: applyTxToAccounts(state.accounts, tx, reverse) }));
   },
 
   createAccount: async (accountData) => {

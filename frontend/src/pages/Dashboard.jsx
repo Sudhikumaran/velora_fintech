@@ -88,9 +88,9 @@ export default function Dashboard() {
           </h1>
           <p className="text-sm text-gray-400 mt-0.5">Here's your financial snapshot for today.</p>
         </div>
-        <div className="hidden sm:flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <VoiceAddButton className="btn-secondary text-xs" />
-          <Link to="/transactions" className="btn-primary text-xs inline-flex">
+          <Link to="/transactions?add=1" className="btn-primary text-xs inline-flex">
             <Plus size={14} /> Add Transaction
           </Link>
         </div>
@@ -381,7 +381,7 @@ export default function Dashboard() {
           ) : (
             <div className="flex flex-col items-center py-10 text-center px-4">
               <p className="text-sm text-gray-400 mb-3">No transactions yet</p>
-              <Link to="/transactions" className="btn-primary text-xs"><Plus size={13} /> Add Transaction</Link>
+              <Link to="/transactions?add=1" className="btn-primary text-xs"><Plus size={13} /> Add Transaction</Link>
             </div>
           )}
         </motion.div>

@@ -154,7 +154,25 @@ export async function attachRunningBalances(userId, pageTxs) {
   const accounts = await Account.find({ user: userId }).select('_id balance');
   const balances = Object.fromEntries(accounts.map((a) => [String(a._id), a.balance]));
 
-  const allTxs = await Transaction.find({ user: userId, isArchived: false })
+  let oldestDate = pageTxs[0].date;
+  let oldestCreated = pageTxs[0].createdAt || pageTxs[0].date;
+  for (const tx of pageTxs) {
+    const d = new Date(tx.date);
+    const c = new Date(tx.createdAt || tx.date);
+    if (d < new Date(oldestDate) || (d.getTime() === new Date(oldestDate).getTime() && c < new Date(oldestCreated))) {
+      oldestDate = tx.date;
+      oldestCreated = tx.createdAt || tx.date;
+    }
+  }
+
+  const allTxs = await Transaction.find({
+    user: userId,
+    isArchived: false,
+    $or: [
+      { date: { $gt: oldestDate } },
+      { date: oldestDate, createdAt: { $gte: oldestCreated } },
+    ],
+  })
     .select('account toAccount type amount date createdAt')
     .sort({ date: -1, createdAt: -1 });
 

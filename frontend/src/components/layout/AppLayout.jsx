@@ -17,6 +17,8 @@ import { refreshTodaySpendFromTransactions } from '../../utils/todaySpend';
 import { useTransactionStore } from '../../store/transactionStore';
 import { hydrateMerchantMemory } from '../../utils/merchantMemory';
 import { usePlan } from '../../utils/plan';
+import { useAnalyticsStore } from '../../store/financeStore';
+import { isNativeApp } from '../../utils/native';
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -34,8 +36,10 @@ export default function AppLayout() {
   const [showOnboarding, completeOnboarding] = useOnboarding();
   const { fetchMe } = useAuthStore();
   const { isPremium } = usePlan();
+  const fetchDashboard = useAnalyticsStore((s) => s.fetchDashboard);
   useEffect(() => { fetchAccounts(); }, []);
   useEffect(() => { fetchMe(); }, []);
+  useEffect(() => { fetchDashboard(); }, []);
   useEffect(() => {
     const rules = useAuthStore.getState().user?.merchantRules;
     if (rules) hydrateMerchantMemory(rules);
@@ -48,6 +52,22 @@ export default function AppLayout() {
     useTransactionStore.getState().fetchTransactions({ page: 1, limit: 50 }).then(() => {
       refreshTodaySpendFromTransactions(useTransactionStore.getState().transactions);
     });
+  }, []);
+  useEffect(() => {
+    if (!isNativeApp()) return undefined;
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') {
+        sessionStorage.setItem('velora_bg_at', String(Date.now()));
+        return;
+      }
+      const bgAt = Number(sessionStorage.getItem('velora_bg_at') || 0);
+      if (!bgAt || Date.now() - bgAt < 120000) return;
+      fetchAccounts();
+      fetchDashboard();
+      useTransactionStore.getState().fetchTransactions({ page: 1, limit: 50 });
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
 
   return (
