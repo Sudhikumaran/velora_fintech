@@ -75,27 +75,26 @@ export default function Modal({ isOpen, onClose, title, children, footer, header
           <motion.div
             {...modalOverlay}
             onClick={onClose}
-            className="absolute inset-0 bg-black/45 backdrop-blur-md"
+            className="absolute inset-0 bg-gray-950/50 backdrop-blur-sm"
           />
           <motion.div
             {...modalPanel}
             className={`relative w-full h-full sm:h-auto ${sizes[size]} bg-white dark:bg-gray-900 sm:rounded-2xl border-0 sm:border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col`}
             style={{
-              boxShadow: '0 24px 80px rgba(99,102,241,.16), 0 8px 24px rgba(0,0,0,.08)',
+              boxShadow: 'var(--shadow-lg)',
               maxHeight: keyboardInset ? `calc(100dvh - ${keyboardInset}px)` : '100dvh',
             }}
           >
             <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
               <h2 className="text-base font-bold text-gray-900 dark:text-white truncate">{title}</h2>
-              <motion.button
+              <button
                 type="button"
-                whileHover={{ rotate: 90, scale: 1.08 }}
-                whileTap={{ scale: 0.9 }}
                 onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-gray-400 hover:text-gray-600 shrink-0"
+                aria-label="Close"
+                className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 shrink-0"
               >
                 <X size={16} />
-              </motion.button>
+              </button>
             </div>
 
             {(headerAction || footer) && (

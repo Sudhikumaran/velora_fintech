@@ -11,7 +11,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import EmptyState from '../components/ui/EmptyState';
 import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { SkeletonGrid } from '../components/ui/Skeleton';
 
 const defaultForm = { name: '', targetAmount: '', currentAmount: '', deadline: '', category: '', description: '', color: '#6366f1', priority: 'medium' };
 const contribDefault = { amount: '', date: new Date().toISOString().split('T')[0], note: '' };
@@ -174,7 +174,7 @@ export default function Goals() {
         ))}
       </div>
 
-      {isLoading ? <LoadingSpinner center /> : filtered.length === 0 ? (
+      {isLoading ? <SkeletonGrid /> : filtered.length === 0 ? (
         <EmptyState
           icon={Flag}
           title="No goals found"

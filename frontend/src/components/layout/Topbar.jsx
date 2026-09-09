@@ -32,16 +32,16 @@ export default function Topbar({ onMenuClick, theme, onToggleTheme }) {
     <header className="h-16 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 relative">
       <motion.div
         key={location.pathname}
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        className="absolute left-0 top-0 h-0.5 origin-left bg-gradient-to-r from-indigo-500 via-violet-500 to-transparent w-full"
+        initial={{ scaleX: 0, opacity: 1 }}
+        animate={{ scaleX: 1, opacity: 0 }}
+        transition={{ scaleX: { duration: 0.4, ease: [0.16, 1, 0.3, 1] }, opacity: { delay: 0.4, duration: 0.25 } }}
+        className="absolute left-0 top-0 h-0.5 origin-left bg-indigo-500 w-full"
       />
       <div className="flex items-center gap-3">
         {!isNativeApp() && (
         <button
           onClick={onMenuClick}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors lg:hidden"
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors lg:hidden"
         >
           <Menu size={19} className="text-gray-600 dark:text-gray-400" />
         </button>
@@ -49,10 +49,10 @@ export default function Topbar({ onMenuClick, theme, onToggleTheme }) {
         <AnimatePresence mode="wait">
           <motion.h2
             key={title}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.22 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
             className="text-base font-bold text-gray-900 dark:text-white truncate max-w-[46vw]"
           >
             {title}
@@ -63,30 +63,27 @@ export default function Topbar({ onMenuClick, theme, onToggleTheme }) {
       <div className="flex items-center gap-2">
         <SearchTrigger />
         <NotificationCenter />
-        <motion.button
-          whileHover={{ rotate: theme === 'dark' ? 20 : -15, scale: 1.08 }}
-          whileTap={{ scale: 0.9 }}
+        <button
           onClick={onToggleTheme}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
           {theme === 'dark'
             ? <Sun size={17} className="text-gray-500 dark:text-gray-400" />
             : <Moon size={17} className="text-gray-500" />
           }
-        </motion.button>
+        </button>
 
         <div className="flex items-center gap-2.5 pl-2 border-l border-gray-100 dark:border-gray-800 ml-1">
-          <motion.div whileHover={{ scale: 1.08 }} className="w-8 h-8 rounded-xl overflow-hidden shrink-0">
+          <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0">
             {user?.avatar ? (
               <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold"
-                style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+              <div className="w-full h-full flex items-center justify-center bg-indigo-600 text-white text-sm font-semibold">
                 {user?.name?.[0]?.toUpperCase()}
               </div>
             )}
-          </motion.div>
+          </div>
           <div className="hidden sm:block">
             <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">{user?.name?.split(' ')[0]}</p>
             <p className="text-xs text-gray-400">{user?.currency}</p>

@@ -56,10 +56,10 @@ function NavItem({ to, icon: Icon, label, collapsed, onClick, premium }) {
       onClick={onClick}
       title={collapsed ? label : undefined}
       className={({ isActive }) =>
-        `flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-150 group relative
+        `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-150 group relative
         ${isActive
           ? 'text-indigo-600 dark:text-indigo-400 font-semibold'
-          : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium'
+          : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/70 dark:hover:bg-gray-800/60 font-medium'
         }
         ${collapsed ? 'justify-center' : ''}`
       }
@@ -69,21 +69,17 @@ function NavItem({ to, icon: Icon, label, collapsed, onClick, premium }) {
           {isActive && (
             <motion.div
               layoutId="nav-active"
-              className="absolute inset-0 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl"
-              transition={{ type: 'spring', bounce: 0.25, duration: 0.45 }}
+              className="absolute inset-0 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg"
+              transition={{ type: 'spring', stiffness: 600, damping: 44, mass: 0.5 }}
             />
           )}
-          <motion.span
-            className="shrink-0 relative z-10"
-            whileHover={{ scale: 1.12, rotate: isActive ? 0 : -6 }}
-            whileTap={{ scale: 0.92 }}
-          >
+          <span className="shrink-0 relative z-10">
             <Icon size={18} />
-          </motion.span>
+          </span>
           {!collapsed && (
-            <motion.span layout className="relative z-10 truncate flex-1">
+            <span className="relative z-10 truncate flex-1">
               {label}
-            </motion.span>
+            </span>
           )}
           {!collapsed && premium && !isPremiumUser && (
             <span className="relative z-10 text-[10px] font-bold uppercase tracking-wide text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded-md">Pro</span>
@@ -130,7 +126,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         {navGroups.map((group) => (
           <div key={group.label}>
             {!collapsed && (
-              <p className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest px-3 mb-1.5">
+              <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 px-3 mb-1">
                 {group.label}
               </p>
             )}
@@ -148,13 +144,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         <NavItem to="/settings" icon={Settings} label="Settings" collapsed={collapsed} onClick={onMobileClose} />
 
         {!collapsed && (
-          <div className="flex items-center gap-3 px-3 py-2.5 mt-1 rounded-xl bg-gray-50 dark:bg-gray-800/60">
-            <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0">
+          <div className="flex items-center gap-3 px-3 py-2.5 mt-1 rounded-lg bg-gray-50 dark:bg-gray-800/60">
+            <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0">
               {user?.avatar ? (
                 <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold"
-                  style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+                <div className="w-full h-full flex items-center justify-center bg-indigo-600 text-white text-sm font-semibold">
                   {user?.name?.[0]?.toUpperCase()}
                 </div>
               )}
@@ -168,7 +163,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
 
         <button
           onClick={handleLogout}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all ${collapsed ? 'justify-center' : ''}`}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-colors duration-150 ${collapsed ? 'justify-center' : ''}`}
         >
           <LogOut size={17} className="shrink-0" />
           {!collapsed && <span>Log out</span>}
@@ -180,7 +175,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   return (
     <>
       {/* Desktop */}
-      <aside className={`hidden lg:flex flex-col bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 h-screen sticky top-0 transition-all duration-300 shrink-0 ${collapsed ? 'w-16' : 'w-60'}`}>
+      <aside className={`hidden lg:flex flex-col bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 h-screen sticky top-0 transition-[width] duration-200 ease-out shrink-0 ${collapsed ? 'w-16' : 'w-60'}`}>
         <SidebarContent />
       </aside>
 

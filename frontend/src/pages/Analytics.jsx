@@ -11,24 +11,14 @@ import { useAuthStore } from '../store/authStore';
 import { formatCurrency } from '../utils/formatters';
 import { exportToCSV, analyticsDailyReportToCSV } from '../utils/csvExport';
 import PageHeader from '../components/ui/PageHeader';
+import { Skeleton } from '../components/ui/Skeleton';
+import {
+  ChartTooltip, ChartEmpty, gridProps, xAxisProps, yAxisProps,
+  legendProps, barCursor, lineCursor,
+} from '../utils/chartTheme';
 
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6'];
 
-const ChartTooltip = ({ active, payload, label, currency = 'USD' }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-3 shadow-lg text-sm">
-        <p className="text-gray-500 mb-1 text-xs">{label}</p>
-        {payload.map((p) => (
-          <p key={p.name} style={{ color: p.color }} className="font-medium">
-            {p.name}: {typeof p.value === 'number' && p.value > 100 ? formatCurrency(p.value, currency) : p.value}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
 
 function toLocalDateInput(d) {
   const y = d.getFullYear();
@@ -383,7 +373,10 @@ export default function Analytics() {
             </div>
           </>
         ) : (
-          <div className="flex items-center justify-center h-32 text-gray-400 text-sm">Loading analysis…</div>
+          <div className="space-y-3">
+            <Skeleton className="h-3 w-40" />
+            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-4 w-full" />)}
+          </div>
         )}
       </motion.div>
 
@@ -508,17 +501,17 @@ export default function Analytics() {
         {dailyChartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={dailyChartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={fmtK} />
-              <Tooltip content={<ChartTooltip currency={user?.currency} />} />
-              <Legend />
+              <CartesianGrid {...gridProps} />
+              <XAxis dataKey="label" {...xAxisProps} interval="preserveStartEnd" />
+              <YAxis {...yAxisProps} tickFormatter={fmtK} />
+              <Tooltip content={<ChartTooltip currency={user?.currency} />} cursor={barCursor} />
+              <Legend {...legendProps} />
               <Bar dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={28} />
               <Bar dataKey="expense" name="Expenses" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex items-center justify-center h-40 text-gray-400 text-sm">No data for this range</div>
+          <ChartEmpty height={280} />
         )}
       </motion.div>
 
@@ -574,7 +567,7 @@ export default function Analytics() {
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v) => formatCurrency(v, user?.currency)} />
+                  <Tooltip content={<ChartTooltip currency={user?.currency} />} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-2 mt-2">
@@ -595,7 +588,7 @@ export default function Analytics() {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center h-40 text-gray-400 text-sm">No spending data</div>
+            <ChartEmpty height={200} message="No spending data" />
           )}
         </motion.div>
 
@@ -605,10 +598,10 @@ export default function Analytics() {
           {spendingByCategory.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={spendingByCategory.slice(0, 8)} layout="vertical" margin={{ left: 80, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} className="opacity-30" />
-                        <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={fmtK} />
-                <YAxis type="category" dataKey="_id" tick={{ fontSize: 11 }} width={75} />
-                <Tooltip content={<ChartTooltip currency={user?.currency} />} />
+                <CartesianGrid {...gridProps} vertical horizontal={false} />
+                <XAxis type="number" {...xAxisProps} tickFormatter={fmtK} />
+                <YAxis type="category" dataKey="_id" {...yAxisProps} width={75} />
+                <Tooltip content={<ChartTooltip currency={user?.currency} />} cursor={barCursor} />
                 <Bar dataKey="total" name="Amount" radius={[0, 6, 6, 0]}>
                   {spendingByCategory.slice(0, 8).map((_, i) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -617,7 +610,7 @@ export default function Analytics() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-60 text-gray-400 text-sm">No data for this period</div>
+            <ChartEmpty height={280} message="No data for this period" />
           )}
         </motion.div>
       </div>
@@ -638,17 +631,17 @@ export default function Analytics() {
                   <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={fmtK} />
-              <Tooltip content={<ChartTooltip currency={user?.currency} />} />
-              <Legend />
-              <Area type="monotone" dataKey="income" name="Income" stroke="#22c55e" fill="url(#incomeGrad2)" strokeWidth={2} />
-              <Area type="monotone" dataKey="expense" name="Expense" stroke="#ef4444" fill="url(#expenseGrad2)" strokeWidth={2} />
+              <CartesianGrid {...gridProps} />
+              <XAxis dataKey="month" {...xAxisProps} />
+              <YAxis {...yAxisProps} tickFormatter={fmtK} />
+              <Tooltip content={<ChartTooltip currency={user?.currency} />} cursor={lineCursor} />
+              <Legend {...legendProps} />
+              <Area type="monotone" dataKey="income" name="Income" stroke="#22c55e" fill="url(#incomeGrad2)" strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }} />
+              <Area type="monotone" dataKey="expense" name="Expense" stroke="#ef4444" fill="url(#expenseGrad2)" strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }} />
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex items-center justify-center h-60 text-gray-400 text-sm">No trend data available</div>
+          <ChartEmpty height={280} message="No trend data available" />
         )}
       </motion.div>
 
@@ -658,18 +651,18 @@ export default function Analytics() {
         {cashFlow.length > 0 ? (
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={cashFlow} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="monthName" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={fmtK} />
-              <Tooltip content={<ChartTooltip currency={user?.currency} />} />
-              <Legend />
+              <CartesianGrid {...gridProps} />
+              <XAxis dataKey="monthName" {...xAxisProps} />
+              <YAxis {...yAxisProps} tickFormatter={fmtK} />
+              <Tooltip content={<ChartTooltip currency={user?.currency} />} cursor={barCursor} />
+              <Legend {...legendProps} />
               <Bar dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]} />
               <Bar dataKey="expense" name="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} />
               <Line type="monotone" dataKey="net" name="Net" stroke="#6366f1" strokeWidth={2} dot={false} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex items-center justify-center h-60 text-gray-400 text-sm">No cash flow data</div>
+          <ChartEmpty height={280} message="No cash flow data" />
         )}
       </motion.div>
     </div>

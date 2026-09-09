@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import { useAccountStore } from '../store/accountStore';
 import { formatCurrency, formatDate, localeForCurrency } from '../utils/formatters';
 import PageHeader from '../components/ui/PageHeader';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { SkeletonTable } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import Badge from '../components/ui/Badge';
 import UpgradeModal from '../components/ui/UpgradePrompt';
@@ -203,7 +203,7 @@ export default function Reports() {
         </div>
       </div>
 
-      {loading || !report ? <div className="card"><LoadingSpinner center /></div> : (
+      {loading || !report ? <SkeletonTable rows={8} cols={4} /> : (
         <div className="space-y-4">
           <div className={`grid grid-cols-2 ${stats.length > 3 ? 'lg:grid-cols-4' : stats.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-3`}>
             {stats.map((s) => (

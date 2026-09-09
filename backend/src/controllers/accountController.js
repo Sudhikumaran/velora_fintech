@@ -41,8 +41,11 @@ export const updateAccount = async (req, res, next) => {
     const account = await Account.findOne({ _id: req.params.id, user: req.user._id });
     if (!account) return errorResponse(res, 'Account not found.', 404);
 
-    const { name, type, balance, currency, color, icon, description, creditLimit, upiId } = req.body;
-    Object.assign(account, { name, type, balance, currency, color, icon, description, creditLimit, upiId });
+    // Only overwrite what the client actually sent; a partial update should
+    // not blank out the fields it left out.
+    for (const key of ['name', 'type', 'balance', 'currency', 'color', 'icon', 'description', 'creditLimit', 'upiId']) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) account[key] = req.body[key];
+    }
     await account.save();
 
     successResponse(res, account, 'Account updated successfully.');
@@ -56,8 +59,13 @@ export const deleteAccount = async (req, res, next) => {
     const account = await Account.findOne({ _id: req.params.id, user: req.user._id });
     if (!account) return errorResponse(res, 'Account not found.', 404);
 
-    await Account.deleteOne({ _id: req.params.id });
-    await Transaction.deleteMany({ account: req.params.id, user: req.user._id });
+    await Account.deleteOne({ _id: req.params.id, user: req.user._id });
+    // Transfers reference the account as a destination too — leaving those
+    // behind orphans the row and skews the paired account's history.
+    await Transaction.deleteMany({
+      user: req.user._id,
+      $or: [{ account: req.params.id }, { toAccount: req.params.id }],
+    });
 
     successResponse(res, null, 'Account deleted successfully.');
   } catch (error) {

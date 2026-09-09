@@ -1,5 +1,7 @@
 import CalendarEvent from '../models/CalendarEvent.js';
-import { successResponse } from '../utils/apiResponse.js';
+import { successResponse, errorResponse } from '../utils/apiResponse.js';
+
+const EDITABLE_FIELDS = ['title', 'date', 'type', 'amount', 'color', 'description', 'isRecurring', 'recurringFrequency'];
 
 export const getEvents = async (req, res, next) => {
   try {
@@ -17,9 +19,17 @@ export const getEvents = async (req, res, next) => {
   }
 };
 
+function pickEditable(body = {}) {
+  const updates = {};
+  for (const key of EDITABLE_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(body, key)) updates[key] = body[key];
+  }
+  return updates;
+}
+
 export const createEvent = async (req, res, next) => {
   try {
-    const event = await CalendarEvent.create({ ...req.body, user: req.user._id });
+    const event = await CalendarEvent.create({ ...pickEditable(req.body), user: req.user._id });
     successResponse(res, event, 'Event created.', 201);
   } catch (error) {
     next(error);
@@ -30,10 +40,10 @@ export const updateEvent = async (req, res, next) => {
   try {
     const event = await CalendarEvent.findOneAndUpdate(
       { _id: req.params.id, user: req.user._id },
-      req.body,
+      pickEditable(req.body),
       { new: true, runValidators: true }
     );
-    if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+    if (!event) return errorResponse(res, 'Event not found.', 404);
     successResponse(res, event, 'Event updated.');
   } catch (error) {
     next(error);
@@ -43,7 +53,7 @@ export const updateEvent = async (req, res, next) => {
 export const deleteEvent = async (req, res, next) => {
   try {
     const event = await CalendarEvent.findOneAndDelete({ _id: req.params.id, user: req.user._id });
-    if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+    if (!event) return errorResponse(res, 'Event not found.', 404);
     successResponse(res, null, 'Event deleted.');
   } catch (error) {
     next(error);

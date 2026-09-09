@@ -7,6 +7,7 @@ import Investment from '../models/Investment.js';
 import Subscription from '../models/Subscription.js';
 import IncomePlan from '../models/IncomePlan.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
+import { escapeRegex } from '../utils/regex.js';
 
 export const globalSearch = async (req, res, next) => {
   try {
@@ -14,7 +15,7 @@ export const globalSearch = async (req, res, next) => {
     if (q.length < 2) return errorResponse(res, 'Query must be at least 2 characters.', 400);
 
     const user = req.user._id;
-    const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const rx = new RegExp(escapeRegex(q), 'i');
 
     const [transactions, accounts, budgets, debts, goals, investments, subscriptions, plans] = await Promise.all([
       Transaction.find({

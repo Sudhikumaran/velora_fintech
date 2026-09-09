@@ -12,7 +12,7 @@ import { PLANNER_RECEIVE_CATEGORIES, PLANNER_GIVE_CATEGORIES } from '../utils/co
 import { exportToCSV, incomePlanToCSV } from '../utils/csvExport';
 import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { SkeletonList } from '../components/ui/Skeleton';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Badge from '../components/ui/Badge';
@@ -263,7 +263,7 @@ export default function IncomePlanner() {
       )}
 
       {isLoading && plans.length === 0 && isPremium ? (
-        <div className="card"><LoadingSpinner center /></div>
+        <SkeletonList rows={5} />
       ) : plans.length === 0 ? (
         isPremium ? (
         <div className="card">

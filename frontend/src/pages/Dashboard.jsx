@@ -19,22 +19,11 @@ import VoiceAddButton from '../components/ui/VoiceAddButton';
 import InsightsExtras from '../components/ui/InsightsExtras';
 import { UpgradeCard } from '../components/ui/UpgradePrompt';
 import { usePlan } from '../utils/plan';
+import {
+  CHART_PALETTE, ChartTooltip, gridProps, xAxisProps, yAxisProps, lineCursor,
+} from '../utils/chartTheme';
 
-const PIE_COLORS = ['#6366f1','#8b5cf6','#ec4899','#f97316','#eab308','#22c55e','#14b8a6','#3b82f6'];
-
-const ChartTip = ({ active, payload, label, currency = 'USD' }) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl px-3 py-2.5 shadow-lg text-xs">
-      <p className="text-gray-400 mb-1.5">{label}</p>
-      {payload.map((p) => (
-        <p key={p.name} style={{ color: p.color }} className="font-semibold">
-          {p.name}: {formatCurrency(p.value, currency)}
-        </p>
-      ))}
-    </div>
-  );
-};
+const PIE_COLORS = CHART_PALETTE;
 
 export default function Dashboard() {
   const { user } = useAuthStore();
@@ -141,7 +130,7 @@ export default function Dashboard() {
             </Link>
           </div>
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={monthlyTrend} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+            <AreaChart data={monthlyTrend} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
               <defs>
                 <linearGradient id="gIncome" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%"  stopColor="#22c55e" stopOpacity={0.18}/>
@@ -152,12 +141,12 @@ export default function Dashboard() {
                   <stop offset="100%" stopColor="#ef4444" stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
-              <Tooltip content={<ChartTip currency={user?.currency} />} />
-              <Area type="monotone" dataKey="income"  name="Income"   stroke="#22c55e" fill="url(#gIncome)"  strokeWidth={2.5} dot={false} />
-              <Area type="monotone" dataKey="expense" name="Expenses" stroke="#ef4444" fill="url(#gExpense)" strokeWidth={2.5} dot={false} />
+              <CartesianGrid {...gridProps} />
+              <XAxis dataKey="month" {...xAxisProps} />
+              <YAxis {...yAxisProps} tickFormatter={fmtK} />
+              <Tooltip content={<ChartTooltip currency={user?.currency} />} cursor={lineCursor} />
+              <Area type="monotone" dataKey="income"  name="Income"   stroke="#22c55e" fill="url(#gIncome)"  strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }} />
+              <Area type="monotone" dataKey="expense" name="Expenses" stroke="#ef4444" fill="url(#gExpense)" strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }} />
             </AreaChart>
           </ResponsiveContainer>
         </motion.div>
@@ -181,7 +170,7 @@ export default function Dashboard() {
                   <Pie data={spendingByCategory.slice(0,6)} cx="50%" cy="50%" innerRadius={42} outerRadius={68} paddingAngle={3} dataKey="total" strokeWidth={0}>
                     {spendingByCategory.slice(0,6).map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(v) => formatCurrency(v, user?.currency)} />
+                  <Tooltip content={<ChartTooltip currency={user?.currency} />} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-2 mt-3">

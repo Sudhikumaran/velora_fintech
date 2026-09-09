@@ -62,9 +62,9 @@ export const useTransactionStore = create((set, get) => ({
       if (transactionData.type === 'expense') refreshBudgets();
       refreshAccounts();
       if (!silent) toast.success('Transaction added successfully');
-      // Background lite refresh keeps running balances correct without blocking UI.
+      // Background refresh restores server running balances; the prepend keeps the UI instant.
       const page = get().pagination?.page || 1;
-      get().fetchTransactions({ page, lite: true });
+      get().fetchTransactions({ page });
       return data.data;
     } catch (error) {
       if (error.response?.status === 409) return { skipped: true };
@@ -89,7 +89,7 @@ export const useTransactionStore = create((set, get) => ({
       refreshAccounts();
       toast.success('Transaction updated successfully');
       const page = get().pagination?.page || 1;
-      get().fetchTransactions({ page, lite: true });
+      get().fetchTransactions({ page });
       return data.data;
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update transaction');

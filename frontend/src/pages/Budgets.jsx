@@ -10,7 +10,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import EmptyState from '../components/ui/EmptyState';
 import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { SkeletonGrid } from '../components/ui/Skeleton';
 import UpgradeModal from '../components/ui/UpgradePrompt';
 import { usePlan } from '../utils/plan';
 
@@ -162,7 +162,7 @@ export default function Budgets() {
         ))}
       </div>
 
-      {isLoading ? <LoadingSpinner center /> : budgets.length === 0 ? (
+      {isLoading ? <SkeletonGrid /> : budgets.length === 0 ? (
         <EmptyState
           icon={Target}
           title="No budgets yet"

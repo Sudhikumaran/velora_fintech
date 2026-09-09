@@ -18,34 +18,34 @@ export function normalizeSplits(splits) {
     .filter((s) => s.category && Number.isFinite(s.amount) && s.amount > 0);
 }
 
-export async function applyBalanceChange({ account, toAccount, type, amount, reverse = false }) {
+/**
+ * Move an account balance by `amount`. Always scoped to `userId` so a
+ * transaction can never touch an account belonging to someone else, and
+ * always through `$inc` so concurrent writes cannot lose an update.
+ */
+export async function applyBalanceChange({ userId, account, toAccount, type, amount, reverse = false }) {
   const sign = reverse ? -1 : 1;
   const delta = Number(amount);
-  if (!Number.isFinite(delta)) return;
+  if (!Number.isFinite(delta) || !userId) return;
 
-  const acc = await Account.findById(account);
-  if (!acc) return;
+  // Callers pass either an id or a populated account document.
+  const idOf = (value) => (value && value._id ? value._id : value);
+  const move = (accountId, change) => Account.updateOne(
+    { _id: idOf(accountId), user: userId },
+    { $inc: { balance: change } }
+  );
 
   if (type === 'income') {
-    acc.balance += sign * delta;
-    await acc.save();
+    await move(account, sign * delta);
     return;
   }
   if (type === 'expense') {
-    acc.balance -= sign * delta;
-    await acc.save();
+    await move(account, -sign * delta);
     return;
   }
   if (type === 'transfer') {
-    acc.balance -= sign * delta;
-    await acc.save();
-    if (toAccount) {
-      const to = await Account.findById(toAccount);
-      if (to) {
-        to.balance += sign * delta;
-        await to.save();
-      }
-    }
+    await move(account, -sign * delta);
+    if (toAccount) await move(toAccount, sign * delta);
   }
 }
 
@@ -77,7 +77,7 @@ export async function alreadyPostedSource(userId, source, sourceId, date) {
   return Boolean(found);
 }
 
-export async function createUserTransaction(userId, payload) {
+export async function createUserTransaction(userId, payload, { applyBalance = true } = {}) {
   const splits = normalizeSplits(payload.splits);
   const amount = splits.length
     ? splits.reduce((s, x) => s + x.amount, 0)
@@ -137,12 +137,15 @@ export async function createUserTransaction(userId, payload) {
     excludeFromTotals: type !== 'transfer' && Boolean(payload.excludeFromTotals),
   });
 
-  await applyBalanceChange({
-    account: transaction.account,
-    toAccount: transaction.toAccount,
-    type: transaction.type,
-    amount: transaction.amount,
-  });
+  if (applyBalance) {
+    await applyBalanceChange({
+      userId,
+      account: transaction.account,
+      toAccount: transaction.toAccount,
+      type: transaction.type,
+      amount: transaction.amount,
+    });
+  }
 
   return Transaction.findById(transaction._id)
     .populate('account', 'name type color icon')
@@ -263,7 +266,7 @@ export async function repairAutoPostedTransactions(userId) {
     }
   }
   for (const [accountId, delta] of balanceInc) {
-    await Account.updateOne({ _id: accountId }, { $inc: { balance: delta } });
+    await Account.updateOne({ _id: accountId, user: userId }, { $inc: { balance: delta } });
   }
   const ids = [...toRemove.keys()];
   if (ids.length) {

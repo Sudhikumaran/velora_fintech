@@ -1,8 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, Search, Filter, ArrowUpRight, ArrowDownRight, ArrowLeftRight,
+  Plus, Search, Filter, ArrowLeftRight,
   Edit3, Trash2, Archive, Download, ChevronLeft, ChevronRight, Paperclip, Upload, RotateCcw,
 } from 'lucide-react';
 import { exportToCSV, transactionsToCSV } from '../utils/csvExport';
@@ -19,9 +19,10 @@ import EmptyState from '../components/ui/EmptyState';
 import toast from 'react-hot-toast';
 import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { SkeletonRow } from '../components/ui/Skeleton';
 import ReceiptUpload from '../components/ui/ReceiptUpload';
 import CategorySelect from '../components/ui/CategorySelect';
+import { getCategoryVisual, categoryTileStyle } from '../utils/categoryVisuals';
 
 const defaultForm = {
   account: '', toAccount: '', type: 'expense', amount: '',
@@ -37,6 +38,52 @@ function splitText(split) {
 
 function isSplitTx(tx) {
   return Array.isArray(tx?.splits) && tx.splits.length > 0;
+}
+
+/** Local calendar day, not UTC — otherwise late-evening rows land on tomorrow. */
+function dayKey(date) {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function dayLabel(date) {
+  const d = new Date(date);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (dayKey(d) === dayKey(today)) return 'Today';
+  if (dayKey(d) === dayKey(yesterday)) return 'Yesterday';
+
+  const sameYear = d.getFullYear() === today.getFullYear();
+  return d.toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+}
+
+/** Bucket a page of transactions into calendar days, keeping page order. */
+function groupByDay(transactions) {
+  const groups = [];
+  const index = new Map();
+
+  for (const tx of transactions) {
+    const key = dayKey(tx.date);
+    if (!index.has(key)) {
+      const group = { key, date: tx.date, items: [], spent: 0, received: 0 };
+      index.set(key, group);
+      groups.push(group);
+    }
+    const group = index.get(key);
+    group.items.push(tx);
+    if (tx.excludeFromTotals) continue;
+    if (tx.type === 'expense') group.spent += Number(tx.amount) || 0;
+    if (tx.type === 'income') group.received += Number(tx.amount) || 0;
+  }
+
+  return groups;
 }
 
 function SplitDetails({ tx, currency, onEdit, onClose }) {
@@ -389,12 +436,133 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
   );
 }
 
-const typeColors = { income: 'income', expense: 'expense', transfer: 'transfer' };
-const typeIcons = {
-  income: <ArrowUpRight size={16} className="text-green-600" />,
-  expense: <ArrowDownRight size={16} className="text-red-600" />,
-  transfer: <ArrowLeftRight size={16} className="text-indigo-600" />,
-};
+
+function DayHeader({ group, currency }) {
+  return (
+    <div className="sticky top-0 z-10 flex items-center gap-3 px-4 lg:px-6 py-2 bg-gray-50/95 dark:bg-gray-800/80 backdrop-blur-sm border-y border-gray-100 dark:border-gray-800">
+      <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">{dayLabel(group.date)}</p>
+      <span className="flex-1" />
+      {group.received > 0 && (
+        <p className="text-xs font-semibold text-green-600 num">
+          +{formatCurrency(group.received, currency)}
+        </p>
+      )}
+      {group.spent > 0 && (
+        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 num">
+          −{formatCurrency(group.spent, currency)}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function TransactionRow({ tx, currency, balanceLabel, onOpen, onArchive, onDelete }) {
+  const amountClass = tx.type === 'income' ? 'text-green-600' : tx.type === 'expense' ? 'text-gray-900 dark:text-white' : 'text-indigo-600';
+  const amountLabel = `${tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''}${formatCurrency(tx.amount, currency)}`;
+  const { Icon, color } = getCategoryVisual(tx.category, tx.type);
+
+  const meta = (
+    <>
+      <span className="truncate">{tx.account?.name}</span>
+      {isSplitTx(tx) && (
+        <>
+          <span className="text-gray-300 dark:text-gray-600">·</span>
+          <span className="shrink-0">Split · {tx.splits.length} {tx.splits.length === 1 ? 'part' : 'parts'}</span>
+        </>
+      )}
+      {!isSplitTx(tx) && tx.category && (
+        <>
+          <span className="text-gray-300 dark:text-gray-600">·</span>
+          <span className="truncate">{tx.category}</span>
+        </>
+      )}
+      {tx.excludeFromTotals && (
+        <>
+          <span className="text-gray-300 dark:text-gray-600">·</span>
+          <Badge variant="default" size="xs">{tx.type === 'income' ? 'Not income' : 'Not spending'}</Badge>
+        </>
+      )}
+      {tx.receiptUrl && (
+        <a
+          href={tx.receiptUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="View receipt"
+          className="text-indigo-500 hover:text-indigo-600 flex items-center gap-0.5 shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Paperclip size={11} /> Receipt
+        </a>
+      )}
+    </>
+  );
+
+  return (
+    <div className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group list-row">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpen(); }}
+        className="lg:hidden w-full text-left flex items-start gap-3 px-4 py-3 cursor-pointer"
+      >
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={categoryTileStyle(color)}>
+          <Icon size={16} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+              {tx.description || tx.category}
+            </p>
+            <p className={`text-sm font-semibold shrink-0 num ${amountClass}`}>{amountLabel}</p>
+          </div>
+          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-gray-500 min-w-0">
+            {meta}
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="hidden lg:flex items-center gap-4 px-6 py-3 cursor-pointer"
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpen(); }}
+      >
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={categoryTileStyle(color)}>
+          <Icon size={16} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+            {tx.description || tx.category}
+          </p>
+          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-gray-500 min-w-0">
+            {meta}
+          </div>
+        </div>
+        <div className="w-28 text-right shrink-0">
+          <p className={`text-sm font-semibold num ${amountClass}`}>{amountLabel}</p>
+        </div>
+        <div className="w-32 text-right shrink-0">
+          {balanceLabel && (
+            <p className="text-sm text-gray-400 dark:text-gray-500 num">{balanceLabel}</p>
+          )}
+        </div>
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={(e) => { e.stopPropagation(); onOpen(); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg" title="Edit">
+            <Edit3 size={13} className="text-gray-500" />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onArchive(); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg" title="Archive">
+            <Archive size={13} className="text-gray-500" />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Delete">
+            <Trash2 size={13} className="text-red-500" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Transactions() {
   const { transactions, pagination, fetchTransactions, createTransaction, updateTransaction, deleteTransaction, archiveTransaction, importTransactions, postRecurring, repairBalances, filters, setFilters, isLoading } = useTransactionStore();
@@ -413,6 +581,7 @@ export default function Transactions() {
   const [showFilters, setShowFilters] = useState(false);
   const [repairing, setRepairing] = useState(false);
   const needsBalanceRepair = accounts.some((a) => a.type !== 'credit' && Number(a.balance) < 0);
+  const dayGroups = useMemo(() => groupByDay(transactions), [transactions]);
 
   useEffect(() => {
     if (!accounts.length) fetchAccounts();
@@ -632,10 +801,14 @@ export default function Transactions() {
         </AnimatePresence>
       </div>
 
-      {/* Transactions List */}
-      <div className="card overflow-hidden">
+      {/* Transactions List.
+          overflow-clip, not overflow-hidden: hidden would make this a scroll
+          container and stop the day headers from sticking. */}
+      <div className="card overflow-clip">
         {isLoading && transactions.length === 0 ? (
-          <LoadingSpinner center />
+          <div className="divide-y divide-gray-50 dark:divide-gray-800">
+            {[...Array(6)].map((_, i) => <SkeletonRow key={i} />)}
+          </div>
         ) : transactions.length === 0 ? (
           <EmptyState
             icon={ArrowLeftRight}
@@ -644,161 +817,39 @@ export default function Transactions() {
             action={<button onClick={openCreate} className="btn-primary flex items-center gap-2"><Plus size={16} /> Add Transaction</button>}
           />
         ) : (
-          <div className="divide-y divide-gray-50 dark:divide-gray-800">
-            <div className="hidden lg:flex items-center gap-4 px-6 py-2 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div>
+            <div className="hidden lg:flex items-center gap-4 px-6 py-2 border-b border-gray-100 dark:border-gray-800 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
               <div className="w-9 shrink-0" />
               <div className="flex-1">Transaction</div>
               <div className="w-28 text-right">Amount</div>
-              <div className="w-36 text-right">Balance</div>
+              <div className="w-32 text-right">Balance</div>
               <div className="w-16" />
             </div>
-            {transactions.map((tx, i) => {
-              const amountClass = tx.type === 'income' ? 'text-green-600' : tx.type === 'expense' ? 'text-red-600' : 'text-indigo-600';
-              const amountLabel = `${tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : ''}${formatCurrency(tx.amount, user?.currency)}`;
-              const balanceLabel = formatCurrency(
-                tx.runningBalance ?? accounts.find((a) => a._id === (tx.account?._id || tx.account))?.balance,
-                user?.currency
-              );
-              const iconWrap = tx.type === 'income'
-                ? 'bg-green-50 dark:bg-green-900/20'
-                : tx.type === 'expense'
-                  ? 'bg-red-50 dark:bg-red-900/20'
-                  : 'bg-indigo-50 dark:bg-indigo-900/20';
-
-              return (
-              <motion.div
-                key={tx._id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.12 }}
-                className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group list-row"
-              >
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openTx(tx)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openTx(tx); }}
-                  className="lg:hidden w-full text-left flex items-start gap-3 px-4 py-3 cursor-pointer"
-                >
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${iconWrap}`}>
-                    {typeIcons[tx.type]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {tx.description || tx.category}
-                      </p>
-                      <p className={`text-sm font-semibold shrink-0 tabular-nums ${amountClass}`}>
-                        {amountLabel}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 mt-0.5">
-                      <p className="text-xs text-gray-500 truncate">
-                        {formatDate(tx.date, 'short')}
-                        {tx.account?.name ? ` · ${tx.account.name}` : ''}
-                      </p>
-                      <p className="text-xs text-gray-400 shrink-0 tabular-nums">Bal {balanceLabel}</p>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      {isSplitTx(tx) ? (
-                        <Badge variant={typeColors[tx.type]} size="xs">
-                          Split · {tx.splits.length} {tx.splits.length === 1 ? 'part' : 'parts'}
-                        </Badge>
-                      ) : (
-                        tx.category && <Badge variant={typeColors[tx.type]} size="xs">{tx.category}</Badge>
-                      )}
-                      {tx.excludeFromTotals && (
-                        <Badge variant="default" size="xs">{tx.type === 'income' ? 'Not income' : 'Not spending'}</Badge>
-                      )}
-                      {tx.receiptUrl && (
-                        <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-indigo-500 flex items-center gap-0.5"
-                          onClick={(e) => e.stopPropagation()}>
-                          <Paperclip size={11} /> Receipt
-                        </a>
-                      )}
-                      <span className="flex-1" />
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => { e.stopPropagation(); setDeleteId(tx._id); }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setDeleteId(tx._id); } }}
-                        className="p-1.5 -mr-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-                      >
-                        <Trash2 size={13} className="text-red-500" />
-                      </span>
-                    </div>
-                  </div>
+            {dayGroups.map((group) => (
+              <div key={group.key}>
+                <DayHeader group={group} currency={user?.currency} />
+                <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
+                  {group.items.map((tx, i) => (
+                    <TransactionRow
+                      key={tx._id}
+                      tx={tx}
+                      currency={user?.currency}
+                      /* One balance per day keeps the column readable instead of
+                         repeating the same figure down every row. */
+                      balanceLabel={i === group.items.length - 1
+                        ? formatCurrency(
+                          tx.runningBalance ?? accounts.find((a) => a._id === (tx.account?._id || tx.account))?.balance,
+                          user?.currency
+                        )
+                        : null}
+                      onOpen={() => openTx(tx)}
+                      onArchive={() => archiveTransaction(tx._id)}
+                      onDelete={() => setDeleteId(tx._id)}
+                    />
+                  ))}
                 </div>
-
-                <div
-                  className="hidden lg:flex items-center gap-4 px-6 py-4 cursor-pointer"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openTx(tx)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openTx(tx); }}
-                >
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconWrap}`}>
-                    {typeIcons[tx.type]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {tx.description || tx.category}
-                    </p>
-                    <div className="flex items-center gap-2 mt-0.5 min-w-0 flex-wrap">
-                      <span className="text-xs text-gray-500 shrink-0">{formatDate(tx.date, 'short')}</span>
-                      <span className="text-xs text-gray-400">•</span>
-                      <span className="text-xs text-gray-500 truncate">{tx.account?.name}</span>
-                      {isSplitTx(tx) ? (
-                        <>
-                          <span className="text-xs text-gray-400">•</span>
-                          <Badge variant={typeColors[tx.type]} size="xs">
-                            Split · {tx.splits.length} {tx.splits.length === 1 ? 'part' : 'parts'}
-                          </Badge>
-                        </>
-                      ) : tx.category && (
-                        <>
-                          <span className="text-xs text-gray-400">•</span>
-                          <Badge variant={typeColors[tx.type]} size="xs">{tx.category}</Badge>
-                        </>
-                      )}
-                      {tx.excludeFromTotals && (
-                        <>
-                          <span className="text-xs text-gray-400">•</span>
-                          <Badge variant="default" size="xs">{tx.type === 'income' ? 'Not income' : 'Not spending'}</Badge>
-                        </>
-                      )}
-                      {tx.receiptUrl && (
-                        <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-0.5" title="View receipt"
-                          onClick={(e) => e.stopPropagation()}>
-                          <Paperclip size={11} /> Receipt
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                  <div className="w-28 text-right shrink-0">
-                    <p className={`text-sm font-semibold tabular-nums ${amountClass}`}>{amountLabel}</p>
-                  </div>
-                  <div className="w-36 text-right shrink-0">
-                    <p className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">{balanceLabel}</p>
-                    <p className="text-xs text-gray-400 truncate">{tx.account?.name}</p>
-                  </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => { e.stopPropagation(); openTx(tx); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg" title="View">
-                      <Edit3 size={13} className="text-gray-500" />
-                    </button>
-                    <button onClick={async (e) => { e.stopPropagation(); await archiveTransaction(tx._id); }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
-                      <Archive size={13} className="text-gray-500" />
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); setDeleteId(tx._id); }} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
-                      <Trash2 size={13} className="text-red-500" />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
 

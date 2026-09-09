@@ -13,7 +13,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import EmptyState from '../components/ui/EmptyState';
 import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { SkeletonGrid } from '../components/ui/Skeleton';
 
 const getDefaultForm = (userCurrency = 'INR') => ({ name: '', type: 'bank', balance: '', currency: userCurrency, color: '#6366f1', description: '', creditLimit: '', upiId: '' });
 
@@ -166,7 +166,7 @@ export default function Accounts() {
 
       {/* Accounts Grid */}
       {isLoading ? (
-        <LoadingSpinner center />
+        <SkeletonGrid />
       ) : accounts.length === 0 ? (
         <EmptyState
           icon={CreditCard}

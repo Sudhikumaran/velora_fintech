@@ -12,7 +12,7 @@ import { ACCOUNT_TYPES } from '../utils/constants';
 import { exportToCSV, ledgerToCSV } from '../utils/csvExport';
 import PageHeader from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { SkeletonTable } from '../components/ui/Skeleton';
 import Badge from '../components/ui/Badge';
 
 const VIEWS = [
@@ -197,7 +197,7 @@ export default function Ledger() {
       </div>
 
       {isLoading ? (
-        <div className="card"><LoadingSpinner center /></div>
+        <SkeletonTable rows={8} cols={5} />
       ) : !data ? (
         <div className="card">
           <EmptyState

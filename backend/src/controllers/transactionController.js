@@ -3,6 +3,9 @@ import Account from '../models/Account.js';
 import { successResponse, errorResponse, paginatedResponse } from '../utils/apiResponse.js';
 import { applyBalanceChange, createUserTransaction, attachRunningBalances, alreadyPostedSource, isSameCalendarDay, repairAutoPostedTransactions, normalizeSplits } from '../utils/money.js';
 import { addFrequency, isDueOnOrBefore } from '../utils/recurrence.js';
+import { escapeRegex } from '../utils/regex.js';
+
+const SORTABLE_FIELDS = ['date', 'amount', 'category', 'createdAt'];
 
 export const getTransactions = async (req, res, next) => {
   try {
@@ -15,7 +18,7 @@ export const getTransactions = async (req, res, next) => {
     const filter = { user: req.user._id };
     if (!includeArchived) filter.isArchived = false;
     if (type) filter.type = type;
-    if (category) filter.category = { $regex: category, $options: 'i' };
+    if (category) filter.category = { $regex: escapeRegex(category), $options: 'i' };
     if (account) filter.account = account;
     if (startDate || endDate) {
       filter.date = {};
@@ -27,19 +30,21 @@ export const getTransactions = async (req, res, next) => {
       }
     }
     if (search) {
+      const rx = new RegExp(escapeRegex(String(search).slice(0, 200)), 'i');
       filter.$or = [
-        { description: { $regex: search, $options: 'i' } },
-        { category: { $regex: search, $options: 'i' } },
-        { notes: { $regex: search, $options: 'i' } },
-        { 'splits.description': { $regex: search, $options: 'i' } },
-        { 'splits.notes': { $regex: search, $options: 'i' } },
-        { 'splits.category': { $regex: search, $options: 'i' } },
-        { gstin: { $regex: search, $options: 'i' } },
+        { description: rx },
+        { category: rx },
+        { notes: rx },
+        { 'splits.description': rx },
+        { 'splits.notes': rx },
+        { 'splits.category': rx },
+        { gstin: rx },
       ];
     }
 
     const sortDir = sortOrder === 'desc' ? -1 : 1;
-    const sort = { [sortBy]: sortDir, createdAt: -1 };
+    const sortField = SORTABLE_FIELDS.includes(sortBy) ? sortBy : 'date';
+    const sort = { [sortField]: sortDir, createdAt: -1 };
     const pageSize = parseInt(limit, 10) || 20;
     const skip = (parseInt(page, 10) - 1) * pageSize;
     const skipBalances = lite === '1' || lite === 'true';
@@ -78,40 +83,74 @@ export const updateTransaction = async (req, res, next) => {
     const existing = await Transaction.findOne({ _id: req.params.id, user: req.user._id });
     if (!existing) return errorResponse(res, 'Transaction not found.', 404);
 
-    if (!existing.isArchived) {
-      await applyBalanceChange({
-        account: existing.account,
-        toAccount: existing.toAccount,
-        type: existing.type,
-        amount: existing.amount,
-        reverse: true,
-      });
+    const has = (key) => Object.prototype.hasOwnProperty.call(req.body, key);
+
+    const account = has('account') ? req.body.account : existing.account;
+    const type = has('type') ? req.body.type : existing.type;
+    // Only a transfer has a destination, so switching away from one clears it.
+    const toAccount = type !== 'transfer'
+      ? null
+      : (has('toAccount') ? (req.body.toAccount || null) : existing.toAccount);
+
+    // The account can be swapped on update, so ownership has to be re-checked
+    // here the same way createUserTransaction checks it.
+    const accountDoc = await Account.findOne({ _id: account, user: req.user._id });
+    if (!accountDoc) return errorResponse(res, 'Account not found.', 404);
+    if (type === 'transfer' && toAccount) {
+      const toAccountDoc = await Account.findOne({ _id: toAccount, user: req.user._id });
+      if (!toAccountDoc) return errorResponse(res, 'Destination account not found.', 404);
     }
 
-    const { account, type, subcategory, description, date, tags, notes, receiptUrl, isRecurring, frequency, nextRunDate } = req.body;
-    const toAccount = req.body.toAccount || null;
     const splits = Array.isArray(req.body.splits) ? normalizeSplits(req.body.splits) : existing.splits;
     const amount = splits.length
       ? splits.reduce((s, x) => s + Number(x.amount || 0), 0)
-      : parseFloat(req.body.amount);
+      : (has('amount') ? parseFloat(req.body.amount) : existing.amount);
     const category = req.body.category || splits[0]?.category || existing.category;
+    const isBusiness = has('isBusiness') ? Boolean(req.body.isBusiness) : existing.isBusiness;
 
-    Object.assign(existing, {
-      account, toAccount, type, amount, category, subcategory, description, date, tags, notes, receiptUrl,
-      splits, isRecurring, frequency, nextRunDate,
-      isBusiness: Boolean(req.body.isBusiness),
-      gstin: req.body.isBusiness ? String(req.body.gstin || '').trim() : '',
-      gstAmount: req.body.isBusiness ? (parseFloat(req.body.gstAmount) || 0) : 0,
-      excludeFromTotals: type !== 'transfer' && Boolean(req.body.excludeFromTotals),
-    });
-    await existing.save();
+    const updates = {
+      account, toAccount, type, amount, category, splits,
+      isBusiness,
+      gstin: isBusiness ? String((has('gstin') ? req.body.gstin : existing.gstin) || '').trim() : '',
+      gstAmount: isBusiness ? (parseFloat(has('gstAmount') ? req.body.gstAmount : existing.gstAmount) || 0) : 0,
+      excludeFromTotals: type !== 'transfer'
+        && Boolean(has('excludeFromTotals') ? req.body.excludeFromTotals : existing.excludeFromTotals),
+    };
+    // Anything the client did not send keeps its stored value.
+    for (const key of ['subcategory', 'description', 'date', 'tags', 'notes', 'receiptUrl', 'isRecurring', 'frequency', 'nextRunDate']) {
+      if (has(key)) updates[key] = req.body[key];
+    }
 
-    await applyBalanceChange({
+    const previous = {
+      userId: req.user._id,
       account: existing.account,
       toAccount: existing.toAccount,
       type: existing.type,
       amount: existing.amount,
-    });
+    };
+    const movesBalance = !existing.isArchived;
+
+    if (movesBalance) await applyBalanceChange({ ...previous, reverse: true });
+
+    Object.assign(existing, updates);
+    try {
+      await existing.save();
+    } catch (saveError) {
+      // Put the original amounts back so a rejected edit cannot leave the
+      // account short.
+      if (movesBalance) await applyBalanceChange(previous);
+      throw saveError;
+    }
+
+    if (movesBalance) {
+      await applyBalanceChange({
+        userId: req.user._id,
+        account: existing.account,
+        toAccount: existing.toAccount,
+        type: existing.type,
+        amount: existing.amount,
+      });
+    }
 
     const populated = await Transaction.findById(existing._id)
       .populate('account', 'name type color icon')
@@ -134,6 +173,7 @@ export const deleteTransaction = async (req, res, next) => {
 
     if (!transaction.isArchived) {
       await applyBalanceChange({
+        userId: req.user._id,
         account: transaction.account,
         toAccount: transaction.toAccount,
         type: transaction.type,
@@ -142,7 +182,7 @@ export const deleteTransaction = async (req, res, next) => {
       });
     }
 
-    await Transaction.deleteOne({ _id: req.params.id });
+    await Transaction.deleteOne({ _id: req.params.id, user: req.user._id });
     successResponse(res, snapshot, 'Transaction deleted successfully.');
   } catch (error) {
     next(error);
@@ -156,6 +196,17 @@ export const archiveTransaction = async (req, res, next) => {
 
     transaction.isArchived = !transaction.isArchived;
     await transaction.save();
+
+    // Archived rows are excluded from running balances, so the stored account
+    // balance has to give the amount back on archive and take it again on restore.
+    await applyBalanceChange({
+      userId: req.user._id,
+      account: transaction.account,
+      toAccount: transaction.toAccount,
+      type: transaction.type,
+      amount: transaction.amount,
+      reverse: transaction.isArchived,
+    });
 
     successResponse(res, transaction, `Transaction ${transaction.isArchived ? 'archived' : 'restored'} successfully.`);
   } catch (error) {

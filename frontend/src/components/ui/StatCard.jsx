@@ -19,34 +19,30 @@ export default function StatCard({ title, value, subtitle, trend, icon: Icon, co
 
   return (
     <motion.div
-      initial={reduce ? false : { opacity: 0, y: 18, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      whileHover={reduce ? undefined : { y: -6, scale: 1.015 }}
-      whileTap={reduce ? undefined : { scale: 0.99 }}
-      transition={{ delay, duration: 0.4, ease: easeOut }}
+      initial={reduce ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={reduce ? undefined : { y: -2 }}
+      transition={{ delay, duration: 0.26, ease: easeOut }}
       className="card p-5 flex flex-col gap-4 cursor-default"
     >
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{title}</p>
         {Icon && (
-          <motion.div
-            whileHover={reduce ? undefined : { rotate: -8, scale: 1.1 }}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center ${c.bg}`}
-          >
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${c.bg}`}>
             <Icon size={18} className={c.icon} />
-          </motion.div>
+          </div>
         )}
       </div>
 
       <div>
-        <p className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight tabular-nums">{value}</p>
+        <p className="text-2xl font-bold text-gray-900 dark:text-white num-lg">{value}</p>
         {(trend || subtitle) && (
           <div className="flex items-center gap-2 mt-1.5">
             {trend && (
               <motion.span
-                initial={reduce ? false : { scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: delay + 0.25, type: 'spring', stiffness: 400, damping: 20 }}
+                initial={reduce ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: delay + 0.14, duration: 0.2, ease: easeOut }}
                 className={isUp ? 'change-up' : isDown ? 'change-down' : 'inline-flex items-center gap-1 text-xs font-semibold text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full'}
               >
                 {isUp ? <TrendingUp size={11} /> : isDown ? <TrendingDown size={11} /> : null}

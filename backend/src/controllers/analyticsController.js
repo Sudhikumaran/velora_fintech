@@ -665,7 +665,8 @@ export const importData = async (req, res, next) => {
     const { createUserTransaction } = await import('../utils/money.js');
     const fallback = await Account.findOne({ user: req.user._id });
     for (const tx of txsIn) {
-      const account = idMap[String(tx.account?._id || tx.account)] || fallback?._id;
+      const mapped = idMap[String(tx.account?._id || tx.account)];
+      const account = mapped || fallback?._id;
       if (!account) continue;
       try {
         await createUserTransaction(req.user._id, {
@@ -678,6 +679,11 @@ export const importData = async (req, res, next) => {
           date: tx.date,
           notes: tx.notes,
           source: 'import',
+        }, {
+          // Imported accounts were created with their exported balance, which
+          // already includes these transactions. Only rows landing on a
+          // pre-existing fallback account still need to move a balance.
+          applyBalance: !mapped,
         });
         txCreated += 1;
       } catch {

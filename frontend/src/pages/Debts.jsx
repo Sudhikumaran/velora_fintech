@@ -11,7 +11,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import EmptyState from '../components/ui/EmptyState';
 import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { SkeletonGrid } from '../components/ui/Skeleton';
 
 const defaultForm = {
   type: 'borrowed', amount: '', person: '', description: '', dueDate: '', interestRate: '',
@@ -249,7 +249,7 @@ export default function Debts() {
         ))}
       </div>
 
-      {isLoading ? <LoadingSpinner center /> : filtered.length === 0 ? (
+      {isLoading ? <SkeletonGrid /> : filtered.length === 0 ? (
         <EmptyState
           icon={filterType === 'closed' ? Archive : TrendingDown}
           title={filterType === 'closed' ? 'No closed loans' : 'No debts recorded'}
