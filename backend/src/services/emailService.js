@@ -389,7 +389,6 @@ export async function sendDailySpendReport({
 
   return true;
 }
-
 const TYPE_LABELS = {
   bill: 'Bill',
   reminder: 'Reminder',
@@ -398,62 +397,53 @@ const TYPE_LABELS = {
   note: 'Note',
 };
 
-const MAIL_ACCENT = '#4f46e5'; // same as debt / spend emails
-
-function calendarEventDetailRows(event, currency, timeZone) {
-  const typeLabel = TYPE_LABELS[event.type] || 'Event';
-  const dateLabel = formatMailDate(event.date, timeZone);
-  const notifyTime = event.notifyTime || '09:00';
-  const amountRow = event.amount != null && Number.isFinite(Number(event.amount))
-    ? `<tr>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Amount</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;">${formatMoney(event.amount, currency)}</td>
-      </tr>`
-    : '';
-  const descRow = event.description
-    ? `<tr>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Notes</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(event.description)}</td>
-      </tr>`
-    : '';
-  const recurRow = event.isRecurring
-    ? `<tr>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Repeats</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(event.recurringFrequency || 'yes')}</td>
-      </tr>`
-    : '';
-
-  return {
-    typeLabel,
-    dateLabel,
-    notifyTime,
-    rows: `
-        <tr>
-          <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Title</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:600;">${escapeHtml(event.title)}</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Date</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(dateLabel)}</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Reminder time</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(notifyTime)}</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Type</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(typeLabel)}</td>
-        </tr>
-        ${amountRow}
-        ${descRow}
-        ${recurRow}`,
-  };
+function plainEvent(event) {
+  if (!event) return {};
+  if (typeof event.toObject === 'function') return event.toObject();
+  return event;
 }
 
-/**
- * Confirmation email right after a calendar event is created.
- * Same HTML / from / SMTP pattern as debt reminders.
- */
+function createMailTransport() {
+  const { host, user, pass } = smtpAuth();
+  if (!host || !user || !pass) return null;
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: process.env.SMTP_SECURE === 'true' || port === 465,
+    requireTLS: port === 587 && process.env.SMTP_SECURE !== 'true',
+    auth: { user, pass },
+    connectionTimeout: 20_000,
+    greetingTimeout: 15_000,
+    socketTimeout: 25_000,
+    tls: { minVersion: 'TLSv1.2' },
+  });
+}
+
+async function deliverMail(options) {
+  let mailer = getTransporter();
+  if (!mailer) {
+    console.warn('[Email] SMTP not configured.');
+    return false;
+  }
+  try {
+    await mailer.sendMail(options);
+    return true;
+  } catch (firstErr) {
+    console.error('[Email] sendMail failed, retrying with fresh transport:', firstErr.message);
+    transporter = null;
+    mailer = createMailTransport();
+    if (!mailer) throw firstErr;
+    try {
+      await mailer.sendMail(options);
+      transporter = mailer;
+      return true;
+    } finally {
+      try { mailer.close(); } catch { /* ignore */ }
+    }
+  }
+}
+
 export async function sendCalendarEventCreated({
   to,
   userName,
@@ -461,48 +451,58 @@ export async function sendCalendarEventCreated({
   timeZone = 'Asia/Kolkata',
   event,
 }) {
-  const mailer = getTransporter();
-  if (!mailer) {
-    console.warn('[Email] SMTP not configured — skipping calendar event email.');
-    return false;
-  }
-
+  const e = plainEvent(event);
   const from = process.env.EMAIL_FROM || `Velora <${process.env.SMTP_USER}>`;
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  const { typeLabel, dateLabel, notifyTime, rows } = calendarEventDetailRows(event, currency, timeZone);
+  const typeLabel = TYPE_LABELS[e.type] || 'Event';
+  const dateLabel = formatMailDate(e.date, timeZone);
+  const notifyTime = e.notifyTime || '09:00';
+  const title = String(e.title || 'Event');
+  const amountCell = e.amount != null && Number.isFinite(Number(e.amount))
+    ? formatMoney(e.amount, currency)
+    : '—';
 
   const html = `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-      <h2 style="color:${MAIL_ACCENT};">Velora — Calendar Event Saved</h2>
+      <h2 style="color:#4f46e5;">Velora — Calendar Event Saved</h2>
       <p>Hi ${escapeHtml(userName || 'there')},</p>
-      <p>Your calendar event was added successfully. Reminder email is set for <strong>${escapeHtml(notifyTime)}</strong> on that day.</p>
+      <p>Your calendar event was added successfully:</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;">
         <thead>
           <tr style="background:#f3f4f6;">
-            <th style="padding:8px 12px;text-align:left;">Field</th>
-            <th style="padding:8px 12px;text-align:left;">Value</th>
+            <th style="padding:8px 12px;text-align:left;">Title</th>
+            <th style="padding:8px 12px;text-align:left;">Type</th>
+            <th style="padding:8px 12px;text-align:left;">Date</th>
+            <th style="padding:8px 12px;text-align:left;">Reminder</th>
+            <th style="padding:8px 12px;text-align:left;">Amount</th>
           </tr>
         </thead>
-        <tbody>${rows}</tbody>
+        <tbody>
+          <tr>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(title)}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(typeLabel)}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(dateLabel)}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(notifyTime)}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;">${amountCell}</td>
+          </tr>
+        </tbody>
       </table>
-      <p><a href="${clientUrl}/calendar" style="background:${MAIL_ACCENT};color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">View Calendar</a></p>
+      <p><a href="${clientUrl}/calendar" style="background:#4f46e5;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">View Calendar</a></p>
       <p style="color:#9ca3af;font-size:12px;">This is an automated message from Velora Finance.</p>
     </div>`;
 
-  await mailer.sendMail({
+  const ok = await deliverMail({
     from,
     to,
-    subject: `Velora: ${typeLabel} "${event.title}" on ${dateLabel}`,
+    subject: `Velora: ${typeLabel} saved - ${title}`,
+    text: `Hi ${userName || 'there'},\n\nYour calendar event "${title}" (${typeLabel}) on ${dateLabel} was saved. Reminder time: ${notifyTime}.\n\nOpen calendar: ${clientUrl}/calendar\n`,
     html,
   });
 
-  console.log(`[Email] Calendar create confirmation queued/sent to ${to}`);
-  return true;
+  if (ok) console.log(`[Email] Calendar create confirmation sent to ${to}`);
+  return ok;
 }
 
-/**
- * Timed reminder when the event’s notifyTime is reached on the event date.
- */
 export async function sendCalendarEventReminder({
   to,
   userName,
@@ -510,47 +510,51 @@ export async function sendCalendarEventReminder({
   timeZone = 'Asia/Kolkata',
   event,
 }) {
-  const mailer = getTransporter();
-  if (!mailer) {
-    console.warn('[Email] SMTP not configured — skipping calendar timed reminder.');
-    return false;
-  }
-
+  const e = plainEvent(event);
   const from = process.env.EMAIL_FROM || `Velora <${process.env.SMTP_USER}>`;
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  const { typeLabel, dateLabel, notifyTime, rows } = calendarEventDetailRows(event, currency, timeZone);
+  const typeLabel = TYPE_LABELS[e.type] || 'Event';
+  const dateLabel = formatMailDate(e.date, timeZone);
+  const notifyTime = e.notifyTime || '09:00';
+  const title = String(e.title || 'Event');
+  const amountCell = e.amount != null && Number.isFinite(Number(e.amount))
+    ? formatMoney(e.amount, currency)
+    : '—';
 
   const html = `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-      <h2 style="color:${MAIL_ACCENT};">Velora — Calendar Reminder</h2>
+      <h2 style="color:#4f46e5;">Velora — Calendar Reminder</h2>
       <p>Hi ${escapeHtml(userName || 'there')},</p>
-      <p>This is your reminder for <strong>${escapeHtml(dateLabel)}</strong> at <strong>${escapeHtml(notifyTime)}</strong>:</p>
+      <p>Reminder for <strong>${escapeHtml(dateLabel)}</strong> at <strong>${escapeHtml(notifyTime)}</strong>:</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;">
         <thead>
           <tr style="background:#f3f4f6;">
-            <th style="padding:8px 12px;text-align:left;">Field</th>
-            <th style="padding:8px 12px;text-align:left;">Value</th>
+            <th style="padding:8px 12px;text-align:left;">Title</th>
+            <th style="padding:8px 12px;text-align:left;">Type</th>
+            <th style="padding:8px 12px;text-align:left;">Amount</th>
           </tr>
         </thead>
-        <tbody>${rows}</tbody>
+        <tbody>
+          <tr>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(title)}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(typeLabel)}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #eee;">${amountCell}</td>
+          </tr>
+        </tbody>
       </table>
-      <p><a href="${clientUrl}/calendar" style="background:${MAIL_ACCENT};color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">View Calendar</a></p>
+      <p><a href="${clientUrl}/calendar" style="background:#4f46e5;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">View Calendar</a></p>
       <p style="color:#9ca3af;font-size:12px;">This is an automated reminder from Velora Finance.</p>
     </div>`;
 
-  await mailer.sendMail({
+  return deliverMail({
     from,
     to,
-    subject: `Velora: ${typeLabel} reminder “${event.title}” · ${notifyTime}`,
+    subject: `Velora: ${typeLabel} reminder - ${title}`,
+    text: `Hi ${userName || 'there'},\n\nReminder: "${title}" (${typeLabel}) on ${dateLabel} at ${notifyTime}.\n\nOpen calendar: ${clientUrl}/calendar\n`,
     html,
   });
-
-  return true;
 }
 
-/**
- * Digest of calendar events happening today (same layout as debt reminder).
- */
 export async function sendCalendarDayReminder({
   to,
   userName,
@@ -559,16 +563,11 @@ export async function sendCalendarDayReminder({
   dateLabel,
   events = [],
 }) {
-  const mailer = getTransporter();
-  if (!mailer) {
-    console.warn('[Email] SMTP not configured — skipping calendar day reminder.');
-    return false;
-  }
-
   const from = process.env.EMAIL_FROM || `Velora <${process.env.SMTP_USER}>`;
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
-  const rows = events.map((e) => {
+  const rows = events.map((raw) => {
+    const e = plainEvent(raw);
     const typeLabel = TYPE_LABELS[e.type] || 'Event';
     const amount = e.amount != null && Number.isFinite(Number(e.amount))
       ? formatMoney(e.amount, currency)
@@ -584,7 +583,7 @@ export async function sendCalendarDayReminder({
 
   const html = `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-      <h2 style="color:${MAIL_ACCENT};">Velora — Today's Calendar</h2>
+      <h2 style="color:#4f46e5;">Velora — Today's Calendar</h2>
       <p>Hi ${escapeHtml(userName || 'there')},</p>
       <p>You have ${events.length} calendar event${events.length === 1 ? '' : 's'} on ${escapeHtml(dateLabel)}:</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;">
@@ -598,18 +597,14 @@ export async function sendCalendarDayReminder({
         </thead>
         <tbody>${rows}</tbody>
       </table>
-      <p><a href="${clientUrl}/calendar" style="background:${MAIL_ACCENT};color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">View Calendar</a></p>
+      <p><a href="${clientUrl}/calendar" style="background:#4f46e5;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">View Calendar</a></p>
       <p style="color:#9ca3af;font-size:12px;">This is an automated reminder from Velora Finance.</p>
     </div>`;
 
-  await mailer.sendMail({
+  return deliverMail({
     from,
     to,
     subject: `Velora: ${events.length} calendar event${events.length === 1 ? '' : 's'} today · ${dateLabel}`,
     html,
   });
-
-  return true;
 }
-
-

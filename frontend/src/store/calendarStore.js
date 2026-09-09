@@ -23,7 +23,8 @@ export const useCalendarStore = create((set, get) => ({
       } else if (data.email?.reason === 'smtp_not_configured') {
         toast.error('Event saved, but email is off on the server (SMTP).');
       } else if (data.email?.reason === 'send_failed') {
-        toast.error('Event saved, but confirmation email failed. Check spam or SMTP.');
+        const detail = data.email?.error ? `: ${data.email.error}` : '';
+        toast.error(`Event saved, but email failed${detail}`);
       } else if (data.email?.reason === 'no_user_email') {
         toast.error('Event saved, but your account has no email address.');
       } else {

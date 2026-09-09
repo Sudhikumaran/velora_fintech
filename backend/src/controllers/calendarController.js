@@ -44,6 +44,17 @@ function pickEditable(body = {}) {
   return updates;
 }
 
+function userTimezone(user) {
+  const tz = user?.timezone;
+  if (!tz || tz === 'UTC' || tz === 'Etc/UTC' || tz === 'GMT') return 'Asia/Kolkata';
+  try {
+    Intl.DateTimeFormat('en-US', { timeZone: tz }).format(new Date());
+    return tz;
+  } catch {
+    return 'Asia/Kolkata';
+  }
+}
+
 export const getEvents = async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
@@ -71,19 +82,21 @@ export const createEvent = async (req, res, next) => {
     // Same pattern as debt repayment receipt: await SMTP before responding (required on Vercel).
     let emailed = false;
     let emailReason = 'skipped';
+    let emailError = null;
     if (req.user?.email) {
       try {
         emailed = await sendCalendarEventCreated({
           to: req.user.email,
           userName: req.user.name,
           currency: req.user.currency || 'INR',
-          timeZone: req.user.timezone || 'Asia/Kolkata',
+          timeZone: userTimezone(req.user),
           event,
         });
         emailReason = emailed ? 'sent' : 'smtp_not_configured';
       } catch (mailError) {
         console.error('[CalendarMail] Create email failed:', mailError.message);
         emailReason = 'send_failed';
+        emailError = String(mailError.message || mailError).slice(0, 180);
       }
     } else {
       emailReason = 'no_user_email';
@@ -96,7 +109,7 @@ export const createEvent = async (req, res, next) => {
         ? 'Event created. A confirmation email was sent.'
         : 'Event created.',
       data: event,
-      email: { sent: emailed, reason: emailReason },
+      email: { sent: emailed, reason: emailReason, error: emailError },
       emailed,
     });
   } catch (error) {
