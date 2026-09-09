@@ -49,7 +49,9 @@ export const useTransactionStore = create((set, get) => ({
   createTransaction: async (transactionData, { silent } = {}) => {
     try {
       const { data } = await api.post('/transactions', transactionData);
+      // Bump _fetchGen so any in-flight list fetch cannot overwrite this prepend.
       set((state) => ({
+        _fetchGen: state._fetchGen + 1,
         transactions: [data.data, ...state.transactions],
         pagination: {
           ...state.pagination,
@@ -60,6 +62,9 @@ export const useTransactionStore = create((set, get) => ({
       if (transactionData.type === 'expense') refreshBudgets();
       refreshAccounts();
       if (!silent) toast.success('Transaction added successfully');
+      // Background lite refresh keeps running balances correct without blocking UI.
+      const page = get().pagination?.page || 1;
+      get().fetchTransactions({ page, lite: true });
       return data.data;
     } catch (error) {
       if (error.response?.status === 409) return { skipped: true };
@@ -73,6 +78,7 @@ export const useTransactionStore = create((set, get) => ({
       const existing = get().transactions.find((t) => t._id === id);
       const { data } = await api.put(`/transactions/${id}`, transactionData);
       set((state) => ({
+        _fetchGen: state._fetchGen + 1,
         transactions: state.transactions.map((t) => (t._id === id ? data.data : t)),
       }));
       if (existing) useAccountStore.getState().applyTxBalance(existing, true);
@@ -82,6 +88,8 @@ export const useTransactionStore = create((set, get) => ({
       }
       refreshAccounts();
       toast.success('Transaction updated successfully');
+      const page = get().pagination?.page || 1;
+      get().fetchTransactions({ page, lite: true });
       return data.data;
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update transaction');
@@ -93,7 +101,14 @@ export const useTransactionStore = create((set, get) => ({
     try {
       const existing = get().transactions.find((t) => t._id === id);
       const { data } = await api.delete(`/transactions/${id}`);
-      set((state) => ({ transactions: state.transactions.filter((t) => t._id !== id) }));
+      set((state) => ({
+        _fetchGen: state._fetchGen + 1,
+        transactions: state.transactions.filter((t) => t._id !== id),
+        pagination: {
+          ...state.pagination,
+          total: Math.max(0, (state.pagination?.total || 0) - 1),
+        },
+      }));
       if (existing) useAccountStore.getState().applyTxBalance(existing, true);
       if (existing?.type === 'expense') refreshBudgets();
       refreshAccounts();
@@ -176,6 +191,7 @@ export const useTransactionStore = create((set, get) => ({
       const existing = get().transactions.find((t) => t._id === id);
       const { data } = await api.patch(`/transactions/${id}/archive`);
       set((state) => ({
+        _fetchGen: state._fetchGen + 1,
         transactions: state.transactions.map((t) => (t._id === id ? data.data : t)),
       }));
       if (existing && !existing.isArchived) useAccountStore.getState().applyTxBalance(existing, true);
