@@ -1,6 +1,7 @@
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { runDebtReminderJob } from '../services/debtReminderJob.js';
 import { runDailySpendJob } from '../services/dailySpendJob.js';
+import { runCalendarDayReminderJob } from '../services/calendarReminderJob.js';
 import Subscription from '../models/Subscription.js';
 import Transaction from '../models/Transaction.js';
 import { createUserTransaction, alreadyPostedSource, isSameCalendarDay } from '../utils/money.js';
@@ -101,6 +102,7 @@ export const runJobs = async (req, res, next) => {
     }
 
     await runDebtReminderJob();
+    await runCalendarDayReminderJob();
     const subscriptions = await postAllDueSubscriptions();
     const recurring = await postAllRecurring();
 

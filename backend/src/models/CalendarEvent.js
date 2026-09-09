@@ -11,7 +11,7 @@ const calendarEventSchema = new mongoose.Schema(
       default: 'reminder',
     },
     amount: { type: Number, default: null },
-    color: { type: String, default: '#6366f1' },
+    color: { type: String, default: '#0d9488' },
     description: { type: String, default: '' },
     isRecurring: { type: Boolean, default: false },
     recurringFrequency: {

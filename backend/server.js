@@ -9,10 +9,12 @@ if (!isVercel) {
   const { default: connectDB } = await import('./src/config/db.js');
   const { startDebtReminderScheduler } = await import('./src/services/debtReminderJob.js');
   const { startDailySpendScheduler } = await import('./src/services/dailySpendJob.js');
+  const { startCalendarReminderScheduler } = await import('./src/services/calendarReminderJob.js');
 
   await connectDB();
   startDebtReminderScheduler();
   startDailySpendScheduler();
+  startCalendarReminderScheduler();
   app.listen(PORT, () => {
     console.log(`🚀 Velora server running on http://localhost:${PORT}`);
     console.log(`📊 Environment: ${process.env.NODE_ENV}`);

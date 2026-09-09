@@ -377,3 +377,148 @@ export async function sendDailySpendReport({
   return true;
 }
 
+const TYPE_LABELS = {
+  bill: 'Bill',
+  reminder: 'Reminder',
+  goal: 'Goal',
+  income: 'Income',
+  note: 'Note',
+};
+
+/**
+ * Confirmation email right after a calendar event is created.
+ */
+export async function sendCalendarEventCreated({
+  to,
+  userName,
+  currency = 'INR',
+  timeZone = 'Asia/Kolkata',
+  event,
+}) {
+  const mailer = getTransporter();
+  if (!mailer) {
+    console.warn('[Email] SMTP not configured — skipping calendar event email.');
+    return false;
+  }
+
+  const from = process.env.EMAIL_FROM || `Velora <${process.env.SMTP_USER}>`;
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const typeLabel = TYPE_LABELS[event.type] || 'Event';
+  const dateLabel = formatMailDate(event.date, timeZone);
+  const amountRow = event.amount != null && Number.isFinite(Number(event.amount))
+    ? `<tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Amount</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">${formatMoney(event.amount, currency)}</td>
+      </tr>`
+    : '';
+  const descRow = event.description
+    ? `<tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Notes</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(event.description)}</td>
+      </tr>`
+    : '';
+  const recurRow = event.isRecurring
+    ? `<tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Repeats</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(event.recurringFrequency || 'yes')}</td>
+      </tr>`
+    : '';
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      <h2 style="color:#0d9488;">Velora — Calendar event saved</h2>
+      <p>Hi ${escapeHtml(userName || 'there')},</p>
+      <p>Your calendar event was added successfully.</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Title</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:600;">${escapeHtml(event.title)}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Date</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(dateLabel)}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Type</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(typeLabel)}</td>
+        </tr>
+        ${amountRow}
+        ${descRow}
+        ${recurRow}
+      </table>
+      <p><a href="${clientUrl}/calendar" style="background:#0d9488;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Open calendar</a></p>
+      <p style="color:#9ca3af;font-size:12px;">This is an automated message from Velora Finance.</p>
+    </div>`;
+
+  await mailer.sendMail({
+    from,
+    to,
+    subject: `Velora: ${typeLabel} “${event.title}” on ${dateLabel}`,
+    html,
+  });
+
+  return true;
+}
+
+/**
+ * Morning digest of calendar events happening today.
+ */
+export async function sendCalendarDayReminder({
+  to,
+  userName,
+  currency = 'INR',
+  timeZone = 'Asia/Kolkata',
+  dateLabel,
+  events = [],
+}) {
+  const mailer = getTransporter();
+  if (!mailer) {
+    console.warn('[Email] SMTP not configured — skipping calendar day reminder.');
+    return false;
+  }
+
+  const from = process.env.EMAIL_FROM || `Velora <${process.env.SMTP_USER}>`;
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+
+  const rows = events.map((e) => {
+    const typeLabel = TYPE_LABELS[e.type] || 'Event';
+    const amount = e.amount != null && Number.isFinite(Number(e.amount))
+      ? formatMoney(e.amount, currency)
+      : '—';
+    return `<tr>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(e.title)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">${escapeHtml(typeLabel)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;">${amount}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      <h2 style="color:#0d9488;">Velora — Today's calendar</h2>
+      <p>Hi ${escapeHtml(userName || 'there')},</p>
+      <p>You have <strong>${events.length}</strong> event${events.length === 1 ? '' : 's'} on <strong>${escapeHtml(dateLabel)}</strong>:</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th style="padding:8px 12px;text-align:left;">Event</th>
+            <th style="padding:8px 12px;text-align:left;">Type</th>
+            <th style="padding:8px 12px;text-align:left;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p><a href="${clientUrl}/calendar" style="background:#0d9488;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Open calendar</a></p>
+      <p style="color:#9ca3af;font-size:12px;">This is an automated reminder from Velora Finance.</p>
+    </div>`;
+
+  await mailer.sendMail({
+    from,
+    to,
+    subject: `Velora: ${events.length} calendar event${events.length === 1 ? '' : 's'} today · ${dateLabel}`,
+    html,
+  });
+
+  return true;
+}
+
+

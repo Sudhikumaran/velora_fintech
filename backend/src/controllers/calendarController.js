@@ -1,5 +1,6 @@
 import CalendarEvent from '../models/CalendarEvent.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
+import { sendCalendarEventCreated, isEmailConfigured } from '../services/emailService.js';
 
 const EDITABLE_FIELDS = ['title', 'date', 'type', 'amount', 'color', 'description', 'isRecurring', 'recurringFrequency'];
 
@@ -27,9 +28,24 @@ function pickEditable(body = {}) {
   return updates;
 }
 
+function notifyEventCreated(user, event) {
+  if (!isEmailConfigured() || !user?.email) return;
+  // Fire-and-forget so create stays fast even if SMTP is slow.
+  sendCalendarEventCreated({
+    to: user.email,
+    userName: user.name,
+    currency: user.currency || 'INR',
+    timeZone: user.timezone || 'Asia/Kolkata',
+    event,
+  }).catch((err) => {
+    console.error('[CalendarMail] Create email failed:', err.message);
+  });
+}
+
 export const createEvent = async (req, res, next) => {
   try {
     const event = await CalendarEvent.create({ ...pickEditable(req.body), user: req.user._id });
+    notifyEventCreated(req.user, event);
     successResponse(res, event, 'Event created.', 201);
   } catch (error) {
     next(error);
