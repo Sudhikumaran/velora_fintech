@@ -21,6 +21,7 @@ const pageTitles = {
   '/goals': 'Goals',
   '/calendar': 'Calendar',
   '/settings': 'Settings',
+  '/payments': 'Waiting payments',
 };
 
 export default function Topbar({ onMenuClick, theme, onToggleTheme }) {
@@ -29,22 +30,22 @@ export default function Topbar({ onMenuClick, theme, onToggleTheme }) {
   const title = pageTitles[location.pathname] || 'Velora';
 
   return (
-    <header className="h-16 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 relative">
+    <header className="h-16 bg-white/75 dark:bg-[#0f1419]/80 backdrop-blur-xl border-b border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 relative">
       <motion.div
         key={location.pathname}
         initial={{ scaleX: 0, opacity: 1 }}
         animate={{ scaleX: 1, opacity: 0 }}
-        transition={{ scaleX: { duration: 0.4, ease: [0.16, 1, 0.3, 1] }, opacity: { delay: 0.4, duration: 0.25 } }}
-        className="absolute left-0 top-0 h-0.5 origin-left bg-indigo-500 w-full"
+        transition={{ scaleX: { duration: 0.4, ease: [0.16, 1, 0.3, 1] }, opacity: { delay: 0.35, duration: 0.25 } }}
+        className="absolute left-0 top-0 h-[2px] origin-left bg-teal-500 w-full"
       />
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
         {!isNativeApp() && (
-        <button
-          onClick={onMenuClick}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors lg:hidden"
-        >
-          <Menu size={19} className="text-gray-600 dark:text-gray-400" />
-        </button>
+          <button
+            onClick={onMenuClick}
+            className="p-2 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] rounded-xl transition-colors lg:hidden"
+          >
+            <Menu size={19} className="text-slate-600 dark:text-slate-400" />
+          </button>
         )}
         <AnimatePresence mode="wait">
           <motion.h2
@@ -53,40 +54,40 @@ export default function Topbar({ onMenuClick, theme, onToggleTheme }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="text-base font-bold text-gray-900 dark:text-white truncate max-w-[46vw]"
+            className="text-[15px] font-bold text-slate-900 dark:text-white truncate max-w-[46vw] tracking-tight"
           >
             {title}
           </motion.h2>
         </AnimatePresence>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
         <SearchTrigger />
         <NotificationCenter />
         <button
           onClick={onToggleTheme}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          className="p-2 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] rounded-xl transition-colors"
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
           {theme === 'dark'
-            ? <Sun size={17} className="text-gray-500 dark:text-gray-400" />
-            : <Moon size={17} className="text-gray-500" />
+            ? <Sun size={17} className="text-slate-400" />
+            : <Moon size={17} className="text-slate-500" />
           }
         </button>
 
-        <div className="flex items-center gap-2.5 pl-2 border-l border-gray-100 dark:border-gray-800 ml-1">
-          <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0">
+        <div className="flex items-center gap-2.5 pl-2 border-l border-black/[0.06] dark:border-white/[0.06] ml-1">
+          <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0 ring-1 ring-black/[0.06] dark:ring-white/[0.08]">
             {user?.avatar ? (
               <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-indigo-600 text-white text-sm font-semibold">
+              <div className="w-full h-full flex items-center justify-center bg-teal-600 text-white text-sm font-semibold">
                 {user?.name?.[0]?.toUpperCase()}
               </div>
             )}
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">{user?.name?.split(' ')[0]}</p>
-            <p className="text-xs text-gray-400">{user?.currency}</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">{user?.name?.split(' ')[0]}</p>
+            <p className="text-[11px] text-slate-400">{user?.currency}</p>
           </div>
         </div>
       </div>

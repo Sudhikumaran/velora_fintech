@@ -130,43 +130,38 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6">
       <PageHeader title="Settings" subtitle="Manage your account and preferences" />
 
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Sidebar */}
-        <div className="md:w-56 shrink-0">
-          <div className="card p-2 space-y-0.5">
+      <div className="flex flex-col lg:flex-row gap-6">
+        <div className="lg:w-56 shrink-0">
+          <div className="settings-rail p-2 space-y-0.5 sticky top-20">
             {sections.map((s) => (
               <button
                 key={s.id}
                 onClick={() => setActiveSection(s.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
-                  activeSection === s.id
-                    ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 font-medium'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
+                className={`settings-rail-item ${activeSection === s.id ? 'is-active' : ''}`}
               >
                 <s.icon size={16} />
                 {s.label}
               </button>
             ))}
-            <hr className="my-1 border-gray-100 dark:border-gray-800" />
+            <hr className="my-1 border-black/[0.06] dark:border-white/[0.06]" />
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+              className="settings-rail-item text-red-600 hover:!bg-red-50 dark:hover:!bg-red-900/20 hover:!text-red-600"
             >
               <LogOut size={16} /> Logout
             </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <motion.div
             key={activeSection}
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
             className="card p-6"
           >
             {activeSection === 'profile' && (

@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { FloatingOrbs } from './Motion';
 import BrandMark from './BrandMark';
 import { easeOut, stagger, fadeUp } from '../../utils/motion';
 
@@ -7,10 +6,16 @@ export default function AuthShell({ headline, subhead, features = [], stats = []
   return (
     <div className="min-h-screen flex" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div
-        className="hidden lg:flex flex-col justify-between w-[420px] shrink-0 p-10 relative overflow-hidden"
-        style={{ background: 'linear-gradient(160deg,#4f46e5 0%,#6366f1 55%,#4338ca 100%)' }}
+        className="hidden lg:flex flex-col justify-between w-[440px] shrink-0 p-10 relative overflow-hidden"
+        style={{ background: '#042f2e' }}
       >
-        <FloatingOrbs />
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(600px 320px at 20% 10%, rgba(45,212,191,0.18), transparent 60%), radial-gradient(500px 280px at 90% 90%, rgba(13,148,136,0.2), transparent 55%)',
+          }}
+        />
 
         <motion.div
           initial={{ opacity: 0 }}
@@ -24,13 +29,13 @@ export default function AuthShell({ headline, subhead, features = [], stats = []
 
         <div className="relative z-10 space-y-6">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08, duration: 0.28, ease: easeOut }}>
-            <h2 className="text-3xl font-bold text-white leading-snug">{headline}</h2>
-            <p className="text-indigo-200 mt-3 text-sm leading-relaxed">{subhead}</p>
+            <h2 className="text-3xl font-bold text-white leading-snug tracking-tight">{headline}</h2>
+            <p className="text-teal-100/70 mt-3 text-sm leading-relaxed">{subhead}</p>
           </motion.div>
 
           {stats.length > 0 && (
             <motion.div
-              variants={stagger(0.2, 0.08)}
+              variants={stagger(0.12, 0.06)}
               initial="hidden"
               animate="show"
               className="grid grid-cols-2 gap-3"
@@ -39,38 +44,38 @@ export default function AuthShell({ headline, subhead, features = [], stats = []
                 <motion.div
                   key={s.label}
                   variants={fadeUp}
-                  whileHover={{ y: -4, scale: 1.03 }}
-                  className="bg-white/10 rounded-xl p-3 backdrop-blur"
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm"
                 >
-                  <p className="text-white font-semibold text-sm">{s.value}</p>
-                  <p className="text-indigo-300 text-xs mt-0.5">{s.label}</p>
+                  <p className="text-2xl font-bold text-white num-lg">{s.value}</p>
+                  <p className="text-xs text-teal-100/60 mt-1">{s.label}</p>
                 </motion.div>
               ))}
             </motion.div>
           )}
 
           {features.length > 0 && (
-            <motion.div variants={stagger(0.2, 0.1)} initial="hidden" animate="show" className="space-y-3">
+            <motion.div
+              variants={stagger(0.16, 0.05)}
+              initial="hidden"
+              animate="show"
+              className="space-y-2.5"
+            >
               {features.map((f) => (
                 <motion.div key={f} variants={fadeUp} className="flex items-center gap-3">
-                  <motion.div
-                    animate={{ scale: [1, 1.15, 1] }}
-                    transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-                    className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center shrink-0"
-                  >
-                    <div className="w-2 h-2 bg-white rounded-full" />
-                  </motion.div>
-                  <span className="text-indigo-100 text-sm">{f}</span>
+                  <div className="w-5 h-5 rounded-full bg-teal-400/20 flex items-center justify-center shrink-0">
+                    <div className="w-1.5 h-1.5 bg-teal-300 rounded-full" />
+                  </div>
+                  <span className="text-teal-50/85 text-sm">{f}</span>
                 </motion.div>
               ))}
             </motion.div>
           )}
         </div>
 
-        <p className="text-indigo-300 text-xs relative z-10">© 2026 Velora. All rights reserved.</p>
+        <p className="text-teal-200/40 text-xs relative z-10">© 2026 Velora</p>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-6 bg-slate-50 dark:bg-gray-950 relative overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-6 relative overflow-hidden app-canvas">
         <div className="auth-mesh pointer-events-none absolute inset-0" />
         <motion.div
           initial={{ opacity: 0, y: 8 }}

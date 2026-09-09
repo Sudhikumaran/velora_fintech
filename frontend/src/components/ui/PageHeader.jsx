@@ -3,20 +3,20 @@ import { easeOut } from '../../utils/motion';
 
 export default function PageHeader({ title, subtitle, action }) {
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-4 lg:mb-6">
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between mb-5 lg:mb-7">
       <motion.div
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, ease: easeOut }}
         className="hidden lg:block"
       >
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">{title}</h1>
+        <h1 className="text-[22px] font-bold text-slate-900 dark:text-white leading-tight tracking-tight">{title}</h1>
         {subtitle && (
-          <p className="text-sm text-gray-500 dark:text-gray-500 mt-0.5">{subtitle}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-xl">{subtitle}</p>
         )}
       </motion.div>
       {subtitle && (
-        <p className="lg:hidden text-sm text-gray-500 dark:text-gray-500">{subtitle}</p>
+        <p className="lg:hidden text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
       )}
       {action && (
         <motion.div

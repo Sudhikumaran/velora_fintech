@@ -17,7 +17,7 @@ import { usePlan } from '../utils/plan';
 const today = new Date().toISOString().split('T')[0];
 const defaultForm = {
   name: '', category: '', limit: '', period: 'monthly',
-  startDate: today, endDate: '', color: '#6366f1', alertThreshold: 80,
+  startDate: today, endDate: '', color: '#0d9488', alertThreshold: 80,
 };
 
 function BudgetForm({ form, setForm, onSubmit, isEdit }) {

@@ -17,17 +17,17 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 
 const EVENT_TYPES = [
-  { value: 'reminder', label: 'Reminder',  icon: Bell,        color: '#6366f1' },
+  { value: 'reminder', label: 'Reminder',  icon: Bell,        color: '#0d9488' },
   { value: 'bill',     label: 'Bill / Due', icon: DollarSign,  color: '#ef4444' },
   { value: 'income',   label: 'Income',     icon: DollarSign,  color: '#22c55e' },
   { value: 'goal',     label: 'Goal',       icon: Flag,        color: '#f59e0b' },
-  { value: 'note',     label: 'Note',       icon: StickyNote,  color: '#8b5cf6' },
+  { value: 'note',     label: 'Note',       icon: StickyNote,  color: '#0f766e' },
 ];
 
 const TYPE_COLORS = Object.fromEntries(EVENT_TYPES.map((t) => [t.value, t.color]));
 
 const BLANK_FORM = {
-  title: '', date: '', type: 'reminder', amount: '', color: '#6366f1',
+  title: '', date: '', type: 'reminder', amount: '', color: '#0d9488',
   description: '', isRecurring: false, recurringFrequency: 'monthly',
 };
 
@@ -105,7 +105,7 @@ export default function Calendar() {
   // ── Modal helpers ──────────────────────────────────────────────────────────
   const openCreate = (day) => {
     setEditingEvent(null);
-    setForm({ ...BLANK_FORM, date: dateStr(day), color: '#6366f1' });
+    setForm({ ...BLANK_FORM, date: dateStr(day), color: '#0d9488' });
     setModalOpen(true);
   };
 
@@ -116,7 +116,7 @@ export default function Calendar() {
       date: toLocalDateStr(event.date),
       type: event.type,
       amount: event.amount ?? '',
-      color: event.color || '#6366f1',
+      color: event.color || '#0d9488',
       description: event.description || '',
       isRecurring: event.isRecurring || false,
       recurringFrequency: event.recurringFrequency || 'monthly',
@@ -308,7 +308,7 @@ export default function Calendar() {
                 <div className="space-y-2">
                   {selectedEvents.map((event, i) => {
                     const isCustom = event._source === 'custom';
-                    const dotColor = isCustom ? (event.color || '#6366f1') : event.type === 'income' ? '#22c55e' : '#ef4444';
+                    const dotColor = isCustom ? (event.color || '#0d9488') : event.type === 'income' ? '#22c55e' : '#ef4444';
                     return (
                       <motion.div
                         key={event._id || i}

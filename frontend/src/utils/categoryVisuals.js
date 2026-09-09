@@ -53,7 +53,7 @@ const ICONS = {
 // Stable per-category fallback colour so unknown categories still get a
 // consistent tint instead of defaulting to grey.
 const FALLBACK_COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#f97316',
+  '#0d9488', '#0f766e', '#ec4899', '#f97316',
   '#eab308', '#22c55e', '#14b8a6', '#3b82f6',
 ];
 
@@ -75,7 +75,7 @@ export function getCategoryVisual(category, type = 'expense') {
   const key = String(category || '').trim().toLowerCase();
 
   if (type === 'transfer') {
-    return { Icon: ICON_BY_TYPE.transfer, color: '#6366f1' };
+    return { Icon: ICON_BY_TYPE.transfer, color: '#0d9488' };
   }
 
   // Guard against an icon name that a future lucide version drops: an

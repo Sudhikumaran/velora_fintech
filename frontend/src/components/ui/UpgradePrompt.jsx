@@ -77,26 +77,32 @@ export function PlanActions({ className = '' }) {
 
 export function UpgradeCard({ title = 'Premium feature', blurb, preview, currency = 'INR' }) {
   return (
-    <div className="card p-5 space-y-3 border border-indigo-100 dark:border-indigo-900/40 relative overflow-hidden">
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-indigo-600">
+    <div className="card p-5 space-y-3 relative overflow-hidden">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: 'radial-gradient(400px 160px at 100% 0%, rgba(13,148,136,0.12), transparent 60%)' }}
+      />
+      <div className="relative z-10 flex items-center gap-2">
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-teal-600">
           <Sparkles size={15} className="text-white" />
         </div>
-        <p className="text-sm font-bold text-gray-900 dark:text-white">{title}</p>
+        <p className="text-sm font-bold text-slate-900 dark:text-white">{title}</p>
       </div>
       {preview != null && Number.isFinite(Number(preview)) && (
-        <div className="relative">
-          <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400 num-lg blur-[6px] select-none pointer-events-none">
+        <div className="relative z-10">
+          <p className="text-3xl font-bold text-teal-700 dark:text-teal-300 num-lg blur-[6px] select-none pointer-events-none">
             {new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(Number(preview))}
           </p>
-          <p className="absolute inset-0 flex items-center text-xs font-semibold text-gray-500 dark:text-gray-400">
+          <p className="absolute inset-0 flex items-center text-xs font-semibold text-slate-500 dark:text-slate-400">
             Unlock to see net worth
           </p>
         </div>
       )}
-      <p className="text-sm text-gray-500">{blurb || 'Included with Premium. Core tracking stays free.'}</p>
-      <PlanActions />
-      <Link to="/settings" className="text-xs font-semibold text-indigo-600">Compare plans in Settings</Link>
+      <p className="relative z-10 text-sm text-slate-500">{blurb || 'Included with Premium. Core tracking stays free.'}</p>
+      <div className="relative z-10">
+        <PlanActions />
+      </div>
+      <Link to="/settings" className="relative z-10 text-xs font-semibold text-teal-700 dark:text-teal-300">Compare plans in Settings</Link>
     </div>
   );
 }
@@ -116,7 +122,7 @@ export function PlanCompare() {
           ))}
         </ul>
       </div>
-      <div className="p-5 rounded-2xl space-y-3" style={{ background: 'linear-gradient(180deg, rgba(99,102,241,0.12), transparent)' }}>
+      <div className="p-5 rounded-2xl space-y-3" style={{ background: 'linear-gradient(180deg, rgba(13,148,136,0.12), transparent)' }}>
         <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wide">Premium</p>
         <p className="text-2xl font-bold text-gray-900 dark:text-white">{PREMIUM_PRICE}</p>
         <ul className="space-y-2">

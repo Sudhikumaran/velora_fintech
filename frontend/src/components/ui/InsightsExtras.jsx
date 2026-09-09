@@ -53,7 +53,7 @@ export default function InsightsExtras() {
               <XAxis dataKey="month" hide />
               <YAxis hide />
               <Tooltip formatter={(v) => formatCurrency(v, currency)} />
-              <Area type="monotone" dataKey="netWorth" stroke="#6366f1" fill="#6366f133" strokeWidth={2} />
+              <Area type="monotone" dataKey="netWorth" stroke="#0d9488" fill="#0d948833" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         )}

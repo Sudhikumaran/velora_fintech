@@ -16,7 +16,7 @@ import Badge from '../components/ui/Badge';
 import { SkeletonGrid } from '../components/ui/Skeleton';
 import Sparkline from '../components/ui/Sparkline';
 
-const getDefaultForm = (userCurrency = 'INR') => ({ name: '', type: 'bank', balance: '', currency: userCurrency, color: '#6366f1', description: '', creditLimit: '', upiId: '' });
+const getDefaultForm = (userCurrency = 'INR') => ({ name: '', type: 'bank', balance: '', currency: userCurrency, color: '#0d9488', description: '', creditLimit: '', upiId: '' });
 
 function AccountForm({ form, setForm, onSubmit, isEdit }) {
   return (
@@ -234,7 +234,7 @@ export default function Accounts() {
                   {Array.isArray(sparklines[account._id]) && sparklines[account._id].length > 1 && (
                     <Sparkline
                       data={sparklines[account._id]}
-                      color={account.color || '#6366f1'}
+                      color={account.color || '#0d9488'}
                       width={96}
                       height={32}
                       className="shrink-0 opacity-90"

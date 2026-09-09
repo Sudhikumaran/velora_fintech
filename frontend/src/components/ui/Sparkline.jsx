@@ -3,7 +3,7 @@ export default function Sparkline({
   data = [],
   width = 120,
   height = 36,
-  color = '#6366f1',
+  color = '#0d9488',
   className = '',
 }) {
   const values = (data || []).map(Number).filter((n) => Number.isFinite(n));

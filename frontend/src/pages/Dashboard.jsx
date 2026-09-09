@@ -79,42 +79,56 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Hero greeting */}
+      {/* Hero */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
+        className="relative overflow-hidden card p-5 sm:p-6"
       >
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            {greeting}, {user?.name?.split(' ')[0]} 👋
-          </h1>
-          <p className="text-sm text-gray-400 mt-0.5">Here's your financial snapshot for today.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <VoiceAddButton className="btn-secondary text-xs" />
-          <Link to="/transactions?add=1" className="btn-primary text-xs inline-flex">
-            <Plus size={14} /> Add Transaction
-          </Link>
+        <div
+          className="pointer-events-none absolute inset-0 opacity-90"
+          style={{
+            background:
+              'radial-gradient(700px 240px at 100% 0%, rgba(13,148,136,0.14), transparent 55%), radial-gradient(500px 200px at 0% 100%, rgba(15,23,42,0.04), transparent 50%)',
+          }}
+        />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-teal-700 dark:text-teal-300 mb-1.5">
+              {greeting}
+            </p>
+            <h1 className="text-[26px] sm:text-[28px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">
+              {user?.name?.split(' ')[0]}
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+              Your financial snapshot for today.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <VoiceAddButton className="btn-secondary text-xs" />
+            <Link to="/transactions?add=1" className="btn-primary text-xs inline-flex">
+              <Plus size={14} /> Add Transaction
+            </Link>
+          </div>
         </div>
       </motion.div>
 
       {isTrial && (
-        <div className="card p-4 flex items-center justify-between gap-3">
-          <p className="text-sm text-gray-700 dark:text-gray-300">
+        <div className="card p-4 flex items-center justify-between gap-3 border-teal-200/60 dark:border-teal-800/40">
+          <p className="text-sm text-slate-700 dark:text-slate-300">
             Premium trial · {daysLeft} day{daysLeft === 1 ? '' : 's'} left. Capture, net worth extras, household, and CA export are included.
           </p>
-          <Link to="/settings" className="text-sm font-semibold text-indigo-600 shrink-0">Plans</Link>
+          <Link to="/settings" className="text-sm font-semibold text-teal-700 dark:text-teal-300 shrink-0">Plans</Link>
         </div>
       )}
 
       {waiting > 0 && (
-        <Link to="/payments" className="card p-4 flex items-center justify-between border-indigo-200 dark:border-indigo-800">
+        <Link to="/payments" className="card p-4 flex items-center justify-between border-teal-200 dark:border-teal-800/50 hover:border-teal-400 transition-colors">
           <div>
-            <p className="font-semibold text-gray-900 dark:text-white">{waiting} payment{waiting === 1 ? '' : 's'} waiting</p>
-            <p className="text-sm text-gray-500">Pick a category and save — amount and date are already filled.</p>
+            <p className="font-semibold text-slate-900 dark:text-white">{waiting} payment{waiting === 1 ? '' : 's'} waiting</p>
+            <p className="text-sm text-slate-500">Pick a category and save — amount and date are already filled.</p>
           </div>
-          <span className="text-indigo-600 text-sm font-semibold">Open inbox</span>
+          <span className="text-teal-700 dark:text-teal-300 text-sm font-semibold">Open inbox</span>
         </Link>
       )}
 
@@ -236,7 +250,7 @@ export default function Dashboard() {
             className="card p-5"
           >
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Net Worth</p>
-            <p className="text-3xl font-bold tracking-tight mb-4" style={{ color: netWorth.netWorth >= 0 ? '#6366f1' : '#ef4444' }}>
+            <p className="text-3xl font-bold tracking-tight mb-4" style={{ color: netWorth.netWorth >= 0 ? '#0d9488' : '#ef4444' }}>
               {formatCurrency(netWorth.netWorth, user?.currency)}
             </p>
             <div className="space-y-2">
@@ -269,7 +283,7 @@ export default function Dashboard() {
                   <motion.div
                     initial={{ width: 0 }} animate={{ width: `${Math.min(100, (netWorth.assets / (netWorth.assets + netWorth.liabilities)) * 100)}%` }}
                     transition={{ duration: 1, delay: 0.5 }}
-                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                    className="h-full rounded-full bg-teal-500"
                   />
                 )}
               </div>
@@ -295,7 +309,7 @@ export default function Dashboard() {
           className={`card p-5 ${!isPremium || netWorth ? 'lg:col-span-2' : 'lg:col-span-3'}`}
         >
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+            <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#0d9488,#0f766e)' }}>
               <Lightbulb size={14} className="text-white" />
             </div>
             <p className="text-sm font-bold text-gray-900 dark:text-white">Financial Insights</p>

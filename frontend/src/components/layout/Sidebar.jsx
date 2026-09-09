@@ -56,10 +56,10 @@ function NavItem({ to, icon: Icon, label, collapsed, onClick, premium }) {
       onClick={onClick}
       title={collapsed ? label : undefined}
       className={({ isActive }) =>
-        `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-150 group relative
+        `flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors duration-150 group relative
         ${isActive
-          ? 'text-indigo-600 dark:text-indigo-400 font-semibold'
-          : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/70 dark:hover:bg-gray-800/60 font-medium'
+          ? 'text-teal-800 dark:text-teal-300 font-semibold'
+          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.05] font-medium'
         }
         ${collapsed ? 'justify-center' : ''}`
       }
@@ -69,20 +69,23 @@ function NavItem({ to, icon: Icon, label, collapsed, onClick, premium }) {
           {isActive && (
             <motion.div
               layoutId="nav-active"
-              className="absolute inset-0 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg"
+              className="absolute inset-0 rounded-xl bg-teal-500/10 dark:bg-teal-400/10"
               transition={{ type: 'spring', stiffness: 600, damping: 44, mass: 0.5 }}
             />
           )}
+          {isActive && (
+            <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-teal-600 dark:bg-teal-400" />
+          )}
           <span className="shrink-0 relative z-10">
-            <Icon size={18} />
+            <Icon size={18} strokeWidth={isActive ? 2.25 : 1.75} />
           </span>
           {!collapsed && (
-            <span className="relative z-10 truncate flex-1">
-              {label}
-            </span>
+            <span className="relative z-10 truncate flex-1">{label}</span>
           )}
           {!collapsed && premium && !isPremiumUser && (
-            <span className="relative z-10 text-[10px] font-bold uppercase tracking-wide text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded-md">Pro</span>
+            <span className="relative z-10 text-[10px] font-bold uppercase tracking-wide text-teal-700 dark:text-teal-300 bg-teal-500/10 px-1.5 py-0.5 rounded-md">
+              Pro
+            </span>
           )}
         </>
       )}
@@ -100,33 +103,35 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
     navigate('/login');
   };
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ hideBrand }) => (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Logo */}
-      <div className={`flex items-center h-16 px-4 shrink-0 ${collapsed ? 'justify-center' : 'justify-between'}`}>
-        {!collapsed && (
-            <div className="flex items-center gap-2.5">
-              <BrandMark className="w-8 h-8" />
-              <span className="font-bold text-lg text-gray-900 dark:text-white tracking-tight">Velora</span>
+      {!hideBrand && (
+        <div className={`flex items-center h-[64px] px-4 shrink-0 ${collapsed ? 'justify-center' : 'justify-between'}`}>
+          {!collapsed ? (
+            <div className="flex items-center gap-2.5 min-w-0">
+              <BrandMark className="w-8 h-8" rounded="rounded-xl" />
+              <div className="min-w-0">
+                <p className="font-bold text-[15px] text-slate-900 dark:text-white tracking-tight leading-none">Velora</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 truncate">Finance</p>
+              </div>
             </div>
-        )}
-        {collapsed && (
-          <BrandMark className="w-8 h-8" />
-        )}
-        <button
-          onClick={onToggle}
-          className={`hidden lg:flex p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors ${collapsed ? 'rotate-180' : ''}`}
-        >
-          <ChevronLeft size={15} className="text-gray-400" />
-        </button>
-      </div>
+          ) : (
+            <BrandMark className="w-8 h-8" rounded="rounded-xl" />
+          )}
+          <button
+            onClick={onToggle}
+            className={`hidden lg:flex p-1.5 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] rounded-lg transition-colors ${collapsed ? 'rotate-180' : ''}`}
+          >
+            <ChevronLeft size={15} className="text-slate-400" />
+          </button>
+        </div>
+      )}
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 scrollbar-hide space-y-5">
+      <nav className="flex-1 overflow-y-auto py-2 px-2.5 scrollbar-hide space-y-5">
         {navGroups.map((group) => (
           <div key={group.label}>
             {!collapsed && (
-              <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 px-3 mb-1">
+              <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 px-3 mb-1.5 tracking-wide">
                 {group.label}
               </p>
             )}
@@ -139,31 +144,30 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         ))}
       </nav>
 
-      {/* Bottom */}
-      <div className="px-2 pb-3 pt-2 border-t border-gray-100 dark:border-gray-800 shrink-0 space-y-0.5">
+      <div className="px-2.5 pb-3 pt-2 border-t border-black/[0.06] dark:border-white/[0.06] shrink-0 space-y-0.5">
         <NavItem to="/settings" icon={Settings} label="Settings" collapsed={collapsed} onClick={onMobileClose} />
 
         {!collapsed && (
-          <div className="flex items-center gap-3 px-3 py-2.5 mt-1 rounded-lg bg-gray-50 dark:bg-gray-800/60">
+          <div className="flex items-center gap-3 px-3 py-2.5 mt-1 rounded-xl bg-black/[0.03] dark:bg-white/[0.04]">
             <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0">
               {user?.avatar ? (
                 <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-indigo-600 text-white text-sm font-semibold">
+                <div className="w-full h-full flex items-center justify-center bg-teal-600 text-white text-sm font-semibold">
                   {user?.name?.[0]?.toUpperCase()}
                 </div>
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight">{user?.name}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{isPremium ? 'Premium' : 'Free'} · {user?.currency}</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate leading-tight">{user?.name}</p>
+              <p className="text-xs text-slate-400 truncate">{isPremium ? 'Premium' : 'Free'} · {user?.currency}</p>
             </div>
           </div>
         )}
 
         <button
           onClick={handleLogout}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-colors duration-150 ${collapsed ? 'justify-center' : ''}`}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-colors duration-150 ${collapsed ? 'justify-center' : ''}`}
         >
           <LogOut size={17} className="shrink-0" />
           {!collapsed && <span>Log out</span>}
@@ -174,35 +178,35 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
 
   return (
     <>
-      {/* Desktop */}
-      <aside className={`hidden lg:flex flex-col bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 h-screen sticky top-0 transition-[width] duration-200 ease-out shrink-0 ${collapsed ? 'w-16' : 'w-60'}`}>
+      <aside
+        className={`hidden lg:flex flex-col bg-white/80 dark:bg-[#0f1419]/90 backdrop-blur-xl border-r border-black/[0.06] dark:border-white/[0.06] h-screen sticky top-0 transition-[width] duration-200 ease-out shrink-0 ${collapsed ? 'w-[72px]' : 'w-[248px]'}`}
+      >
         <SidebarContent />
       </aside>
 
-      {/* Mobile overlay */}
       <AnimatePresence>
         {mobileOpen && (
           <>
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={onMobileClose}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+              className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-40 lg:hidden"
             />
             <motion.aside
-              initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-              className="fixed top-0 left-0 h-full w-64 bg-white dark:bg-gray-900 z-50 lg:hidden border-r border-gray-100 dark:border-gray-800"
+              initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }}
+              transition={{ type: 'spring', damping: 32, stiffness: 320 }}
+              className="fixed top-0 left-0 h-full w-[280px] bg-white dark:bg-[#0f1419] z-50 lg:hidden border-r border-black/[0.06] dark:border-white/[0.06]"
             >
-              <div className="flex items-center justify-between h-16 px-4 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-between h-16 px-4 border-b border-black/[0.06] dark:border-white/[0.06]">
                 <div className="flex items-center gap-2.5">
-                  <BrandMark className="w-8 h-8" />
-                  <span className="font-bold text-lg text-gray-900 dark:text-white">Velora</span>
+                  <BrandMark className="w-8 h-8" rounded="rounded-xl" />
+                  <span className="font-bold text-lg text-slate-900 dark:text-white tracking-tight">Velora</span>
                 </div>
-                <button onClick={onMobileClose} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                  <X size={17} className="text-gray-500" />
+                <button onClick={onMobileClose} className="p-1.5 hover:bg-black/[0.04] rounded-lg">
+                  <X size={17} className="text-slate-500" />
                 </button>
               </div>
-              <div className="h-[calc(100%-4rem)]"><SidebarContent /></div>
+              <div className="h-[calc(100%-4rem)]"><SidebarContent hideBrand /></div>
             </motion.aside>
           </>
         )}

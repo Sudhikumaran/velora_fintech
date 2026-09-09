@@ -13,7 +13,7 @@ import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
 import { SkeletonGrid } from '../components/ui/Skeleton';
 
-const defaultForm = { name: '', amount: '', frequency: 'monthly', category: '', startDate: new Date().toISOString().split('T')[0], nextBillingDate: '', description: '', website: '', color: '#6366f1', account: '', autoPost: true };
+const defaultForm = { name: '', amount: '', frequency: 'monthly', category: '', startDate: new Date().toISOString().split('T')[0], nextBillingDate: '', description: '', website: '', color: '#0d9488', account: '', autoPost: true };
 
 function SubscriptionForm({ form, setForm, onSubmit, isEdit, accounts }) {
   return (

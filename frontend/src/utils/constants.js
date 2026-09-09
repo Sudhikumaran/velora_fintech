@@ -64,17 +64,17 @@ export const PLANNER_GIVE_CATEGORIES = [
 ];
 
 export const COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316',
-  '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6',
+  '#0d9488', '#14b8a6', '#0f766e', '#ef4444', '#f97316',
+  '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#64748b',
 ];
 
 export const CHART_COLORS = {
   income: '#22c55e',
   expense: '#ef4444',
-  transfer: '#6366f1',
+  transfer: '#0d9488',
   neutral: '#94a3b8',
-  primary: '#6366f1',
-  secondary: '#8b5cf6',
+  primary: '#0d9488',
+  secondary: '#0f766e',
 };
 
 export const CURRENCIES = [
@@ -92,9 +92,9 @@ export const CATEGORY_COLORS = {
   'Food & Dining': '#f97316',
   'Transportation': '#3b82f6',
   'Shopping': '#ec4899',
-  'Entertainment': '#8b5cf6',
+  'Entertainment': '#0f766e',
   'Healthcare': '#ef4444',
-  'Housing': '#6366f1',
+  'Housing': '#0d9488',
   'Utilities': '#eab308',
   'Education': '#14b8a6',
   'Travel': '#06b6d4',
@@ -102,5 +102,5 @@ export const CATEGORY_COLORS = {
   'Salary': '#22c55e',
   'Freelance': '#10b981',
   'Business': '#059669',
-  'Investment Returns': '#6366f1',
+  'Investment Returns': '#0d9488',
 };

@@ -18,7 +18,7 @@ import {
   legendProps, barCursor, lineCursor,
 } from '../utils/chartTheme';
 
-const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6'];
+const COLORS = ['#0d9488', '#0f766e', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6'];
 
 
 function toLocalDateInput(d) {
@@ -689,7 +689,7 @@ export default function Analytics() {
               <Legend {...legendProps} />
               <Bar dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]} />
               <Bar dataKey="expense" name="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} />
-              <Line type="monotone" dataKey="net" name="Net" stroke="#6366f1" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="net" name="Net" stroke="#0d9488" strokeWidth={2} dot={false} />
             </BarChart>
           </ResponsiveContainer>
         ) : (

@@ -122,7 +122,7 @@ export default function Onboarding({ onComplete }) {
         >
           {/* Icon */}
           <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${current.color} flex items-center justify-center mx-auto mb-6 shadow-lg`}
-            style={{ boxShadow: '0 8px 24px rgba(99,102,241,.25)' }}>
+            style={{ boxShadow: '0 8px 24px rgba(13,148,136,.25)' }}>
             <current.icon size={28} className="text-white" />
           </div>
 

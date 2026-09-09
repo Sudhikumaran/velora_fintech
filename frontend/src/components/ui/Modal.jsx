@@ -75,11 +75,11 @@ export default function Modal({ isOpen, onClose, title, children, footer, header
           <motion.div
             {...modalOverlay}
             onClick={onClose}
-            className="absolute inset-0 bg-gray-950/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm"
           />
           <motion.div
             {...modalPanel}
-            className={`relative w-full h-full sm:h-auto ${sizes[size]} bg-white dark:bg-gray-900 sm:rounded-2xl border-0 sm:border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col`}
+            className={`relative w-full h-full sm:h-auto ${sizes[size]} bg-white dark:bg-[#0f1419] sm:rounded-2xl border-0 sm:border border-black/[0.06] dark:border-white/[0.08] overflow-hidden flex flex-col`}
             style={{
               boxShadow: 'var(--shadow-lg)',
               maxHeight: keyboardInset ? `calc(100dvh - ${keyboardInset}px)` : '100dvh',

@@ -13,7 +13,7 @@ import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
 import { SkeletonGrid } from '../components/ui/Skeleton';
 
-const defaultForm = { name: '', targetAmount: '', currentAmount: '', deadline: '', category: '', description: '', color: '#6366f1', priority: 'medium' };
+const defaultForm = { name: '', targetAmount: '', currentAmount: '', deadline: '', category: '', description: '', color: '#0d9488', priority: 'medium' };
 const contribDefault = { amount: '', date: new Date().toISOString().split('T')[0], note: '' };
 
 function GoalForm({ form, setForm, onSubmit, isEdit }) {

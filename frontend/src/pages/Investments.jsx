@@ -26,10 +26,10 @@ const defaultForm = {
 
 const TYPE_META = {
   'digi-gold':   { icon: '🪙', color: '#f59e0b', bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-600',  label: 'Digi Gold' },
-  'stock':       { icon: '📈', color: '#6366f1', bg: 'bg-indigo-50 dark:bg-indigo-900/20', text: 'text-indigo-600', label: 'Stock' },
+  'stock':       { icon: '📈', color: '#0d9488', bg: 'bg-indigo-50 dark:bg-indigo-900/20', text: 'text-indigo-600', label: 'Stock' },
   'crypto':      { icon: '₿',  color: '#f97316', bg: 'bg-orange-50 dark:bg-orange-900/20', text: 'text-orange-600', label: 'Crypto' },
   'mutual-fund': { icon: '💼', color: '#3b82f6', bg: 'bg-blue-50 dark:bg-blue-900/20',    text: 'text-blue-600',   label: 'Mutual Fund' },
-  'etf':         { icon: '📊', color: '#8b5cf6', bg: 'bg-violet-50 dark:bg-violet-900/20', text: 'text-violet-600', label: 'ETF' },
+  'etf':         { icon: '📊', color: '#0f766e', bg: 'bg-violet-50 dark:bg-violet-900/20', text: 'text-violet-600', label: 'ETF' },
   'real-estate': { icon: '🏠', color: '#10b981', bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-600', label: 'Real Estate' },
   'bond':        { icon: '🏛️', color: '#14b8a6', bg: 'bg-teal-50 dark:bg-teal-900/20',    text: 'text-teal-600',   label: 'Bond' },
   'commodity':   { icon: '🛢️', color: '#ef4444', bg: 'bg-red-50 dark:bg-red-900/20',       text: 'text-red-600',    label: 'Commodity' },
@@ -234,8 +234,8 @@ function PriceHistoryModal({ investment, onClose, onUpdatePrice }) {
             <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor={isDigiGold ? '#f59e0b' : '#6366f1'} stopOpacity={0.18} />
-                  <stop offset="95%" stopColor={isDigiGold ? '#f59e0b' : '#6366f1'} stopOpacity={0} />
+                  <stop offset="5%"  stopColor={isDigiGold ? '#f59e0b' : '#0d9488'} stopOpacity={0.18} />
+                  <stop offset="95%" stopColor={isDigiGold ? '#f59e0b' : '#0d9488'} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,.05)" />
@@ -245,7 +245,7 @@ function PriceHistoryModal({ investment, onClose, onUpdatePrice }) {
                 formatter={(v) => [formatCurrency(v, user?.currency), 'Price']}
                 contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,.1)', fontSize: 12 }}
               />
-              <Area type="monotone" dataKey="price" stroke={isDigiGold ? '#f59e0b' : '#6366f1'} strokeWidth={2}
+              <Area type="monotone" dataKey="price" stroke={isDigiGold ? '#f59e0b' : '#0d9488'} strokeWidth={2}
                 fill="url(#goldGrad)" dot={false} activeDot={{ r: 4 }} />
             </AreaChart>
           </ResponsiveContainer>

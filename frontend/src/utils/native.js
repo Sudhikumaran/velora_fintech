@@ -39,7 +39,7 @@ export async function initNativeShell() {
 
   try {
     const { StatusBar, Style } = await import('@capacitor/status-bar');
-    await StatusBar.setBackgroundColor({ color: '#6366f1' });
+    await StatusBar.setBackgroundColor({ color: '#0d9488' });
     await StatusBar.setStyle({ style: Style.Light });
   } catch { /* web preview */ }
 

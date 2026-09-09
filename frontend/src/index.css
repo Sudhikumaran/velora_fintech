@@ -1,8 +1,54 @@
 @import "tailwindcss";
 @variant dark (&:where(.dark, .dark *));
 
+/*
+  Velora design system v2 — product UI, not marketing theatre.
+  Accent is teal-ink (not indigo/violet). Type is Plus Jakarta Sans.
+  Tailwind `indigo` / `violet` / `purple` utilities are remapped to the
+  teal scale so the whole app shifts without a thousand class edits.
+*/
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-indigo-50: #f0fdfa;
+  --color-indigo-100: #ccfbf1;
+  --color-indigo-200: #99f6e4;
+  --color-indigo-300: #5eead4;
+  --color-indigo-400: #2dd4bf;
+  --color-indigo-500: #14b8a6;
+  --color-indigo-600: #0d9488;
+  --color-indigo-700: #0f766e;
+  --color-indigo-800: #115e59;
+  --color-indigo-900: #134e4a;
+  --color-indigo-950: #042f2e;
+
+  --color-violet-50: #f0fdfa;
+  --color-violet-100: #ccfbf1;
+  --color-violet-200: #99f6e4;
+  --color-violet-300: #5eead4;
+  --color-violet-400: #2dd4bf;
+  --color-violet-500: #14b8a6;
+  --color-violet-600: #0d9488;
+  --color-violet-700: #0f766e;
+  --color-violet-800: #115e59;
+  --color-violet-900: #134e4a;
+  --color-violet-950: #042f2e;
+
+  --color-purple-50: #f0fdfa;
+  --color-purple-100: #ccfbf1;
+  --color-purple-200: #99f6e4;
+  --color-purple-300: #5eead4;
+  --color-purple-400: #2dd4bf;
+  --color-purple-500: #14b8a6;
+  --color-purple-600: #0d9488;
+  --color-purple-700: #0f766e;
+  --color-purple-800: #115e59;
+  --color-purple-900: #134e4a;
+  --color-purple-950: #042f2e;
+}
+
 @layer base {
-  /* Remove number input spinners globally */
   input[type='number']::-webkit-inner-spin-button,
   input[type='number']::-webkit-outer-spin-button {
     -webkit-appearance: none;
@@ -13,28 +59,50 @@
   }
 
   :root {
-    --sidebar-width: 240px;
-    --sidebar-collapsed: 64px;
+    --sidebar-width: 248px;
+    --sidebar-collapsed: 72px;
 
-    /* Motion. Short and flat — movement is a hint, not a performance. */
+    --accent: #0d9488;
+    --accent-hover: #0f766e;
+    --accent-soft: rgba(13, 148, 136, 0.12);
+    --accent-ink: #042f2e;
+
+    --surface: #ffffff;
+    --surface-muted: #f4f7f6;
+    --canvas: #eef2f1;
+    --ink: #0c1222;
+    --ink-muted: #5b6578;
+    --line: rgba(15, 23, 42, 0.08);
+
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
     --dur-fast: 120ms;
     --dur-base: 180ms;
-    --dur-slow: 260ms;
+    --dur-slow: 280ms;
 
-    /* Neutral layered shadows. Colored glows read as dated. */
-    --shadow-sm: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .04);
-    --shadow-md: 0 2px 4px rgba(16, 24, 40, .04), 0 4px 12px rgba(16, 24, 40, .06);
-    --shadow-lg: 0 8px 16px rgba(16, 24, 40, .06), 0 16px 40px rgba(16, 24, 40, .08);
-    --ring-focus: 0 0 0 3px rgba(99, 102, 241, .18);
+    --shadow-sm: 0 1px 2px rgba(12, 18, 34, 0.04);
+    --shadow-md: 0 4px 12px rgba(12, 18, 34, 0.06);
+    --shadow-lg: 0 12px 32px rgba(12, 18, 34, 0.08);
+    --ring-focus: 0 0 0 3px rgba(13, 148, 136, 0.22);
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
   }
 
   .dark {
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
-    --shadow-md: 0 2px 6px rgba(0, 0, 0, .35), 0 8px 20px rgba(0, 0, 0, .25);
-    --shadow-lg: 0 12px 32px rgba(0, 0, 0, .45);
-    --ring-focus: 0 0 0 3px rgba(129, 140, 248, .25);
+    --surface: #0f1419;
+    --surface-muted: #151b22;
+    --canvas: #080b10;
+    --ink: #f1f5f4;
+    --ink-muted: #94a3b0;
+    --line: rgba(255, 255, 255, 0.08);
+    --accent-soft: rgba(45, 212, 191, 0.12);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+    --ring-focus: 0 0 0 3px rgba(45, 212, 191, 0.28);
   }
 
   * {
@@ -48,15 +116,16 @@
   }
 
   body {
-    @apply bg-slate-50 text-gray-900 antialiased;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
     padding-top: env(safe-area-inset-top);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
     padding-bottom: env(safe-area-inset-bottom);
-    font-feature-settings: 'cv11', 'ss01';
+    font-feature-settings: "ss01", "cv11";
     font-optical-sizing: auto;
-    letter-spacing: -0.011em;
+    letter-spacing: -0.014em;
     -webkit-font-smoothing: antialiased;
     min-height: 100%;
     min-height: 100dvh;
@@ -64,20 +133,20 @@
     overscroll-behavior: none;
   }
 
-  /* Large text needs tighter tracking to stop it reading as loose and generic. */
   h1, h2, h3, h4, .text-2xl, .text-3xl, .text-4xl {
-    letter-spacing: -0.021em;
+    letter-spacing: -0.03em;
+    font-weight: 700;
   }
   .text-3xl, .text-4xl {
-    letter-spacing: -0.028em;
-  }
-
-  .dark body {
-    @apply bg-gray-950 text-gray-100;
+    letter-spacing: -0.035em;
   }
 
   ::selection {
-    @apply bg-indigo-100 text-indigo-900;
+    background: rgba(13, 148, 136, 0.2);
+    color: var(--accent-ink);
+  }
+  .dark ::selection {
+    color: #ecfdf8;
   }
 }
 
@@ -90,46 +159,81 @@
     display: none;
   }
 
+  /* ── App shell surfaces ── */
+  .app-canvas {
+    background:
+      radial-gradient(900px 420px at 0% -10%, rgba(13, 148, 136, 0.07), transparent 55%),
+      radial-gradient(700px 380px at 100% 0%, rgba(15, 23, 42, 0.04), transparent 50%),
+      var(--canvas);
+  }
+  .dark .app-canvas {
+    background:
+      radial-gradient(800px 400px at 0% -10%, rgba(45, 212, 191, 0.06), transparent 55%),
+      var(--canvas);
+  }
+
+  .page-shell {
+    max-width: 1200px;
+    margin-inline: auto;
+    width: 100%;
+  }
+
   /* ── Cards ── */
   .card {
-    @apply bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
   }
-  /* A one-pixel top highlight keeps dark surfaces from reading as flat blocks. */
   .dark .card {
-    box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, .04);
+    box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   .card-hover {
-    @apply bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
     transition: box-shadow var(--dur-base) var(--ease-out),
                 border-color var(--dur-base) var(--ease-out),
                 transform var(--dur-base) var(--ease-out);
   }
   .card-hover:hover {
-    @apply border-gray-200 dark:border-gray-700;
+    border-color: rgba(13, 148, 136, 0.28);
     box-shadow: var(--shadow-md);
     transform: translateY(-1px);
   }
 
   /* ── Buttons ── */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed select-none;
-    letter-spacing: -0.006em;
-    box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.12);
+    @apply inline-flex items-center justify-center gap-2 text-white text-sm font-semibold px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed select-none;
+    background: var(--accent);
+    border-radius: var(--radius-md);
+    letter-spacing: -0.01em;
+    box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  }
+  .btn-primary:hover {
+    background: var(--accent-hover);
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 select-none;
-    letter-spacing: -0.006em;
+    @apply inline-flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2.5 select-none;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    letter-spacing: -0.01em;
     box-shadow: var(--shadow-sm);
+  }
+  .btn-secondary:hover {
+    background: var(--surface-muted);
   }
 
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl select-none;
-    letter-spacing: -0.006em;
-    box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.12);
+    @apply inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-sm font-semibold px-4 py-2.5 select-none;
+    border-radius: var(--radius-md);
+    letter-spacing: -0.01em;
+    box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
   .btn-primary:focus-visible,
@@ -141,56 +245,67 @@
 
   /* ── Inputs ── */
   .input-field {
-    @apply w-full py-2.5 rounded-xl text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 outline-none;
-    @apply placeholder-gray-400 dark:placeholder-gray-500;
+    @apply w-full py-2.5 text-sm outline-none;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
     padding-left: 0.875rem;
     padding-right: 0.875rem;
     box-shadow: var(--shadow-sm);
     transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
   }
+  .input-field::placeholder {
+    color: var(--ink-muted);
+    opacity: 0.7;
+  }
   .input-field:hover:not(:focus) {
-    @apply border-gray-300 dark:border-gray-600;
+    border-color: rgba(13, 148, 136, 0.35);
   }
   .input-field:focus {
-    @apply border-indigo-500 dark:border-indigo-400;
+    border-color: var(--accent);
     box-shadow: var(--ring-focus);
   }
 
   select.input-field {
     @apply cursor-pointer;
   }
-
   textarea.input-field {
     @apply resize-none;
   }
 
-  /* ── Labels ── */
   .label {
-    @apply block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5;
+    @apply block text-xs font-semibold mb-1.5;
+    color: var(--ink-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
 
-  /* ── Badges ── */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2 py-0.5 text-xs font-medium;
+    border-radius: 999px;
   }
 
-  /* ── Page section titles ── */
   .section-title {
-    @apply text-base font-semibold text-gray-900 dark:text-white;
+    @apply text-base font-semibold;
+    color: var(--ink);
   }
 
-  /* ── Gradient text ── */
   .gradient-text {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    background-image: linear-gradient(135deg, #0d9488 0%, #115e59 100%);
   }
 
-  /* ── Stat change pills ── */
-  .change-up   { @apply inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 px-2 py-0.5 rounded-full; }
-  .change-down { @apply inline-flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 px-2 py-0.5 rounded-full; }
+  .change-up {
+    @apply inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 px-2 py-0.5;
+    border-radius: 999px;
+  }
+  .change-down {
+    @apply inline-flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 px-2 py-0.5;
+    border-radius: 999px;
+  }
 
-  /* ── Motion ──
-     Interactions move 1px, not 5. Depth and colour carry the feedback. */
+  /* ── Motion ── */
   .btn-primary, .btn-secondary, .btn-danger {
     position: relative;
     transition: transform var(--dur-fast) var(--ease-out),
@@ -217,19 +332,18 @@
     box-shadow: var(--shadow-lg);
   }
 
-  /* Rows tint and grow a left accent rather than sliding sideways. */
   .list-row {
     position: relative;
     transition: background-color var(--dur-fast) var(--ease-out);
   }
   .list-row::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 0;
     top: 0;
     bottom: 0;
     width: 2px;
-    background: #6366f1;
+    background: var(--accent);
     transform: scaleY(0);
     transform-origin: center;
     opacity: 0;
@@ -256,8 +370,8 @@
 
   .auth-mesh {
     background:
-      radial-gradient(800px 360px at 8% -8%, rgba(99,102,241,.07), transparent 55%),
-      radial-gradient(600px 300px at 108% 108%, rgba(99,102,241,.05), transparent 50%);
+      radial-gradient(800px 360px at 8% -8%, rgba(13, 148, 136, 0.08), transparent 55%),
+      radial-gradient(600px 300px at 108% 108%, rgba(15, 23, 42, 0.04), transparent 50%);
     animation: mesh-shift 28s ease-in-out infinite alternate;
   }
 
@@ -266,30 +380,19 @@
     font-style: normal;
   }
 
-  /* Density — comfortable is default; compact roughly doubles visible rows. */
-  .density-compact .tx-row {
-    @apply py-2;
-  }
-  .density-compact .tx-row-mobile {
-    @apply py-2;
-  }
-  .density-compact .tx-icon {
-    @apply w-7 h-7 rounded-lg;
-  }
-  .density-compact .day-header {
-    @apply py-1;
-  }
-  .density-compact .day-header p {
-    @apply text-[11px] font-medium;
-  }
+  .density-compact .tx-row { @apply py-2; }
+  .density-compact .tx-row-mobile { @apply py-2; }
+  .density-compact .tx-icon { @apply w-7 h-7 rounded-lg; }
+  .density-compact .day-header { @apply py-1; }
+  .density-compact .day-header p { @apply text-[11px] font-medium; }
 
   .shimmer {
-    background: linear-gradient(90deg, rgba(243,244,246,1) 0%, rgba(229,231,235,1) 40%, rgba(243,244,246,1) 80%);
+    background: linear-gradient(90deg, rgba(238, 242, 241, 1) 0%, rgba(220, 228, 226, 1) 40%, rgba(238, 242, 241, 1) 80%);
     background-size: 200% 100%;
     animation: shimmer 1.4s ease-in-out infinite;
   }
   .dark .shimmer {
-    background: linear-gradient(90deg, rgba(31,41,55,1) 0%, rgba(55,65,81,1) 40%, rgba(31,41,55,1) 80%);
+    background: linear-gradient(90deg, rgba(21, 27, 34, 1) 0%, rgba(36, 45, 55, 1) 40%, rgba(21, 27, 34, 1) 80%);
     background-size: 200% 100%;
   }
 
@@ -309,15 +412,33 @@
   .stagger-in > *:nth-child(7) { animation-delay: 0.18s; }
   .stagger-in > *:nth-child(8) { animation-delay: 0.21s; }
 
-  /* ── Numerals ──
-     Money should line up column to column and read tight, not airy. */
   .num {
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
   }
   .num-lg {
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.035em;
+  }
+
+  /* Settings index rail */
+  .settings-rail {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+  }
+  .settings-rail-item {
+    @apply flex items-center gap-2.5 w-full px-3 py-2.5 text-sm font-medium transition-colors;
+    border-radius: var(--radius-md);
+    color: var(--ink-muted);
+  }
+  .settings-rail-item:hover {
+    background: var(--surface-muted);
+    color: var(--ink);
+  }
+  .settings-rail-item.is-active {
+    background: var(--accent-soft);
+    color: var(--accent-hover);
   }
 }
 

@@ -6,8 +6,8 @@ const AXIS_TICK = { fontSize: 11, fill: '#94a3b8' };
 const GRID_STROKE = 'rgba(148, 163, 184, 0.22)';
 
 export const CHART_PALETTE = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#f97316',
-  '#eab308', '#22c55e', '#14b8a6', '#3b82f6',
+  '#0d9488', '#14b8a6', '#0f766e', '#f97316',
+  '#eab308', '#22c55e', '#06b6d4', '#3b82f6',
 ];
 
 export const gridProps = {

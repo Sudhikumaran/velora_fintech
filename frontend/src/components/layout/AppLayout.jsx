@@ -71,7 +71,7 @@ export default function AppLayout() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-gray-950 overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <div className="flex h-screen app-canvas overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <Sidebar
         collapsed={collapsed}
         onToggle={() => setCollapsed((c) => !c)}
@@ -84,13 +84,12 @@ export default function AppLayout() {
           theme={theme}
           onToggleTheme={toggleTheme}
         />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6 relative pb-24 lg:pb-6">
-          <div className="pointer-events-none absolute inset-0 auth-mesh opacity-60 dark:opacity-30" />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-8 relative pb-24 lg:pb-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
               {...pageTransition}
-              className="relative z-10"
+              className="relative z-10 page-shell"
             >
               <Outlet />
             </motion.div>

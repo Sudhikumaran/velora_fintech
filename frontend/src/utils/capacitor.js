@@ -18,7 +18,7 @@ export async function initCapacitor() {
   try {
     const prefersDark = localStorage.getItem('velora_theme') === 'dark';
     await StatusBar.setStyle({ style: prefersDark ? Style.Dark : Style.Light });
-    await StatusBar.setBackgroundColor({ color: prefersDark ? '#030712' : '#4f46e5' });
+    await StatusBar.setBackgroundColor({ color: prefersDark ? '#030712' : '#0f766e' });
   } catch {
     /* StatusBar not available on all platforms */
   }

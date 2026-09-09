@@ -82,13 +82,14 @@ export default function App() {
           duration: 3000,
           style: {
             background: '#fff',
-            color: '#111827',
+            color: '#0c1222',
             borderRadius: '12px',
-            border: '1px solid #f3f4f6',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            border: '1px solid rgba(15, 23, 42, 0.08)',
+            boxShadow: '0 8px 24px rgba(12, 18, 34, 0.08)',
             fontSize: '14px',
+            fontFamily: '"Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif',
           },
-          success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } },
+          success: { iconTheme: { primary: '#0d9488', secondary: '#fff' } },
           error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
         }}
       />
