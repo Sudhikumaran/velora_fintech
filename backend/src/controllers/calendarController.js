@@ -1,6 +1,6 @@
 import CalendarEvent from '../models/CalendarEvent.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
-import { sendCalendarEventCreated, isEmailConfigured } from '../services/emailService.js';
+import { sendCalendarEventCreated } from '../services/emailService.js';
 
 const EDITABLE_FIELDS = [
   'title',
@@ -20,10 +20,13 @@ const HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/;
 function normalizeNotifyTime(value) {
   if (value == null || value === '') return '09:00';
   const raw = String(value).trim();
+  // Browsers sometimes send HH:mm:ss
+  const withSeconds = raw.match(/^(\d{1,2}):([0-5]\d)(?::[0-5]\d)?$/);
+  if (withSeconds) {
+    const hh = String(Number(withSeconds[1])).padStart(2, '0');
+    return `${hh}:${withSeconds[2]}`;
+  }
   if (HHMM.test(raw)) return raw;
-  // Accept "9:30" → "09:30"
-  const m = raw.match(/^(\d{1,2}):([0-5]\d)$/);
-  if (m) return `${String(Number(m[1])).padStart(2, '0')}:${m[2]}`;
   return '09:00';
 }
 
@@ -39,35 +42,6 @@ function pickEditable(body = {}) {
     updates.sendEmailReminder = Boolean(updates.sendEmailReminder);
   }
   return updates;
-}
-
-async function sendCreateConfirmation(user, event) {
-  if (!isEmailConfigured()) {
-    console.warn('[CalendarMail] Create email skipped — SMTP_HOST/SMTP_USER/SMTP_PASS not set.');
-    return { sent: false, reason: 'smtp_not_configured' };
-  }
-  if (!user?.email) {
-    console.warn('[CalendarMail] Create email skipped — user has no email.');
-    return { sent: false, reason: 'no_user_email' };
-  }
-
-  try {
-    const ok = await sendCalendarEventCreated({
-      to: user.email,
-      userName: user.name,
-      currency: user.currency || 'INR',
-      timeZone: user.timezone || 'Asia/Kolkata',
-      event,
-    });
-    if (ok) {
-      console.log(`[CalendarMail] Create confirmation sent to ${user.email}`);
-      return { sent: true, reason: 'sent' };
-    }
-    return { sent: false, reason: 'smtp_not_configured' };
-  } catch (err) {
-    console.error('[CalendarMail] Create email failed:', err.message);
-    return { sent: false, reason: 'send_failed' };
-  }
 }
 
 export const getEvents = async (req, res, next) => {
@@ -93,15 +67,37 @@ export const createEvent = async (req, res, next) => {
     if (payload.sendEmailReminder === undefined) payload.sendEmailReminder = true;
 
     const event = await CalendarEvent.create({ ...payload, user: req.user._id });
-    const email = await sendCreateConfirmation(req.user, event);
+
+    // Same pattern as debt repayment receipt: await SMTP before responding (required on Vercel).
+    let emailed = false;
+    let emailReason = 'skipped';
+    if (req.user?.email) {
+      try {
+        emailed = await sendCalendarEventCreated({
+          to: req.user.email,
+          userName: req.user.name,
+          currency: req.user.currency || 'INR',
+          timeZone: req.user.timezone || 'Asia/Kolkata',
+          event,
+        });
+        emailReason = emailed ? 'sent' : 'smtp_not_configured';
+      } catch (mailError) {
+        console.error('[CalendarMail] Create email failed:', mailError.message);
+        emailReason = 'send_failed';
+      }
+    } else {
+      emailReason = 'no_user_email';
+      console.warn('[CalendarMail] Create email skipped — user has no email.');
+    }
 
     return res.status(201).json({
       success: true,
-      message: email.sent
-        ? 'Event created. Confirmation email sent.'
+      message: emailed
+        ? 'Event created. A confirmation email was sent.'
         : 'Event created.',
       data: event,
-      email,
+      email: { sent: emailed, reason: emailReason },
+      emailed,
     });
   } catch (error) {
     next(error);

@@ -2,24 +2,37 @@ import nodemailer from 'nodemailer';
 
 let transporter = null;
 
+function smtpAuth() {
+  const host = (process.env.SMTP_HOST || '').trim();
+  const user = (process.env.SMTP_USER || '').trim();
+  // Gmail app passwords are often pasted with spaces — strip them.
+  const pass = (process.env.SMTP_PASS || '').replace(/\s+/g, '');
+  return { host, user, pass };
+}
+
 function getTransporter() {
   if (transporter) return transporter;
 
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
+  const { host, user, pass } = smtpAuth();
+  if (!host || !user || !pass) return null;
 
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
   transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: parseInt(SMTP_PORT || '587', 10),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    host,
+    port,
+    secure: process.env.SMTP_SECURE === 'true' || port === 465,
+    auth: { user, pass },
+    connectionTimeout: 20_000,
+    greetingTimeout: 15_000,
+    socketTimeout: 25_000,
   });
 
   return transporter;
 }
 
 export function isEmailConfigured() {
-  return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  const { host, user, pass } = smtpAuth();
+  return !!(host && user && pass);
 }
 
 export async function sendDebtDueReminder({ to, userName, debts }) {
@@ -479,10 +492,11 @@ export async function sendCalendarEventCreated({
   await mailer.sendMail({
     from,
     to,
-    subject: `Velora: ${typeLabel} “${event.title}” on ${dateLabel}`,
+    subject: `Velora: ${typeLabel} "${event.title}" on ${dateLabel}`,
     html,
   });
 
+  console.log(`[Email] Calendar create confirmation queued/sent to ${to}`);
   return true;
 }
 

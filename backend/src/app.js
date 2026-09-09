@@ -28,6 +28,7 @@ import searchRoutes from './routes/searchRoutes.js';
 import jobRoutes from './routes/jobRoutes.js';
 import extrasRoutes from './routes/extrasRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import { isEmailConfigured } from './services/emailService.js';
 
 const app = express();
 
@@ -132,7 +133,12 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/extras', extrasRoutes);
 
 app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'Velora API is running.', timestamp: new Date() });
+  res.json({
+    success: true,
+    message: 'Velora API is running.',
+    timestamp: new Date(),
+    emailConfigured: isEmailConfigured(),
+  });
 });
 
 // API-only: frontend is served separately (Vercel)

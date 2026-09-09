@@ -16,16 +16,18 @@ export const useCalendarStore = create((set, get) => ({
 
   createEvent: async (payload) => {
     try {
-      const { data } = await api.post('/calendar-events', payload);
+      const { data } = await api.post('/calendar-events', payload, { timeout: 45000 });
       set((s) => ({ events: [...s.events, data.data] }));
-      if (data.email?.sent) {
+      if (data.email?.sent || data.emailed) {
         toast.success('Event added — confirmation email sent');
       } else if (data.email?.reason === 'smtp_not_configured') {
-        toast.success('Event added (email off — set SMTP in backend .env)');
+        toast.error('Event saved, but email is off on the server (SMTP).');
       } else if (data.email?.reason === 'send_failed') {
-        toast.success('Event added — email failed to send');
+        toast.error('Event saved, but confirmation email failed. Check spam or SMTP.');
+      } else if (data.email?.reason === 'no_user_email') {
+        toast.error('Event saved, but your account has no email address.');
       } else {
-        toast.success('Event added!');
+        toast.success(data.message || 'Event added!');
       }
       return data.data;
     } catch {
