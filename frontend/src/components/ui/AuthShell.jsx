@@ -8,14 +8,14 @@ export default function AuthShell({ headline, subhead, features = [], stats = []
     <div className="min-h-screen flex" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div
         className="hidden lg:flex flex-col justify-between w-[420px] shrink-0 p-10 relative overflow-hidden"
-        style={{ background: 'linear-gradient(145deg,#6366f1 0%,#7c3aed 60%,#4f46e5 100%)' }}
+        style={{ background: 'linear-gradient(160deg,#4f46e5 0%,#6366f1 55%,#4338ca 100%)' }}
       >
         <FloatingOrbs />
 
         <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: easeOut }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, ease: easeOut }}
           className="relative z-10 flex items-center gap-3"
         >
           <BrandMark className="w-10 h-10" rounded="rounded-2xl" />
@@ -23,7 +23,7 @@ export default function AuthShell({ headline, subhead, features = [], stats = []
         </motion.div>
 
         <div className="relative z-10 space-y-6">
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5, ease: easeOut }}>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08, duration: 0.28, ease: easeOut }}>
             <h2 className="text-3xl font-bold text-white leading-snug">{headline}</h2>
             <p className="text-indigo-200 mt-3 text-sm leading-relaxed">{subhead}</p>
           </motion.div>
@@ -73,9 +73,9 @@ export default function AuthShell({ headline, subhead, features = [], stats = []
       <div className="flex-1 flex items-center justify-center p-6 bg-slate-50 dark:bg-gray-950 relative overflow-hidden">
         <div className="auth-mesh pointer-events-none absolute inset-0" />
         <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.5, ease: easeOut }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28, ease: easeOut }}
           className="w-full max-w-sm relative z-10"
         >
           {children}

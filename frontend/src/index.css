@@ -256,9 +256,31 @@
 
   .auth-mesh {
     background:
-      radial-gradient(900px 400px at 10% -10%, rgba(99,102,241,.12), transparent 55%),
-      radial-gradient(700px 360px at 110% 110%, rgba(139,92,246,.1), transparent 50%);
-    animation: mesh-shift 16s ease-in-out infinite alternate;
+      radial-gradient(800px 360px at 8% -8%, rgba(99,102,241,.07), transparent 55%),
+      radial-gradient(600px 300px at 108% 108%, rgba(99,102,241,.05), transparent 50%);
+    animation: mesh-shift 28s ease-in-out infinite alternate;
+  }
+
+  .search-hit {
+    @apply bg-amber-100 text-amber-900 dark:bg-amber-400/20 dark:text-amber-200 rounded-sm px-0.5;
+    font-style: normal;
+  }
+
+  /* Density — comfortable is default; compact roughly doubles visible rows. */
+  .density-compact .tx-row {
+    @apply py-2;
+  }
+  .density-compact .tx-row-mobile {
+    @apply py-2;
+  }
+  .density-compact .tx-icon {
+    @apply w-7 h-7 rounded-lg;
+  }
+  .density-compact .day-header {
+    @apply py-1;
+  }
+  .density-compact .day-header p {
+    @apply text-[11px] font-medium;
   }
 
   .shimmer {

@@ -14,6 +14,7 @@ import EmptyState from '../components/ui/EmptyState';
 import PageHeader from '../components/ui/PageHeader';
 import Badge from '../components/ui/Badge';
 import { SkeletonGrid } from '../components/ui/Skeleton';
+import Sparkline from '../components/ui/Sparkline';
 
 const getDefaultForm = (userCurrency = 'INR') => ({ name: '', type: 'bank', balance: '', currency: userCurrency, color: '#6366f1', description: '', creditLimit: '', upiId: '' });
 
@@ -86,7 +87,7 @@ function AccountForm({ form, setForm, onSubmit, isEdit }) {
 const accountTypeIcons = { bank: '🏦', cash: '💵', credit: '💳', savings: '🏧', investment: '📈', wallet: '👛', other: '💰' };
 
 export default function Accounts() {
-  const { accounts, fetchAccounts, createAccount, updateAccount, deleteAccount, archiveAccount, isLoading } = useAccountStore();
+  const { accounts, sparklines, fetchAccounts, fetchSparklines, createAccount, updateAccount, deleteAccount, archiveAccount, isLoading } = useAccountStore();
   const { investments, fetchInvestments } = useInvestmentStore();
   const setLedgerFilters = useLedgerStore((s) => s.setFilters);
   const navigate = useNavigate();
@@ -97,7 +98,11 @@ export default function Accounts() {
   const [form, setForm] = useState(() => getDefaultForm(user?.currency));
   const [showArchived, setShowArchived] = useState(false);
 
-  useEffect(() => { fetchAccounts(showArchived); fetchInvestments(); }, [showArchived]);
+  useEffect(() => {
+    fetchAccounts(showArchived);
+    fetchInvestments();
+    fetchSparklines(30);
+  }, [showArchived]);
 
   const openCreate = () => { setForm(getDefaultForm(user?.currency)); setEditAccount(null); setModalOpen(true); };
   const openEdit = (account) => {
@@ -222,10 +227,19 @@ export default function Accounts() {
                   </div>
                 </div>
 
-                <div className="mb-1">
-                  <p className="text-2xl font-bold" style={{ color: account.balance < 0 ? '#ef4444' : account.color }}>
+                <div className="mb-1 flex items-end justify-between gap-3">
+                  <p className="text-2xl font-bold num-lg" style={{ color: account.balance < 0 ? '#ef4444' : account.color }}>
                     {formatCurrency(account.balance, user?.currency)}
                   </p>
+                  {Array.isArray(sparklines[account._id]) && sparklines[account._id].length > 1 && (
+                    <Sparkline
+                      data={sparklines[account._id]}
+                      color={account.color || '#6366f1'}
+                      width={96}
+                      height={32}
+                      className="shrink-0 opacity-90"
+                    />
+                  )}
                 </div>
 
                 {account.type === 'credit' && account.creditLimit > 0 && (

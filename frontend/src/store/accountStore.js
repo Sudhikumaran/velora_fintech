@@ -29,6 +29,16 @@ export const useAccountStore = create((set, get) => ({
   accounts: [],
   isLoading: false,
 
+  sparklines: {},
+  fetchSparklines: async (days = 30) => {
+    try {
+      const { data } = await api.get('/accounts/sparklines', { params: { days } });
+      set({ sparklines: data.data || {} });
+    } catch (error) {
+      /* sparklines are decorative — silence failures */
+    }
+  },
+
   fetchAccounts: async (includeArchived = false) => {
     const hasData = get().accounts.length > 0;
     if (!hasData) set({ isLoading: true });

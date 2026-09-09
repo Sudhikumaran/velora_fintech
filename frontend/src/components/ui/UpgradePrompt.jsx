@@ -75,15 +75,25 @@ export function PlanActions({ className = '' }) {
   );
 }
 
-export function UpgradeCard({ title = 'Premium feature', blurb }) {
+export function UpgradeCard({ title = 'Premium feature', blurb, preview, currency = 'INR' }) {
   return (
-    <div className="card p-5 space-y-3 border border-indigo-100 dark:border-indigo-900/40">
+    <div className="card p-5 space-y-3 border border-indigo-100 dark:border-indigo-900/40 relative overflow-hidden">
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-indigo-600">
           <Sparkles size={15} className="text-white" />
         </div>
         <p className="text-sm font-bold text-gray-900 dark:text-white">{title}</p>
       </div>
+      {preview != null && Number.isFinite(Number(preview)) && (
+        <div className="relative">
+          <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400 num-lg blur-[6px] select-none pointer-events-none">
+            {new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(Number(preview))}
+          </p>
+          <p className="absolute inset-0 flex items-center text-xs font-semibold text-gray-500 dark:text-gray-400">
+            Unlock to see net worth
+          </p>
+        </div>
+      )}
       <p className="text-sm text-gray-500">{blurb || 'Included with Premium. Core tracking stays free.'}</p>
       <PlanActions />
       <Link to="/settings" className="text-xs font-semibold text-indigo-600">Compare plans in Settings</Link>

@@ -96,3 +96,78 @@ export const getAccountById = async (req, res, next) => {
     next(error);
   }
 };
+
+/** Last N days of end-of-day balances per account, for card sparklines. */
+export const getAccountSparklines = async (req, res, next) => {
+  try {
+    const days = Math.min(60, Math.max(7, parseInt(req.query.days, 10) || 30));
+    const userId = req.user._id;
+    const accounts = await Account.find({ user: userId, isArchived: false }).select('_id balance');
+    if (!accounts.length) return successResponse(res, {}, 'No accounts.');
+
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    since.setDate(since.getDate() - (days - 1));
+
+    const ids = accounts.map((a) => a._id);
+    const txs = await Transaction.find({
+      user: userId,
+      isArchived: false,
+      date: { $gte: since },
+      $or: [{ account: { $in: ids } }, { toAccount: { $in: ids } }],
+    })
+      .select('account toAccount type amount date')
+      .sort({ date: -1, createdAt: -1 })
+      .lean();
+
+    const dayKey = (d) => {
+      const x = new Date(d);
+      return `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
+    };
+
+    // Reverse a txn's effect so we can walk from today's balance back in time.
+    const reverseDelta = (tx, accountId) => {
+      const amt = Number(tx.amount) || 0;
+      const from = String(tx.account);
+      const to = tx.toAccount ? String(tx.toAccount) : '';
+      const id = String(accountId);
+      if (tx.type === 'income' && from === id) return -amt;
+      if (tx.type === 'expense' && from === id) return amt;
+      if (tx.type === 'transfer') {
+        if (from === id) return amt;
+        if (to === id) return -amt;
+      }
+      return 0;
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const byAccount = {};
+    for (const a of accounts) {
+      const id = String(a._id);
+      const txsFor = txs.filter(
+        (t) => String(t.account) === id || (t.toAccount && String(t.toAccount) === id)
+      );
+      let running = Number(a.balance) || 0;
+      let ptr = 0;
+      const series = new Array(days);
+
+      for (let offset = 0; offset < days; offset += 1) {
+        const day = new Date(today);
+        day.setDate(today.getDate() - offset);
+        series[days - 1 - offset] = running;
+        const key = dayKey(day);
+        while (ptr < txsFor.length && dayKey(txsFor[ptr].date) === key) {
+          running += reverseDelta(txsFor[ptr], id);
+          ptr += 1;
+        }
+      }
+      byAccount[id] = series;
+    }
+
+    successResponse(res, byAccount, 'Sparklines fetched.');
+  } catch (error) {
+    next(error);
+  }
+};

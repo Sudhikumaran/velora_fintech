@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
@@ -27,11 +27,25 @@ const PIE_COLORS = CHART_PALETTE;
 
 export default function Dashboard() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const { isPremium, isTrial, daysLeft } = usePlan();
   const waiting = usePaymentReviewStore((s) => s.queue.length);
   const { dashboard, monthlyTrend, spendingByCategory, netWorth, fetchDashboard, fetchMonthlyTrend, fetchSpendingByCategory, fetchNetWorth } = useAnalyticsStore();
   const currSymbol = user?.currency === 'INR' ? '₹' : user?.currency === 'EUR' ? '€' : user?.currency === 'GBP' ? '£' : '$';
   const fmtK = (v) => `${currSymbol}${(v / 1000).toFixed(0)}k`;
+
+  const trendWithGhost = useMemo(() => (
+    (monthlyTrend || []).map((row, i, arr) => ({
+      ...row,
+      prevIncome: i > 0 ? arr[i - 1].income : undefined,
+      prevExpense: i > 0 ? arr[i - 1].expense : undefined,
+    }))
+  ), [monthlyTrend]);
+
+  const openCategory = (category) => {
+    if (!category) return;
+    navigate(`/transactions?type=expense&category=${encodeURIComponent(category)}`);
+  };
 
   useEffect(() => {
     fetchDashboard();
@@ -123,14 +137,14 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-5">
             <div>
               <p className="text-sm font-bold text-gray-900 dark:text-white">Income vs Expenses</p>
-              <p className="text-xs text-gray-400 mt-0.5">Last 6 months</p>
+              <p className="text-xs text-gray-400 mt-0.5">Last 6 months · dashed = prior month</p>
             </div>
             <Link to="/analytics" className="text-xs text-indigo-600 hover:text-indigo-500 font-semibold flex items-center gap-1">
               Full report <ArrowRight size={12} />
             </Link>
           </div>
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={monthlyTrend} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
+            <AreaChart data={trendWithGhost} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
               <defs>
                 <linearGradient id="gIncome" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%"  stopColor="#22c55e" stopOpacity={0.18}/>
@@ -145,6 +159,8 @@ export default function Dashboard() {
               <XAxis dataKey="month" {...xAxisProps} />
               <YAxis {...yAxisProps} tickFormatter={fmtK} />
               <Tooltip content={<ChartTooltip currency={user?.currency} />} cursor={lineCursor} />
+              <Area type="monotone" dataKey="prevIncome" name="Prior income" stroke="#22c55e" fill="none" strokeWidth={1.5} strokeDasharray="4 4" strokeOpacity={0.45} dot={false} activeDot={false} connectNulls />
+              <Area type="monotone" dataKey="prevExpense" name="Prior expenses" stroke="#ef4444" fill="none" strokeWidth={1.5} strokeDasharray="4 4" strokeOpacity={0.45} dot={false} activeDot={false} connectNulls />
               <Area type="monotone" dataKey="income"  name="Income"   stroke="#22c55e" fill="url(#gIncome)"  strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }} />
               <Area type="monotone" dataKey="expense" name="Expenses" stroke="#ef4444" fill="url(#gExpense)" strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }} />
             </AreaChart>
@@ -167,8 +183,20 @@ export default function Dashboard() {
             <>
               <ResponsiveContainer width="100%" height={150}>
                 <PieChart>
-                  <Pie data={spendingByCategory.slice(0,6)} cx="50%" cy="50%" innerRadius={42} outerRadius={68} paddingAngle={3} dataKey="total" strokeWidth={0}>
-                    {spendingByCategory.slice(0,6).map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                  <Pie
+                    data={spendingByCategory.slice(0,6)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={42}
+                    outerRadius={68}
+                    paddingAngle={3}
+                    dataKey="total"
+                    nameKey="_id"
+                    strokeWidth={0}
+                    className="cursor-pointer outline-none"
+                    onClick={(entry) => openCategory(entry?.name || entry?._id || entry?.payload?._id)}
+                  >
+                    {spendingByCategory.slice(0,6).map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} className="cursor-pointer" />)}
                   </Pie>
                   <Tooltip content={<ChartTooltip currency={user?.currency} />} />
                 </PieChart>
@@ -177,14 +205,20 @@ export default function Dashboard() {
                 {spendingByCategory.slice(0,5).map((cat, i) => {
                   const total = spendingByCategory.reduce((s,c) => s+c.total,0);
                   return (
-                    <div key={cat._id} className="flex items-center gap-2">
+                    <button
+                      key={cat._id}
+                      type="button"
+                      onClick={() => openCategory(cat._id)}
+                      className="flex items-center gap-2 w-full text-left rounded-lg px-1 py-0.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
+                    >
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                       <span className="text-xs text-gray-500 dark:text-gray-400 flex-1 truncate">{cat._id}</span>
                       <span className="text-xs font-semibold text-gray-900 dark:text-white">{((cat.total/total)*100).toFixed(0)}%</span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
+              <p className="text-[11px] text-gray-400 mt-2">Click a category to open its transactions</p>
             </>
           ) : (
             <div className="flex items-center justify-center h-40 text-sm text-gray-400">No data yet</div>
@@ -250,6 +284,8 @@ export default function Dashboard() {
           <UpgradeCard
             title="Net worth extras"
             blurb="Cash, investments, money lent, credit cards, and EMI remaining — plus spend-check and weekly digest."
+            preview={dashboard.totalBalance}
+            currency={user?.currency || 'INR'}
           />
         )}
 

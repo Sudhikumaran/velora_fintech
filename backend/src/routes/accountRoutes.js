@@ -1,11 +1,15 @@
 import express from 'express';
-import { getAccounts, createAccount, updateAccount, deleteAccount, archiveAccount, getAccountById } from '../controllers/accountController.js';
+import {
+  getAccounts, createAccount, updateAccount, deleteAccount,
+  archiveAccount, getAccountById, getAccountSparklines,
+} from '../controllers/accountController.js';
 import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.use(protect);
 router.get('/', getAccounts);
+router.get('/sparklines', getAccountSparklines);
 router.post('/', createAccount);
 router.get('/:id', getAccountById);
 router.put('/:id', updateAccount);

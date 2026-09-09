@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, Search, Filter, ArrowLeftRight,
-  Edit3, Trash2, Archive, Download, ChevronLeft, ChevronRight, Paperclip, Upload, RotateCcw,
+  Plus, Search, Filter, ArrowLeftRight, ArrowUp, ArrowDown,
+  Edit3, Trash2, Archive, Download, ChevronLeft, ChevronRight, Paperclip, Upload, RotateCcw, List, X,
 } from 'lucide-react';
 import { exportToCSV, transactionsToCSV } from '../utils/csvExport';
 import { parseTransactionCsv } from '../utils/csvImport';
@@ -22,6 +22,7 @@ import Badge from '../components/ui/Badge';
 import { SkeletonRow } from '../components/ui/Skeleton';
 import ReceiptUpload from '../components/ui/ReceiptUpload';
 import CategorySelect from '../components/ui/CategorySelect';
+import HighlightText from '../components/ui/HighlightText';
 import { getCategoryVisual, categoryTileStyle } from '../utils/categoryVisuals';
 
 const defaultForm = {
@@ -438,28 +439,34 @@ function TransactionForm({ form, setForm, onSubmit, accounts, isEdit }) {
 
 
 function DayHeader({ group, currency }) {
+  const parts = [];
+  if (group.received > 0) parts.push(`+${formatCurrency(group.received, currency)}`);
+  if (group.spent > 0) parts.push(`−${formatCurrency(group.spent, currency)}`);
+
   return (
-    <div className="sticky top-0 z-10 flex items-center gap-3 px-4 lg:px-6 py-2 bg-gray-50/95 dark:bg-gray-800/80 backdrop-blur-sm border-y border-gray-100 dark:border-gray-800">
-      <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">{dayLabel(group.date)}</p>
-      <span className="flex-1" />
-      {group.received > 0 && (
-        <p className="text-xs font-semibold text-green-600 num">
-          +{formatCurrency(group.received, currency)}
-        </p>
-      )}
-      {group.spent > 0 && (
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 num">
-          −{formatCurrency(group.spent, currency)}
-        </p>
+    <div className="day-header sticky top-0 z-10 flex items-baseline gap-3 px-4 lg:px-6 py-1.5 bg-gray-50/95 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-100/80 dark:border-gray-800">
+      <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 tracking-wide">{dayLabel(group.date)}</p>
+      <span className="flex-1 border-t border-dashed border-gray-200 dark:border-gray-700/80 self-center" />
+      {parts.length > 0 && (
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 num">{parts.join('  ·  ')}</p>
       )}
     </div>
   );
 }
 
-function TransactionRow({ tx, currency, balanceLabel, onOpen, onArchive, onDelete }) {
-  const amountClass = tx.type === 'income' ? 'text-green-600' : tx.type === 'expense' ? 'text-gray-900 dark:text-white' : 'text-indigo-600';
+function isImageReceipt(url) {
+  return /\.(png|jpe?g|gif|webp|bmp)(\?|$)/i.test(url || '') || /\/image\//i.test(url || '');
+}
+
+function TransactionRow({ tx, currency, balanceLabel, search, dense, onOpen, onArchive, onDelete }) {
+  const amountClass = tx.type === 'income'
+    ? 'text-green-600'
+    : tx.type === 'expense'
+      ? 'text-gray-900 dark:text-white'
+      : 'text-indigo-600';
   const amountLabel = `${tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : ''}${formatCurrency(tx.amount, currency)}`;
   const { Icon, color } = getCategoryVisual(tx.category, tx.type);
+  const title = tx.description || tx.category || 'Transaction';
 
   const meta = (
     <>
@@ -467,13 +474,13 @@ function TransactionRow({ tx, currency, balanceLabel, onOpen, onArchive, onDelet
       {isSplitTx(tx) && (
         <>
           <span className="text-gray-300 dark:text-gray-600">·</span>
-          <span className="shrink-0">Split · {tx.splits.length} {tx.splits.length === 1 ? 'part' : 'parts'}</span>
+          <span className="shrink-0">Split · {tx.splits.length}</span>
         </>
       )}
       {!isSplitTx(tx) && tx.category && (
         <>
           <span className="text-gray-300 dark:text-gray-600">·</span>
-          <span className="truncate">{tx.category}</span>
+          <HighlightText text={tx.category} query={search} className="truncate" />
         </>
       )}
       {tx.excludeFromTotals && (
@@ -488,10 +495,20 @@ function TransactionRow({ tx, currency, balanceLabel, onOpen, onArchive, onDelet
           target="_blank"
           rel="noopener noreferrer"
           title="View receipt"
-          className="text-indigo-500 hover:text-indigo-600 flex items-center gap-0.5 shrink-0"
+          className="shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
-          <Paperclip size={11} /> Receipt
+          {isImageReceipt(tx.receiptUrl) ? (
+            <img
+              src={tx.receiptUrl}
+              alt=""
+              className="w-6 h-6 rounded object-cover border border-gray-200 dark:border-gray-700"
+            />
+          ) : (
+            <span className="text-indigo-500 hover:text-indigo-600 flex items-center gap-0.5 text-xs">
+              <Paperclip size={11} /> Receipt
+            </span>
+          )}
         </a>
       )}
     </>
@@ -504,38 +521,39 @@ function TransactionRow({ tx, currency, balanceLabel, onOpen, onArchive, onDelet
         tabIndex={0}
         onClick={onOpen}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpen(); }}
-        className="lg:hidden w-full text-left flex items-start gap-3 px-4 py-3 cursor-pointer"
+        className="tx-row-mobile lg:hidden w-full text-left flex items-start gap-3 px-4 py-3 cursor-pointer"
       >
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={categoryTileStyle(color)}>
-          <Icon size={16} />
+        <div className="tx-icon w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5" style={categoryTileStyle(color)}>
+          <Icon size={dense ? 14 : 16} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-              {tx.description || tx.category}
-            </p>
+            <HighlightText text={title} query={search} className="text-sm font-medium text-gray-900 dark:text-white truncate" />
             <p className={`text-sm font-semibold shrink-0 num ${amountClass}`}>{amountLabel}</p>
           </div>
-          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-gray-500 min-w-0">
-            {meta}
+          <div className="flex items-center justify-between gap-2 mt-0.5">
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 min-w-0">
+              {meta}
+            </div>
+            {balanceLabel && (
+              <p className="text-xs text-gray-400 shrink-0 num font-normal">{balanceLabel}</p>
+            )}
           </div>
         </div>
       </div>
 
       <div
-        className="hidden lg:flex items-center gap-4 px-6 py-3 cursor-pointer"
+        className="tx-row hidden lg:flex items-center gap-4 px-6 py-3 cursor-pointer"
         role="button"
         tabIndex={0}
         onClick={onOpen}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpen(); }}
       >
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={categoryTileStyle(color)}>
-          <Icon size={16} />
+        <div className="tx-icon w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={categoryTileStyle(color)}>
+          <Icon size={dense ? 14 : 16} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-            {tx.description || tx.category}
-          </p>
+          <HighlightText text={title} query={search} className="text-sm font-medium text-gray-900 dark:text-white truncate block" />
           <div className="flex items-center gap-1.5 mt-0.5 text-xs text-gray-500 min-w-0">
             {meta}
           </div>
@@ -545,7 +563,7 @@ function TransactionRow({ tx, currency, balanceLabel, onOpen, onArchive, onDelet
         </div>
         <div className="w-32 text-right shrink-0">
           {balanceLabel && (
-            <p className="text-sm text-gray-400 dark:text-gray-500 num">{balanceLabel}</p>
+            <p className="text-sm font-normal text-gray-400 dark:text-gray-500 num">{balanceLabel}</p>
           )}
         </div>
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -580,8 +598,57 @@ export default function Transactions() {
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [repairing, setRepairing] = useState(false);
+  const [density, setDensity] = useState(() => localStorage.getItem('velora_density') || 'comfortable');
   const needsBalanceRepair = accounts.some((a) => a.type !== 'credit' && Number(a.balance) < 0);
-  const dayGroups = useMemo(() => groupByDay(transactions), [transactions]);
+  const dayGroups = useMemo(() => {
+    // Amount sort breaks calendar order — flatten so day headers don't mislead.
+    if (filters.sortBy === 'amount') {
+      return [{
+        key: 'sorted',
+        date: transactions[0]?.date || new Date(),
+        items: transactions,
+        spent: 0,
+        received: 0,
+        flat: true,
+      }];
+    }
+    return groupByDay(transactions);
+  }, [transactions, filters.sortBy]);
+  const dense = density === 'compact';
+
+  const toggleDensity = () => {
+    const next = dense ? 'comfortable' : 'compact';
+    setDensity(next);
+    localStorage.setItem('velora_density', next);
+  };
+
+  const toggleSort = (field) => {
+    const same = filters.sortBy === field;
+    setFilters({
+      sortBy: field,
+      sortOrder: same && filters.sortOrder === 'desc' ? 'asc' : 'desc',
+    });
+    setPage(1);
+  };
+
+  const clearFilter = (key) => {
+    setFilters({ [key]: '' });
+    setPage(1);
+  };
+
+  const filterChips = useMemo(() => {
+    const chips = [];
+    if (filters.type) chips.push({ key: 'type', label: filters.type });
+    if (filters.category) chips.push({ key: 'category', label: filters.category });
+    if (filters.account) {
+      const name = accounts.find((a) => a._id === filters.account)?.name || 'Account';
+      chips.push({ key: 'account', label: name });
+    }
+    if (filters.startDate) chips.push({ key: 'startDate', label: `From ${filters.startDate}` });
+    if (filters.endDate) chips.push({ key: 'endDate', label: `To ${filters.endDate}` });
+    if (filters.search) chips.push({ key: 'search', label: `“${filters.search}”` });
+    return chips;
+  }, [filters, accounts]);
 
   useEffect(() => {
     if (!accounts.length) fetchAccounts();
@@ -594,7 +661,8 @@ export default function Transactions() {
 
   useEffect(() => {
     const type = searchParams.get('type') || '';
-    setFilters({ type });
+    const category = searchParams.get('category') || '';
+    setFilters({ type, category });
   }, [searchParams]);
 
   useEffect(() => {
@@ -764,13 +832,48 @@ export default function Transactions() {
             />
           </div>
           <button
+            type="button"
+            onClick={toggleDensity}
+            className={`btn-secondary shrink-0 px-3 ${dense ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-200' : ''}`}
+            title={dense ? 'Comfortable density' : 'Compact density'}
+          >
+            <List size={16} />
+            <span className="hidden sm:inline">{dense ? 'Compact' : 'Comfort'}</span>
+          </button>
+          <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`btn-secondary shrink-0 px-3 ${showFilters ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-200' : ''}`}
+            className={`btn-secondary shrink-0 px-3 ${showFilters || filterChips.length ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-200' : ''}`}
           >
             <Filter size={16} />
             <span className="hidden sm:inline">Filters</span>
           </button>
         </div>
+
+        {filterChips.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {filterChips.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => clearFilter(chip.key)}
+                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              >
+                <span className="capitalize max-w-[160px] truncate">{chip.label}</span>
+                <X size={12} className="text-gray-400" />
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setFilters({ type: '', category: '', account: '', startDate: '', endDate: '', search: '' });
+                setPage(1);
+              }}
+              className="text-xs font-semibold text-indigo-600 px-1"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
 
         <AnimatePresence>
           {showFilters && (
@@ -780,12 +883,18 @@ export default function Transactions() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-1">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-1">
                 <select className="input-field text-sm" value={filters.type} onChange={(e) => { setFilters({ type: e.target.value }); setPage(1); }}>
                   <option value="">All Types</option>
                   <option value="income">Income</option>
                   <option value="expense">Expense</option>
                   <option value="transfer">Transfer</option>
+                </select>
+                <select className="input-field text-sm" value={filters.category} onChange={(e) => { setFilters({ category: e.target.value }); setPage(1); }}>
+                  <option value="">All Categories</option>
+                  {[...TRANSACTION_CATEGORIES.expense, ...TRANSACTION_CATEGORIES.income]
+                    .filter((c, i, arr) => arr.indexOf(c) === i)
+                    .map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <select className="input-field text-sm" value={filters.account} onChange={(e) => { setFilters({ account: e.target.value }); setPage(1); }}>
                   <option value="">All Accounts</option>
@@ -804,7 +913,7 @@ export default function Transactions() {
       {/* Transactions List.
           overflow-clip, not overflow-hidden: hidden would make this a scroll
           container and stop the day headers from sticking. */}
-      <div className="card overflow-clip">
+      <div className={`card overflow-clip ${dense ? 'density-compact' : ''}`}>
         {isLoading && transactions.length === 0 ? (
           <div className="divide-y divide-gray-50 dark:divide-gray-800">
             {[...Array(6)].map((_, i) => <SkeletonRow key={i} />)}
@@ -820,28 +929,35 @@ export default function Transactions() {
           <div>
             <div className="hidden lg:flex items-center gap-4 px-6 py-2 border-b border-gray-100 dark:border-gray-800 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
               <div className="w-9 shrink-0" />
-              <div className="flex-1">Transaction</div>
-              <div className="w-28 text-right">Amount</div>
-              <div className="w-32 text-right">Balance</div>
+              <button type="button" onClick={() => toggleSort('date')} className="flex-1 text-left inline-flex items-center gap-1 hover:text-gray-600 dark:hover:text-gray-300">
+                Transaction
+                {filters.sortBy === 'date' && (filters.sortOrder === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
+              </button>
+              <button type="button" onClick={() => toggleSort('amount')} className="w-28 text-right inline-flex items-center justify-end gap-1 hover:text-gray-600 dark:hover:text-gray-300">
+                Amount
+                {filters.sortBy === 'amount' && (filters.sortOrder === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
+              </button>
+              <button type="button" onClick={() => toggleSort('date')} className="w-32 text-right inline-flex items-center justify-end gap-1 hover:text-gray-600 dark:hover:text-gray-300">
+                Balance
+                {filters.sortBy === 'date' && (filters.sortOrder === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
+              </button>
               <div className="w-16" />
             </div>
             {dayGroups.map((group) => (
               <div key={group.key}>
-                <DayHeader group={group} currency={user?.currency} />
+                {!group.flat && <DayHeader group={group} currency={user?.currency} />}
                 <div className="divide-y divide-gray-50 dark:divide-gray-800/60">
-                  {group.items.map((tx, i) => (
+                  {group.items.map((tx) => (
                     <TransactionRow
                       key={tx._id}
                       tx={tx}
                       currency={user?.currency}
-                      /* One balance per day keeps the column readable instead of
-                         repeating the same figure down every row. */
-                      balanceLabel={i === group.items.length - 1
-                        ? formatCurrency(
-                          tx.runningBalance ?? accounts.find((a) => a._id === (tx.account?._id || tx.account))?.balance,
-                          user?.currency
-                        )
-                        : null}
+                      search={filters.search}
+                      dense={dense}
+                      balanceLabel={formatCurrency(
+                        tx.runningBalance ?? accounts.find((a) => a._id === (tx.account?._id || tx.account))?.balance,
+                        user?.currency
+                      )}
                       onOpen={() => openTx(tx)}
                       onArchive={() => archiveTransaction(tx._id)}
                       onDelete={() => setDeleteId(tx._id)}

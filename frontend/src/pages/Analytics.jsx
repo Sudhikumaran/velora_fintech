@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell, LineChart, Line,
@@ -48,6 +49,7 @@ function defaultReportRange() {
 }
 
 export default function Analytics() {
+  const navigate = useNavigate();
   const {
     spendingByCategory, monthlyTrend, cashFlow, dailyReport,
     budgetAnalysis,
@@ -55,6 +57,10 @@ export default function Analytics() {
   } = useAnalyticsStore();
   const { accounts, fetchAccounts } = useAccountStore();
   const { user } = useAuthStore();
+  const openCategory = (category) => {
+    if (!category) return;
+    navigate(`/transactions?type=expense&category=${encodeURIComponent(category)}`);
+  };
   const [period, setPeriod] = useState('month');
   const [months, setMonths] = useState('6');
   const [reportFilters, setReportFilters] = useState(defaultReportRange);
@@ -562,9 +568,12 @@ export default function Analytics() {
                     innerRadius={50}
                     paddingAngle={2}
                     dataKey="total"
+                    nameKey="_id"
+                    className="cursor-pointer outline-none"
+                    onClick={(entry) => openCategory(entry?.name || entry?._id || entry?.payload?._id)}
                   >
                     {spendingByCategory.slice(0, 8).map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} className="cursor-pointer" />
                     ))}
                   </Pie>
                   <Tooltip content={<ChartTooltip currency={user?.currency} />} />
@@ -572,7 +581,12 @@ export default function Analytics() {
               </ResponsiveContainer>
               <div className="space-y-2 mt-2">
                 {spendingByCategory.slice(0, 6).map((cat, i) => (
-                  <div key={cat._id} className="flex items-center gap-2">
+                  <button
+                    key={cat._id}
+                    type="button"
+                    onClick={() => openCategory(cat._id)}
+                    className="flex items-center gap-2 w-full text-left rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/60 px-1 py-0.5 transition-colors"
+                  >
                     <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
                     <div className="flex-1">
                       <div className="flex justify-between text-xs mb-0.5">
@@ -583,9 +597,10 @@ export default function Analytics() {
                         <div className="h-full rounded-full" style={{ width: `${(cat.total / totalExpenses) * 100}%`, background: COLORS[i % COLORS.length] }} />
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
+              <p className="text-[11px] text-gray-400 mt-2">Click to open transactions</p>
             </>
           ) : (
             <ChartEmpty height={200} message="No spending data" />
@@ -602,7 +617,13 @@ export default function Analytics() {
                 <XAxis type="number" {...xAxisProps} tickFormatter={fmtK} />
                 <YAxis type="category" dataKey="_id" {...yAxisProps} width={75} />
                 <Tooltip content={<ChartTooltip currency={user?.currency} />} cursor={barCursor} />
-                <Bar dataKey="total" name="Amount" radius={[0, 6, 6, 0]}>
+                <Bar
+                  dataKey="total"
+                  name="Amount"
+                  radius={[0, 6, 6, 0]}
+                  className="cursor-pointer"
+                  onClick={(data) => openCategory(data?.payload?._id || data?._id)}
+                >
                   {spendingByCategory.slice(0, 8).map((_, i) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
@@ -617,10 +638,18 @@ export default function Analytics() {
 
       {/* Row 2: Monthly Trend */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="card p-6">
-        <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Income vs Expenses Trend</h2>
+        <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Income vs Expenses Trend</h2>
+        <p className="text-xs text-gray-400 mb-4">Dashed lines show the prior month</p>
         {monthlyTrend.length > 0 ? (
           <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={monthlyTrend} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+            <AreaChart
+              data={monthlyTrend.map((row, i, arr) => ({
+                ...row,
+                prevIncome: i > 0 ? arr[i - 1].income : undefined,
+                prevExpense: i > 0 ? arr[i - 1].expense : undefined,
+              }))}
+              margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
+            >
               <defs>
                 <linearGradient id="incomeGrad2" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#22c55e" stopOpacity={0.15} />
@@ -636,6 +665,8 @@ export default function Analytics() {
               <YAxis {...yAxisProps} tickFormatter={fmtK} />
               <Tooltip content={<ChartTooltip currency={user?.currency} />} cursor={lineCursor} />
               <Legend {...legendProps} />
+              <Area type="monotone" dataKey="prevIncome" name="Prior income" stroke="#22c55e" fill="none" strokeWidth={1.5} strokeDasharray="4 4" strokeOpacity={0.45} dot={false} activeDot={false} connectNulls />
+              <Area type="monotone" dataKey="prevExpense" name="Prior expense" stroke="#ef4444" fill="none" strokeWidth={1.5} strokeDasharray="4 4" strokeOpacity={0.45} dot={false} activeDot={false} connectNulls />
               <Area type="monotone" dataKey="income" name="Income" stroke="#22c55e" fill="url(#incomeGrad2)" strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }} />
               <Area type="monotone" dataKey="expense" name="Expense" stroke="#ef4444" fill="url(#expenseGrad2)" strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }} />
             </AreaChart>

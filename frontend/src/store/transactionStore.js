@@ -17,7 +17,7 @@ export const useTransactionStore = create((set, get) => ({
   transactions: [],
   pagination: { total: 0, page: 1, limit: 20, pages: 0 },
   isLoading: false,
-  filters: { type: '', category: '', account: '', startDate: '', endDate: '', search: '' },
+  filters: { type: '', category: '', account: '', startDate: '', endDate: '', search: '', sortBy: 'date', sortOrder: 'desc' },
   _fetchGen: 0,
 
   setFilters: (filters) => set((state) => ({ filters: { ...state.filters, ...filters } })),

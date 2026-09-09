@@ -66,9 +66,8 @@ export function FloatingOrbs() {
 
   return (
     <>
-      {blob('w-72 h-72 bg-white/25 -top-16 -right-10', { x: [0, 24, 0], y: [0, 18, 0], scale: [1, 1.08, 1] }, 10)}
-      {blob('w-80 h-80 bg-violet-300/20 -bottom-20 -left-16', { x: [0, -18, 0], y: [0, -22, 0], scale: [1, 1.12, 1] }, 14)}
-      {blob('w-40 h-40 bg-white/15 top-1/2 right-10', { y: [0, -28, 0], opacity: [0.4, 0.7, 0.4] }, 8)}
+      {blob('w-64 h-64 bg-white/12 -top-16 -right-10', { x: [0, 12, 0], y: [0, 10, 0] }, 22)}
+      {blob('w-72 h-72 bg-white/8 -bottom-20 -left-16', { x: [0, -10, 0], y: [0, -12, 0] }, 28)}
     </>
   );
 }
