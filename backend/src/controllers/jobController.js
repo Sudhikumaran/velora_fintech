@@ -1,7 +1,7 @@
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { runDebtReminderJob } from '../services/debtReminderJob.js';
 import { runDailySpendJob } from '../services/dailySpendJob.js';
-import { runCalendarDayReminderJob } from '../services/calendarReminderJob.js';
+import { runCalendarTimedReminderJob } from '../services/calendarReminderJob.js';
 import Subscription from '../models/Subscription.js';
 import Transaction from '../models/Transaction.js';
 import { createUserTransaction, alreadyPostedSource, isSameCalendarDay } from '../utils/money.js';
@@ -102,11 +102,12 @@ export const runJobs = async (req, res, next) => {
     }
 
     await runDebtReminderJob();
-    await runCalendarDayReminderJob();
+    // Same SMTP path as debt: catch up calendar reminders whose notifyTime has passed today.
+    const calendarTimed = await runCalendarTimedReminderJob();
     const subscriptions = await postAllDueSubscriptions();
     const recurring = await postAllRecurring();
 
-    successResponse(res, { subscriptions, recurring }, 'Jobs completed.');
+    successResponse(res, { subscriptions, recurring, calendarTimed }, 'Jobs completed.');
   } catch (error) {
     next(error);
   }
@@ -126,7 +127,9 @@ export const runDailySpend = async (req, res, next) => {
     }
 
     const result = await runDailySpendJob();
-    successResponse(res, result, 'Daily spend emails completed.');
+    // Evening pass (same cron as spend) — catch calendar reminders later in the day.
+    const calendarTimed = await runCalendarTimedReminderJob();
+    successResponse(res, { ...result, calendarTimed }, 'Daily spend emails completed.');
   } catch (error) {
     next(error);
   }

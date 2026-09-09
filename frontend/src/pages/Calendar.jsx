@@ -27,8 +27,8 @@ const EVENT_TYPES = [
 const TYPE_COLORS = Object.fromEntries(EVENT_TYPES.map((t) => [t.value, t.color]));
 
 const BLANK_FORM = {
-  title: '', date: '', type: 'reminder', amount: '', color: '#0d9488',
-  description: '', isRecurring: false, recurringFrequency: 'monthly',
+  title: '', date: '', notifyTime: '09:00', type: 'reminder', amount: '', color: '#0d9488',
+  description: '', sendEmailReminder: true, isRecurring: false, recurringFrequency: 'monthly',
 };
 
 function toLocalDateStr(date) {
@@ -114,10 +114,12 @@ export default function Calendar() {
     setForm({
       title: event.title,
       date: toLocalDateStr(event.date),
+      notifyTime: event.notifyTime || '09:00',
       type: event.type,
       amount: event.amount ?? '',
       color: event.color || '#0d9488',
       description: event.description || '',
+      sendEmailReminder: event.sendEmailReminder !== false,
       isRecurring: event.isRecurring || false,
       recurringFrequency: event.recurringFrequency || 'monthly',
     });
@@ -327,7 +329,7 @@ export default function Calendar() {
                           <p className="text-xs text-gray-400 capitalize">
                             {event._source === 'subscription' ? 'Subscription due' :
                              event._source === 'debt'         ? (event.isEMI ? 'EMI due' : 'Debt due') :
-                             event._source === 'custom'       ? event.type :
+                             event._source === 'custom'       ? `${event.type}${event.notifyTime ? ` · mail ${event.notifyTime}` : ''}` :
                              event.category}
                           </p>
                         </div>
@@ -366,7 +368,9 @@ export default function Calendar() {
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ background: ev.color }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{ev.title}</p>
-                        <p className="text-xs text-gray-400 capitalize">{ev.type}</p>
+                        <p className="text-xs text-gray-400 capitalize">
+                          {ev.type}{ev.notifyTime ? ` · ${ev.notifyTime}` : ''}
+                        </p>
                       </div>
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${
                         daysUntil === 0 ? 'bg-red-100 text-red-600' :
@@ -489,21 +493,42 @@ export default function Calendar() {
                 required
               />
             </div>
-            {(form.type === 'bill' || form.type === 'income') && (
-              <div>
-                <label className="label">Amount ({user?.currency || 'USD'})</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="input-field"
-                  placeholder="0.00"
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                />
-              </div>
-            )}
+            <div>
+              <label className="label">Email reminder time *</label>
+              <input
+                type="time"
+                className="input-field"
+                value={form.notifyTime}
+                onChange={(e) => setForm({ ...form, notifyTime: e.target.value })}
+                required
+              />
+            </div>
           </div>
+
+          {(form.type === 'bill' || form.type === 'income') && (
+            <div>
+              <label className="label">Amount ({user?.currency || 'USD'})</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className="input-field"
+                placeholder="0.00"
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              />
+            </div>
+          )}
+
+          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
+            <input
+              type="checkbox"
+              className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+              checked={form.sendEmailReminder}
+              onChange={(e) => setForm({ ...form, sendEmailReminder: e.target.checked })}
+            />
+            Send reminder email at this time on the event day
+          </label>
 
           <div>
             <label className="label">Description</label>

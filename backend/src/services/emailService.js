@@ -385,26 +385,12 @@ const TYPE_LABELS = {
   note: 'Note',
 };
 
-/**
- * Confirmation email right after a calendar event is created.
- */
-export async function sendCalendarEventCreated({
-  to,
-  userName,
-  currency = 'INR',
-  timeZone = 'Asia/Kolkata',
-  event,
-}) {
-  const mailer = getTransporter();
-  if (!mailer) {
-    console.warn('[Email] SMTP not configured — skipping calendar event email.');
-    return false;
-  }
+const MAIL_ACCENT = '#4f46e5'; // same as debt / spend emails
 
-  const from = process.env.EMAIL_FROM || `Velora <${process.env.SMTP_USER}>`;
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+function calendarEventDetailRows(event, currency, timeZone) {
   const typeLabel = TYPE_LABELS[event.type] || 'Event';
   const dateLabel = formatMailDate(event.date, timeZone);
+  const notifyTime = event.notifyTime || '09:00';
   const amountRow = event.amount != null && Number.isFinite(Number(event.amount))
     ? `<tr>
         <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Amount</td>
@@ -424,12 +410,11 @@ export async function sendCalendarEventCreated({
       </tr>`
     : '';
 
-  const html = `
-    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-      <h2 style="color:#0d9488;">Velora — Calendar event saved</h2>
-      <p>Hi ${escapeHtml(userName || 'there')},</p>
-      <p>Your calendar event was added successfully.</p>
-      <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+  return {
+    typeLabel,
+    dateLabel,
+    notifyTime,
+    rows: `
         <tr>
           <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Title</td>
           <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:600;">${escapeHtml(event.title)}</td>
@@ -439,14 +424,55 @@ export async function sendCalendarEventCreated({
           <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(dateLabel)}</td>
         </tr>
         <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Reminder time</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(notifyTime)}</td>
+        </tr>
+        <tr>
           <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">Type</td>
           <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(typeLabel)}</td>
         </tr>
         ${amountRow}
         ${descRow}
-        ${recurRow}
+        ${recurRow}`,
+  };
+}
+
+/**
+ * Confirmation email right after a calendar event is created.
+ * Same HTML / from / SMTP pattern as debt reminders.
+ */
+export async function sendCalendarEventCreated({
+  to,
+  userName,
+  currency = 'INR',
+  timeZone = 'Asia/Kolkata',
+  event,
+}) {
+  const mailer = getTransporter();
+  if (!mailer) {
+    console.warn('[Email] SMTP not configured — skipping calendar event email.');
+    return false;
+  }
+
+  const from = process.env.EMAIL_FROM || `Velora <${process.env.SMTP_USER}>`;
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const { typeLabel, dateLabel, notifyTime, rows } = calendarEventDetailRows(event, currency, timeZone);
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      <h2 style="color:${MAIL_ACCENT};">Velora — Calendar Event Saved</h2>
+      <p>Hi ${escapeHtml(userName || 'there')},</p>
+      <p>Your calendar event was added successfully. Reminder email is set for <strong>${escapeHtml(notifyTime)}</strong> on that day.</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th style="padding:8px 12px;text-align:left;">Field</th>
+            <th style="padding:8px 12px;text-align:left;">Value</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
       </table>
-      <p><a href="${clientUrl}/calendar" style="background:#0d9488;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Open calendar</a></p>
+      <p><a href="${clientUrl}/calendar" style="background:${MAIL_ACCENT};color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">View Calendar</a></p>
       <p style="color:#9ca3af;font-size:12px;">This is an automated message from Velora Finance.</p>
     </div>`;
 
@@ -461,7 +487,55 @@ export async function sendCalendarEventCreated({
 }
 
 /**
- * Morning digest of calendar events happening today.
+ * Timed reminder when the event’s notifyTime is reached on the event date.
+ */
+export async function sendCalendarEventReminder({
+  to,
+  userName,
+  currency = 'INR',
+  timeZone = 'Asia/Kolkata',
+  event,
+}) {
+  const mailer = getTransporter();
+  if (!mailer) {
+    console.warn('[Email] SMTP not configured — skipping calendar timed reminder.');
+    return false;
+  }
+
+  const from = process.env.EMAIL_FROM || `Velora <${process.env.SMTP_USER}>`;
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const { typeLabel, dateLabel, notifyTime, rows } = calendarEventDetailRows(event, currency, timeZone);
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      <h2 style="color:${MAIL_ACCENT};">Velora — Calendar Reminder</h2>
+      <p>Hi ${escapeHtml(userName || 'there')},</p>
+      <p>This is your reminder for <strong>${escapeHtml(dateLabel)}</strong> at <strong>${escapeHtml(notifyTime)}</strong>:</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th style="padding:8px 12px;text-align:left;">Field</th>
+            <th style="padding:8px 12px;text-align:left;">Value</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p><a href="${clientUrl}/calendar" style="background:${MAIL_ACCENT};color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">View Calendar</a></p>
+      <p style="color:#9ca3af;font-size:12px;">This is an automated reminder from Velora Finance.</p>
+    </div>`;
+
+  await mailer.sendMail({
+    from,
+    to,
+    subject: `Velora: ${typeLabel} reminder “${event.title}” · ${notifyTime}`,
+    html,
+  });
+
+  return true;
+}
+
+/**
+ * Digest of calendar events happening today (same layout as debt reminder).
  */
 export async function sendCalendarDayReminder({
   to,
@@ -485,29 +559,32 @@ export async function sendCalendarDayReminder({
     const amount = e.amount != null && Number.isFinite(Number(e.amount))
       ? formatMoney(e.amount, currency)
       : '—';
+    const time = e.notifyTime || '09:00';
     return `<tr>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(e.title)}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#6b7280;">${escapeHtml(typeLabel)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(typeLabel)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(time)}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;">${amount}</td>
     </tr>`;
   }).join('');
 
   const html = `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-      <h2 style="color:#0d9488;">Velora — Today's calendar</h2>
+      <h2 style="color:${MAIL_ACCENT};">Velora — Today's Calendar</h2>
       <p>Hi ${escapeHtml(userName || 'there')},</p>
-      <p>You have <strong>${events.length}</strong> event${events.length === 1 ? '' : 's'} on <strong>${escapeHtml(dateLabel)}</strong>:</p>
+      <p>You have ${events.length} calendar event${events.length === 1 ? '' : 's'} on ${escapeHtml(dateLabel)}:</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;">
         <thead>
           <tr style="background:#f3f4f6;">
             <th style="padding:8px 12px;text-align:left;">Event</th>
             <th style="padding:8px 12px;text-align:left;">Type</th>
+            <th style="padding:8px 12px;text-align:left;">Time</th>
             <th style="padding:8px 12px;text-align:left;">Amount</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
-      <p><a href="${clientUrl}/calendar" style="background:#0d9488;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Open calendar</a></p>
+      <p><a href="${clientUrl}/calendar" style="background:${MAIL_ACCENT};color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">View Calendar</a></p>
       <p style="color:#9ca3af;font-size:12px;">This is an automated reminder from Velora Finance.</p>
     </div>`;
 
