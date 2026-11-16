@@ -1,29 +1,51 @@
-# Velora Mobile 2.0 — native Android app
+# Velora Android app (Capacitor)
 
-**Install:** [`Velora-Mobile-2.0.0.apk`](./Velora-Mobile-2.0.0.apk)
+This is the **same product as the website**, bundled as an APK, plus **payment auto-detect**.
 
-Native Flutter app with **all features**, **instant open** (cached data), and **background sync** — no blocking “connecting to server” screen.
+**Install:** build artifact `Velora-android-debug.apk` from GitHub Actions, or a local `cap:apk` build.
 
-## What's new in 2.0
+## Features (parity with web)
 
-- Opens instantly with your last synced data
-- Syncs quietly in the background
-- Polished login and splash UI
-- All features: dashboard, accounts, transactions, budgets, goals, debts, investments, subscriptions, analytics, calendar, settings
+- Dashboard, accounts, transactions, budgets, debts, goals, investments
+- Subscriptions, calendar (with email reminders), ledger, reports, analytics
+- Waiting payments inbox, settings, PIN lock
 
-## Install
+## Payment auto-detect (Android only)
 
-1. Uninstall any older Velora app
-2. Copy `Velora-Mobile-2.0.0.apk` to your phone (~52 MB)
-3. Install → sign in
-4. First sign-in may take a moment while the cloud API wakes up; after that the app opens fast
+After **Paytm / GPay / PhonePe / bank UPI**:
 
-## Rebuild
+1. Velora reads the payment notification (not SMS)
+2. Amount + date are filled automatically
+3. Payment lands in **Waiting payments**
+4. You only set **category** and **description**, then save
+
+Also available:
+
+- Floating button over other apps
+- “Log a payment” shade shortcut
+- Share success screen / screenshot (OCR)
+- Quick Settings tile
+
+### First-time setup on phone
+
+1. Install APK → open Velora → sign in
+2. Settings → **Payment auto-detect**
+3. Allow **Notification access** and **Display over other apps**
+4. Pay once on Paytm → open Velora → **Scan recent payments** (or wait for the review card)
+
+## Rebuild locally
 
 ```powershell
-$env:Path = "C:\Users\sudhi\flutter\bin;$env:Path"
-$env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
-cd c:\velora\flutter_app
-flutter build apk --release --dart-define=API_URL=https://velora-fintech.onrender.com
-copy build\app\outputs\flutter-apk\app-release.apk ..\releases\Velora-Mobile-2.0.0.apk
+cd frontend
+npm ci
+npm run cap:sync
+cd android
+.\gradlew.bat assembleDebug
+copy app\build\outputs\apk\debug\app-debug.apk ..\..\releases\Velora-android-debug.apk
 ```
+
+API URL comes from `frontend/.env.capacitor` (`VITE_API_URL=https://velora-backend-phi.vercel.app`).
+
+## Note on Flutter
+
+Older `Velora-Mobile-2.0` Flutter APKs are legacy. Prefer this Capacitor build for web parity + payment capture.

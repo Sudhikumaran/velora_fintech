@@ -3,7 +3,7 @@ const COLLECT = /\b(request(ed)? money|payment request|collect request|is trying
 const OTP = /\b(otp|one[- ]time (password|code|pin)|verification code)\b/i;
 
 const CREDIT = /\b(credited|received|received from|refund(?:ed)?|cashback credited|money added|deposited|has been credited)\b/i;
-const DEBIT = /\b(paid|sent|debited|spent|withdrawn|purchase|payment of|you paid|successfully paid|has been debited|dr\.? amt|debit amt|payment successful|paid to)\b/i;
+const DEBIT = /\b(paid|sent|debited|spent|withdrawn|purchase|payment of|you paid|successfully paid|has been debited|dr\.? amt|debit amt|payment successful|paid to|money sent|sent successfully|order paid|txn (?:of|for))\b/i;
 const BANK_TXN = /\b(upi|imps|neft|rtgs|pos|atm|a\/c|acct|account xx|card xx)\b/i;
 
 const AMOUNT = /(?:₹|rs\.?|inr|dr\.? amt|debit amt|credit amt)\s*[:\-]?\s*([0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)|([0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)\s*(?:inr|rs\.?)/i;
@@ -45,7 +45,8 @@ function parseAmount(text) {
 function parseMerchant(text) {
   const raw = String(text || '').replace(/\s+/g, ' ');
   const patterns = [
-    /(?:paid|sent|payment of .{0,24}|you paid .{0,24}|debited .*? by upi\/[0-9.]+\/) to ([A-Za-z0-9 .&'_-]{2,40})/i,
+    /(?:paid|sent|payment of .{0,24}|you paid .{0,24}|debited .*? by upi\/[0-9.]+\/|money sent) to ([A-Za-z0-9 .&'_@-]{2,40})/i,
+    /(?:paid to|sent to)\s*([A-Za-z0-9 .&'_@-]{2,40})/i,
     /(?:info|info:)\s*([A-Za-z0-9 .&'_-]{2,40})/i,
     / at ([A-Za-z0-9 .&'_-]{2,40})(?:\s+on\b|\s+from\b|$)/i,
     / towards ([A-Za-z0-9 .&'_-]{2,40})/i,

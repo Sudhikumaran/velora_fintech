@@ -11,10 +11,10 @@ export const FREE_FEATURES = [
   'Debts, calendar, PIN lock',
   'Print monthly reports',
   'Dashboard income vs expenses',
+  'Android payment auto-detect (Paytm / GPay / UPI queue)',
 ];
 
 export const PREMIUM_FEATURES = [
-  'Android after-pay capture (overlay, bubble, share + OCR)',
   'Net worth, spend-check, weekly digest, what-if',
   'Unlimited budgets',
   'Income planner',

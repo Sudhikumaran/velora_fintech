@@ -23,14 +23,17 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Configure mobile API URL
+      - name: Configure Capacitor API URL
         working-directory: frontend
-        run: cp .env.mobile.example .env.mobile
+        run: |
+          cp .env.capacitor .env.production.local 2>/dev/null || true
+          test -f .env.capacitor
+          grep -q 'VITE_API_URL' .env.capacitor
 
       - name: Build web + sync Capacitor
         working-directory: frontend
         run: |
-          npm run build:mobile
+          npm run build:native
           npx cap sync android
 
       - uses: actions/setup-java@v4

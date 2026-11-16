@@ -16,9 +16,9 @@ import { checkDueReminders } from '../../utils/dueReminders';
 import { refreshTodaySpendFromTransactions } from '../../utils/todaySpend';
 import { useTransactionStore } from '../../store/transactionStore';
 import { hydrateMerchantMemory } from '../../utils/merchantMemory';
-import { usePlan } from '../../utils/plan';
 import { useAnalyticsStore } from '../../store/financeStore';
 import { isNativeApp } from '../../utils/native';
+import { isAutoPayEnabled, setAutoPayEnabled } from '../../utils/paymentCapture';
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -35,7 +35,6 @@ export default function AppLayout() {
   const { fetchAccounts } = useAccountStore();
   const [showOnboarding, completeOnboarding] = useOnboarding();
   const { fetchMe } = useAuthStore();
-  const { isPremium } = usePlan();
   const fetchDashboard = useAnalyticsStore((s) => s.fetchDashboard);
   useEffect(() => { fetchAccounts(); }, []);
   useEffect(() => { fetchMe(); }, []);
@@ -44,9 +43,12 @@ export default function AppLayout() {
     const rules = useAuthStore.getState().user?.merchantRules;
     if (rules) hydrateMerchantMemory(rules);
   }, []);
+  // Payment auto-detect is a core Android feature (queue + review), not Premium-gated.
   useEffect(() => {
-    if (isPremium) startPaymentAutoCapture();
-  }, [isPremium]);
+    if (!isNativeApp()) return;
+    if (!isAutoPayEnabled()) setAutoPayEnabled(true);
+    startPaymentAutoCapture();
+  }, []);
   useEffect(() => {
     checkDueReminders();
     useTransactionStore.getState().fetchTransactions({ page: 1, limit: 50 }).then(() => {

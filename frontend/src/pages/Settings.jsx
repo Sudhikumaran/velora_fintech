@@ -301,18 +301,18 @@ export default function Settings() {
                     </div>
                     <Globe size={20} className="text-gray-400" />
                   </div>
-                  {isNativeApp() && isPremium && (
+                  {isNativeApp() && (
                     <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                      <p className="font-medium text-gray-900 dark:text-white">Add a payment after you pay</p>
+                      <p className="font-medium text-gray-900 dark:text-white">Payment auto-detect</p>
                       <p className="text-sm text-gray-500 mt-1">
-                        SMS is not used. Pick any of these:
+                        After Paytm / GPay / PhonePe / bank UPI, Velora queues the payment with amount and date filled. You only pick category and description.
                       </p>
                       <ul className="text-sm text-gray-500 mt-2 list-disc pl-5 space-y-1">
-                        <li>Purple floating button — tap it right after GPay</li>
+                        <li>Floating button — tap right after you pay</li>
                         <li>“Log a payment” in the notification shade</li>
-                        <li>Share the GPay success screen or a screenshot to Velora</li>
+                        <li>Share the success screen or a screenshot to Velora</li>
                         <li>Quick Settings tile: Add payment</li>
-                        <li>Voice add on the home screen</li>
+                        <li>Waiting payments inbox in the sidebar</li>
                       </ul>
                       <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                         <input
@@ -394,13 +394,6 @@ export default function Settings() {
                           Scan recent payments
                         </button>
                       </div>
-                    </div>
-                  )}
-                  {isNativeApp() && !isPremium && (
-                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl space-y-2">
-                      <p className="font-medium text-gray-900 dark:text-white">Add a payment after you pay</p>
-                      <p className="text-sm text-gray-500">Overlay, floating button, share + OCR, and Quick Settings are Premium.</p>
-                      <button type="button" className="btn-primary text-sm" onClick={() => setActiveSection('plan')}>See Premium</button>
                     </div>
                   )}
                   {isNativeApp() && (

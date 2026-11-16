@@ -35,6 +35,13 @@ final class PaymentQueue {
         || lower.contains("successful")
         || lower.contains("completed")
         || lower.contains("sent to")
+        || lower.contains("payment of")
+        || lower.contains("money sent")
+        || lower.contains("money received")
+        || lower.contains("paytm")
+        || lower.contains("phonepe")
+        || lower.contains("google pay")
+        || lower.contains("gpay")
         || lower.contains("a/c")
         || lower.contains("acct");
   }

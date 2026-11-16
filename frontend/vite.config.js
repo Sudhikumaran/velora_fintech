@@ -4,7 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 
 /** Capacitor loads bundled assets from the app filesystem — requires relative base. */
 export default defineConfig(({ mode }) => ({
-  base: mode === 'mobile' ? './' : '/',
+  // Both `capacitor` and `mobile` modes ship inside the APK WebView.
+  base: mode === 'mobile' || mode === 'capacitor' ? './' : '/',
   plugins: [
     react(),
     tailwindcss(),
